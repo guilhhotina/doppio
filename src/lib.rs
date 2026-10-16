@@ -1,7 +1,11 @@
 pub mod app;
 pub mod assets;
+pub mod audio;
 pub mod core;
 pub mod ffi;
 pub mod fx;
 pub mod gl;
 pub mod map;
+pub mod net;
+pub mod render;
+pub mod sim;

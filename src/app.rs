@@ -1,149 +1,230 @@
-use crate::core::{Frontend, HEIGHT, WIDTH};
-use crate::ffi::{LOG_ERROR, LOG_INFO};
+mod bench;
+mod hud;
+mod layout;
+
+use crate::audio::Audio;
+use crate::core::{Frontend, HEIGHT, SAMPLE_RATE, WIDTH};
+use crate::ffi::LOG_INFO;
 use crate::gl::{self, Gl};
-use std::time::Instant;
+use crate::map;
+use crate::render::{Renderer, Ui2d, View};
+use crate::sim::{Anim, MAX_BODIES, MAX_PLAYERS, Role, Setup, TICS_PER_SEC, World};
+use bench::{Bench, Spec};
+use std::ffi::CStr;
+use std::time::{Duration, Instant};
 
-const VS: &str = "attribute vec3 a_pos;
-attribute vec3 a_col;
-uniform mat4 u_mvp;
-varying vec3 v_col;
-void main() { v_col = a_col; gl_Position = u_mvp * vec4(a_pos, 1.0); }
-";
+const TIC: Duration = Duration::from_nanos(1_000_000_000 / TICS_PER_SEC as u64);
+const MAX_CATCHUP: u32 = 5;
+const START: u16 = 1 << 3;
+const DEFAULT_NIGHT_SECS: u32 = 360;
+const PERF_FRAMES: u32 = 300;
 
-const FS: &str = "precision mediump float;
-varying vec3 v_col;
-uniform vec3 u_tint;
-void main() { gl_FragColor = vec4(v_col * u_tint, 1.0); }
-";
+#[derive(Default)]
+struct Perf {
+    frames: u32,
+    total: Duration,
+    worst: Duration,
+}
 
-const TRIANGLE: [f32; 18] = [
-    -1.0, -0.8, 0.0, 1.0, 0.3, 0.2,
-    1.0, -0.8, 0.0, 0.2, 1.0, 0.3,
-    0.0, 1.0, 0.0, 0.3, 0.4, 1.0,
-];
-
-const PALETTE: [[f32; 3]; 10] = [
-    [1.0, 0.2, 0.2],
-    [1.0, 1.0, 0.2],
-    [0.6, 0.6, 0.6],
-    [0.2, 1.0, 1.0],
-    [1.0, 0.5, 0.0],
-    [0.5, 0.0, 1.0],
-    [0.0, 1.0, 0.3],
-    [1.0, 0.0, 0.8],
-    [0.2, 0.4, 1.0],
-    [0.0, 0.6, 0.0],
-];
-
-struct Scene {
-    gl: Gl,
-    program: u32,
-    vbo: u32,
-    u_mvp: i32,
-    u_tint: i32,
+enum Mode {
+    Play(Box<World>),
+    Bench(Bench, usize),
 }
 
 pub struct App {
-    start: Instant,
-    scene: Option<Scene>,
+    mode: Mode,
+    audio: Audio,
+    gfx: Option<(Gl, Renderer)>,
+    ui: Ui2d,
+    ports: [Option<u8>; MAX_PLAYERS],
+    night_secs: u32,
+    seed: u32,
+    last: Instant,
+    acc: Duration,
+    held: [u16; 4],
+    perf: Perf,
 }
 
-fn mat_mul(a: &[f32; 16], b: &[f32; 16]) -> [f32; 16] {
-    std::array::from_fn(|i| (0..4).map(|k| a[k * 4 + i % 4] * b[(i / 4) * 4 + k]).sum())
+fn number<T: std::str::FromStr>(fe: &Frontend, key: &CStr) -> Option<T> {
+    fe.variable(key).and_then(|v| v.trim().parse().ok())
 }
 
-fn mvp(angle: f32) -> [f32; 16] {
-    let (s, c) = angle.sin_cos();
-    let model_view = [c, 0.0, -s, 0.0, 0.0, 1.0, 0.0, 0.0, s, 0.0, c, 0.0, 0.0, 0.0, -3.0, 1.0];
-    let f = 1.0 / (30f32.to_radians()).tan();
-    let (near, far) = (0.1f32, 10.0f32);
-    let aspect = WIDTH as f32 / HEIGHT as f32;
-    let proj = [
-        f / aspect, 0.0, 0.0, 0.0,
-        0.0, f, 0.0, 0.0,
-        0.0, 0.0, (far + near) / (near - far), -1.0,
-        0.0, 0.0, 2.0 * far * near / (near - far), 0.0,
-    ];
-    mat_mul(&proj, &model_view)
+fn bench_spec(fe: &Frontend) -> Option<(Spec, usize)> {
+    let bodies = number::<usize>(fe, c"doppio_bench")?;
+    let spawn = map::sobrado().spawns[0];
+    let at = fe
+        .variable(c"doppio_at")
+        .map(|v| v.split(',').filter_map(|s| s.trim().parse::<f32>().ok()).collect::<Vec<f32>>())
+        .filter(|v| v.len() == 3)
+        .map_or([spawn.pos.x.to_f32(), spawn.pos.y.to_f32(), spawn.rot.to_rad().to_degrees()], |v| [v[0], v[1], v[2]]);
+    let anim = match fe.variable(c"doppio_anim").as_deref() {
+        Some("walk") => Anim::Walk,
+        Some("run") => Anim::Run,
+        Some("reach") => Anim::Reach,
+        Some("stagger") => Anim::Stagger,
+        _ => Anim::Idle,
+    };
+    let spec = Spec {
+        bodies: bodies.clamp(1, MAX_BODIES),
+        at,
+        power: number::<u8>(fe, c"doppio_power") != Some(0),
+        lantern: number::<u8>(fe, c"doppio_lantern") != Some(0),
+        anim,
+    };
+    Some((spec, number::<usize>(fe, c"doppio_views").unwrap_or(1).clamp(1, 4)))
+}
+
+fn world(seed: u32, players: u8, night_secs: u32) -> Box<World> {
+    Box::new(World::new(map::sobrado(), Setup { seed, players, night_secs }))
 }
 
 impl App {
     pub fn new(fe: &Frontend) -> App {
-        let night = fe.variable(c"doppio_night_seconds").unwrap_or_else(|| "default".into());
-        let user = fe.username().unwrap_or_else(|| "?".into());
-        fe.log(LOG_INFO, &format!("{} loaded (night_seconds={night}, user={user})", env!("CARGO_PKG_VERSION")));
-        App { start: Instant::now(), scene: None }
+        let night_secs = number(fe, c"doppio_night_seconds").unwrap_or(DEFAULT_NIGHT_SECS);
+        let seed = number(fe, c"doppio_seed").unwrap_or(0x5eed_d0b0);
+        let mode = match bench_spec(fe) {
+            Some((s, views)) => Mode::Bench(Bench::new(map::sobrado(), &s), views),
+            None => Mode::Play(world(seed, 1, night_secs)),
+        };
+        fe.log(LOG_INFO, &format!("{} loaded (night_seconds={night_secs})", env!("CARGO_PKG_VERSION")));
+        let mut ports = [None; MAX_PLAYERS];
+        ports[0] = Some(0);
+        App {
+            mode,
+            audio: Audio::new(SAMPLE_RATE),
+            gfx: None,
+            ui: Ui2d::new(),
+            ports,
+            night_secs,
+            seed,
+            last: Instant::now(),
+            acc: Duration::ZERO,
+            held: [0; 4],
+            perf: Perf::default(),
+        }
+    }
+
+    fn players(&self) -> usize {
+        self.ports.iter().flatten().count()
+    }
+
+    fn restart(&mut self) {
+        let players = self.players() as u8;
+        if let Mode::Play(w) = &mut self.mode {
+            *w = world(self.seed, players, self.night_secs);
+            self.audio = Audio::new(SAMPLE_RATE);
+            self.acc = Duration::ZERO;
+        }
     }
 
     pub fn reset(&mut self) {
-        self.start = Instant::now();
+        self.restart();
     }
 
     pub fn context_reset(&mut self, fe: &Frontend, gl: Gl) {
         fe.log(LOG_INFO, &format!("GL renderer: {}", gl.string(gl::RENDERER).unwrap_or("?")));
-        self.scene = gl
-            .program(VS, FS, &[(0, c"a_pos"), (1, c"a_col")])
-            .inspect_err(|e| fe.log(LOG_ERROR, e))
-            .ok()
-            .map(|program| {
-                let vbo = gl.gen_buffer();
-                gl.bind_buffer(gl::ARRAY_BUFFER, vbo);
-                gl.buffer_data(gl::ARRAY_BUFFER, &TRIANGLE, gl::STATIC_DRAW);
-                gl.bind_buffer(gl::ARRAY_BUFFER, 0);
-                Scene {
-                    gl,
-                    program,
-                    vbo,
-                    u_mvp: gl.uniform_location(program, c"u_mvp"),
-                    u_tint: gl.uniform_location(program, c"u_tint"),
-                }
-            });
+        let r = Renderer::new(&gl, map::sobrado());
+        fe.log(
+            LOG_INFO,
+            &format!("level {} tris, mannequin {:?} tris, textures {} KB", r.level_tris(), r.body_tris(), r.texture_bytes() / 1024),
+        );
+        self.gfx = Some((gl, r));
     }
 
     pub fn context_destroy(&mut self) {
-        self.scene = None;
+        self.gfx = None;
     }
 
-    pub fn frame(&mut self, _fe: &Frontend, input: [u16; 4]) -> bool {
-        let Some(s) = &self.scene else { return false };
-        let gl = &s.gl;
-        let held = input.iter().fold(0, |a, b| a | b);
-        let tint = match held {
-            0 => [1.0; 3],
-            _ => PALETTE[held.trailing_zeros() as usize % PALETTE.len()],
-        };
-        let angle = self.start.elapsed().as_secs_f32() * 1.5;
-        gl.bind_target();
-        gl.viewport(0, 0, WIDTH as i32, HEIGHT as i32);
-        gl.disable(gl::SCISSOR_TEST);
-        gl.disable(gl::BLEND);
-        gl.disable(gl::CULL_FACE);
-        gl.enable(gl::DEPTH_TEST);
-        gl.depth_func(gl::LESS);
-        gl.depth_mask(true);
-        gl.clear_color(0.05, 0.04, 0.07, 1.0);
-        gl.clear_depth(1.0);
-        gl.clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        gl.use_program(s.program);
-        gl.bind_buffer(gl::ARRAY_BUFFER, s.vbo);
-        gl.attrib_pointer(0, 3, gl::FLOAT, false, 24, 0);
-        gl.attrib_pointer(1, 3, gl::FLOAT, false, 24, 12);
-        gl.enable_attrib(0);
-        gl.enable_attrib(1);
-        [(angle, tint), (0.9, [0.5; 3])].iter().for_each(|(a, t)| {
-            gl.uniform_mat4(s.u_mvp, &mvp(*a));
-            gl.uniform3f(s.u_tint, t[0], t[1], t[2]);
-            gl.draw_arrays(gl::TRIANGLES, 0, 3);
-        });
-        gl.disable_attrib(0);
-        gl.disable_attrib(1);
-        gl.bind_buffer(gl::ARRAY_BUFFER, 0);
-        gl.use_program(0);
-        gl.disable(gl::DEPTH_TEST);
+    fn join(&mut self, input: &[u16; 4]) {
+        let pressed = |p: u8| input[p as usize] & START != 0 && self.held[p as usize] & START == 0;
+        let fresh = (1..4u8).find(|&p| pressed(p) && !self.ports.contains(&Some(p)));
+        self.held = *input;
+        if let (Some(port), Some(slot)) = (fresh, self.ports.iter().position(Option::is_none)) {
+            self.ports[slot] = Some(port);
+            self.restart();
+        }
+    }
+
+    fn step(&mut self, input: &[u16; 4]) {
+        let now = Instant::now();
+        self.acc = (self.acc + (now - self.last)).min(TIC * MAX_CATCHUP);
+        self.last = now;
+        let inputs: [u16; MAX_PLAYERS] = std::array::from_fn(|s| self.ports[s].map_or(0, |p| input[p as usize]));
+        let tics = (self.acc.as_nanos() / TIC.as_nanos()) as u32;
+        self.acc -= TIC * tics;
+        match &mut self.mode {
+            Mode::Bench(b, _) => (0..tics).for_each(|_| b.step()),
+            Mode::Play(w) => {
+                (0..tics).for_each(|_| {
+                    w.step(&inputs);
+                    self.audio.events(w, w.events(), w.player(0).body);
+                });
+                self.audio.ambience(w, w.player(0).body);
+            }
+        }
+    }
+
+    fn views(&self) -> ([View; 4], usize) {
+        match &self.mode {
+            Mode::Bench(_, n) => {
+                let rects = layout::rects(*n);
+                (std::array::from_fn(|i| View { rect: rects[i], follow: (i * 5) as u8, fade: 0, duplo: false }), *n)
+            }
+            Mode::Play(w) => {
+                let n = self.players();
+                let rects = layout::rects(n);
+                let views = std::array::from_fn(|i| {
+                    let p = w.player(i);
+                    View { rect: rects[i], follow: p.body, fade: p.fade, duplo: p.role == Role::Duplo }
+                });
+                (views, n)
+            }
+        }
+    }
+
+    fn report(&mut self, fe: &Frontend, spent: Duration) {
+        let p = &mut self.perf;
+        p.frames += 1;
+        p.total += spent;
+        p.worst = p.worst.max(spent);
+        if p.frames == PERF_FRAMES {
+            let stats = self.gfx.as_ref().map(|(_, r)| r.stats()).unwrap_or_default();
+            fe.log(
+                LOG_INFO,
+                &format!(
+                    "frame avg {:.2} ms max {:.2} ms, tris/view {:?}, draws {}",
+                    p.total.as_secs_f64() * 1000.0 / p.frames as f64,
+                    p.worst.as_secs_f64() * 1000.0,
+                    stats.tris,
+                    stats.draws
+                ),
+            );
+            *p = Perf::default();
+        }
+    }
+
+    pub fn frame(&mut self, fe: &Frontend, input: [u16; 4]) -> bool {
+        let start = Instant::now();
+        if matches!(self.mode, Mode::Play(_)) {
+            self.join(&input);
+        }
+        self.step(&input);
+        let (views, n) = self.views();
+        self.ui.clear();
+        if let Mode::Play(w) = &self.mode {
+            (0..n).for_each(|i| hud::draw(&mut self.ui, w, views[i].rect, i, n == 1));
+        }
+        let Some((gl, r)) = &mut self.gfx else { return false };
+        let target = gl.target_framebuffer();
+        match &self.mode {
+            Mode::Bench(b, _) => r.draw(gl, target, WIDTH, HEIGHT, &b.scene(), &views[..n], &self.ui),
+            Mode::Play(w) => r.frame(gl, target, WIDTH, HEIGHT, w, &views[..n], &self.ui),
+        }
+        self.report(fe, start.elapsed());
         true
     }
 
     pub fn audio(&mut self, out: &mut [i16]) {
-        out.fill(0);
+        self.audio.fill(out);
     }
 }

@@ -1,0 +1,122 @@
+use crate::fx::{Ang, Fx, Vec2};
+
+pub const B: u16 = 1 << 0;
+pub const Y: u16 = 1 << 1;
+pub const UP: u16 = 1 << 4;
+pub const DOWN: u16 = 1 << 5;
+pub const LEFT: u16 = 1 << 6;
+pub const RIGHT: u16 = 1 << 7;
+pub const A: u16 = 1 << 8;
+pub const X: u16 = 1 << 9;
+pub const BUTTONS: u16 = B | Y | UP | DOWN | LEFT | RIGHT | A | X;
+pub const MOVE: u16 = UP | DOWN | LEFT | RIGHT | Y;
+
+pub const WALK: Fx = Fx::ratio(13, 300);
+pub const BACK: Fx = Fx::ratio(8, 300);
+pub const RUN: Fx = Fx::ratio(26, 300);
+pub const TURN: u16 = 910;
+pub const QUICK_TICS: u8 = 12;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Gait {
+    Still,
+    Turn,
+    Walk,
+    Run,
+    Quick,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Tank {
+    pub prev: u16,
+    pub quick: u8,
+    pub quick_from: Ang,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Motion {
+    pub delta: Vec2,
+    pub heading: Ang,
+    pub gait: Gait,
+}
+
+pub fn pressed(prev: u16, input: u16, bit: u16) -> bool {
+    input & bit != 0 && prev & bit == 0
+}
+
+pub fn mirrored(input: u16) -> u16 {
+    let swap = |a: u16, b: u16| match (input & a != 0, input & b != 0) {
+        (true, false) | (false, true) => a | b,
+        _ => 0,
+    };
+    input ^ swap(UP, DOWN) ^ swap(LEFT, RIGHT)
+}
+
+impl Tank {
+    pub const REST: Tank = Tank { prev: 0, quick: 0, quick_from: Ang::ZERO };
+
+    pub fn drive(&mut self, heading: Ang, input: u16) -> Motion {
+        if self.quick == 0 && pressed(self.prev, input, Y) {
+            self.quick = QUICK_TICS;
+            self.quick_from = heading;
+        }
+        match self.quick {
+            0 => walk(heading, input),
+            q => {
+                self.quick = q - 1;
+                let done = (QUICK_TICS - self.quick) as u32;
+                let turn = Ang((Ang::HALF.0 as u32 * done / QUICK_TICS as u32) as u16);
+                Motion { delta: Vec2::ZERO, heading: self.quick_from + turn, gait: Gait::Quick }
+            }
+        }
+    }
+}
+
+fn walk(heading: Ang, input: u16) -> Motion {
+    let held = |bit: u16| input & bit != 0;
+    let turn = match (held(LEFT), held(RIGHT)) {
+        (true, false) => Ang(TURN),
+        (false, true) => -Ang(TURN),
+        _ => Ang::ZERO,
+    };
+    let heading = heading + turn;
+    let (speed, gait) = match (held(UP), held(DOWN), held(B)) {
+        (true, false, true) => (RUN, Gait::Run),
+        (true, false, false) => (WALK, Gait::Walk),
+        (false, true, _) => (-BACK, Gait::Walk),
+        _ if turn != Ang::ZERO => (Fx::ZERO, Gait::Turn),
+        _ => (Fx::ZERO, Gait::Still),
+    };
+    Motion { delta: Vec2::from_ang(heading).scale(speed), heading, gait }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn speeds_and_turns() {
+        let mut t = Tank::REST;
+        let m = t.drive(Ang::ZERO, UP);
+        assert_eq!((m.delta.x, m.delta.y, m.gait), (Fx::ZERO, WALK, Gait::Walk));
+        assert_eq!(t.drive(Ang::QUARTER, UP | B).delta.x, RUN);
+        assert_eq!(t.drive(Ang::ZERO, DOWN | B).delta.y, -BACK);
+        assert_eq!(t.drive(Ang::ZERO, LEFT).heading, Ang(TURN));
+        assert_eq!(t.drive(Ang::ZERO, RIGHT).gait, Gait::Turn);
+        assert_eq!(mirrored(UP | LEFT | A), DOWN | RIGHT | A);
+        assert_eq!(mirrored(UP | DOWN), UP | DOWN);
+    }
+
+    #[test]
+    fn quick_turn_is_half_turn_in_twelve_tics() {
+        let mut t = Tank::REST;
+        let end = (0..QUICK_TICS).fold(Ang(1000), |h, i| {
+            let m = t.drive(h, if i == 0 { Y } else { Y | UP });
+            t.prev = Y;
+            assert_eq!((m.gait, m.delta), (Gait::Quick, Vec2::ZERO));
+            m.heading
+        });
+        assert_eq!(end, Ang(1000) + Ang::HALF);
+        assert_eq!(t.drive(end, Y).gait, Gait::Still);
+    }
+}

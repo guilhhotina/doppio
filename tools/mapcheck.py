@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 import os
 import sys
 from collections import deque
@@ -42,7 +43,7 @@ def num(tok, errors, what):
     except ValueError:
         errors.append("%s: %r is not a number" % (what, tok))
         return 0.0
-    if "." in tok and len(tok.split(".")[1]) > 2:
+    if "." in tok and len(tok.split(".")[1]) > 1:
         errors.append("%s: %r has too many decimals" % (what, tok))
     return v
 
@@ -116,6 +117,7 @@ def check(path, texdir):
 
     door_tiles = {(x, y) for (x, y) in walk if solid[y][x] == "D"}
     doors = {}
+    door_axes = {}
     for t in sec.get("door", []):
         if len(t) != 4:
             errors.append("[door] bad line %s" % " ".join(t))
@@ -134,6 +136,7 @@ def check(path, texdir):
         if (x, y) in doors:
             errors.append("door %d,%d listed twice" % (x, y))
         doors[(x, y)] = t[3]
+        door_axes[(x, y)] = t[2]
     for d in sorted(door_tiles - set(doors)):
         errors.append("D tile %d,%d has no [door] line" % d)
 
@@ -153,10 +156,10 @@ def check(path, texdir):
         ex, ez = int(v[0]), int(v[2])
         if tile(ex, ez) not in WALKABLE + "B" and v[1] <= 2.6:
             errors.append("cam %d eye %.1f,%.1f inside wall/void tile %r" % (i + 1, v[0], v[2], tile(ex, ez)))
-        cams.append(r)
+        cams.append((r, v))
     owner = {}
     for (x, y) in walk:
-        hit = next((i for i, r in enumerate(cams) if r[0] <= x <= r[2] and r[1] <= y <= r[3]), None)
+        hit = next((i for i, (r, _) in enumerate(cams) if r[0] <= x <= r[2] and r[1] <= y <= r[3]), None)
         if hit is None:
             errors.append("walkable tile %d,%d not covered by any cam" % (x, y))
         else:
@@ -164,6 +167,20 @@ def check(path, texdir):
     for i in range(len(cams)):
         if i not in owner.values():
             errors.append("cam %d never selected (shadowed by earlier rects)" % (i + 1))
+
+    def sees(ax, az, bx, bz):
+        steps = int(math.hypot(bx - ax, bz - az) * 10) + 1
+        return all(tile(int(ax + (bx - ax) * s / steps), int(az + (bz - az) * s / steps)) not in "#W "
+                   for s in range(1, steps))
+    for (x, y), i in sorted(owner.items()):
+        eye = cams[i][1]
+        if not sees(eye[0], eye[2], x + 0.5, y + 0.5):
+            errors.append("cam %d cannot see its tile %d,%d (wall in the way)" % (i + 1, x, y))
+        dx, dz = eye[3] - eye[0], eye[5] - eye[2]
+        vx, vz = x + 0.5 - eye[0], y + 0.5 - eye[2]
+        half = math.degrees(math.atan(math.tan(math.radians(eye[6] / 2)) * 16 / 9))
+        if abs(math.degrees(math.atan2(vx * dz - vz * dx, vx * dx + vz * dz))) > half:
+            errors.append("cam %d tile %d,%d outside the 16:9 view" % (i + 1, x, y))
 
     for t in sec.get("prop", []):
         if len(t) != 4 or t[0] not in PROPS:
@@ -230,7 +247,28 @@ def check(path, texdir):
         for t in sorted(walk - seen):
             errors.append("walkable tile %d,%d unreachable with doors open" % t)
 
-    return errors, solid, rooms, room_defs, cams, owner, tasks, spawns, doors
+    edges = []
+    for (x, y), axis in sorted(door_axes.items()):
+        a, b = ((x, y - 1), (x, y + 1)) if axis == "h" else ((x - 1, y), (x + 1, y))
+        ends = [rooms[q][p] for p, q in (a, b) if 0 <= q < height and 0 <= p < width and rooms[q][p] not in "- "]
+        if len(ends) != 2 or ends[0] == ends[1]:
+            errors.append("door %d,%d does not join two different rooms" % (x, y))
+        else:
+            edges.append(tuple(ends))
+    parent = {r: r for r in room_defs}
+
+    def root(r):
+        while parent[r] != r:
+            r = parent[r]
+        return r
+    for a, b in edges:
+        if a in parent and b in parent:
+            parent[root(a)] = root(b)
+    loops = len(edges) - len(parent) + len({root(r) for r in parent})
+    if loops < 2:
+        errors.append("only %d independent loops through the house, need >= 2" % loops)
+
+    return errors, solid, rooms, room_defs, cams, owner, tasks, spawns, doors, loops
 
 
 def render(solid, rooms, room_defs, tasks, spawns, doors):
@@ -262,10 +300,10 @@ def main(argv):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     path = argv[1] if len(argv) > 1 else os.path.join(root, "assets", "map", "sobrado.map")
     texdir = os.path.join(root, "assets", "tex")
-    errors, solid, rooms, room_defs, cams, owner, tasks, spawns, doors = check(path, texdir)
+    errors, solid, rooms, room_defs, cams, owner, tasks, spawns, doors, loops = check(path, texdir)
     print(render(solid, rooms, room_defs, tasks, spawns, doors))
-    print("\n%d rooms, %d cams, %d doors, %d walkable tiles, %d task spots, %d spawns" % (
-        len(room_defs), len(cams), len(doors), len(owner), len(tasks), len(spawns)))
+    print("\n%d rooms, %d cams, %d doors, %d loops, %d walkable tiles, %d task spots, %d spawns" % (
+        len(room_defs), len(cams), len(doors), loops, len(owner), len(tasks), len(spawns)))
     for e in errors:
         print("ERROR " + e)
     print("OK" if not errors else "%d error(s)" % len(errors))
