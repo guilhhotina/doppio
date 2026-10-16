@@ -1,4 +1,4 @@
-use super::dsp::{UNIT, bipolar, decay_mul, mulc, mulq, noise, octave_mul, q, sine, svf_coef, svf_max, unit, unq};
+use super::dsp::{UNIT, bipolar, decay_mul, mulc, mulq, octave_mul, q, sine, svf_coef, svf_max, unit, unq, white_at};
 use crate::fx::Rng;
 
 #[derive(Clone, Copy, Debug)]
@@ -116,6 +116,7 @@ pub struct Voice {
     attack_n: u32,
     sustain_n: u32,
     decay: i32,
+    decay_sub: i32,
     env: i32,
     peak: f32,
     vary: f32,
@@ -136,17 +137,14 @@ pub struct Voice {
     gap_n: f32,
     gap_jitter: f32,
     rng: Rng,
+    tap: u32,
     fm: bool,
     slot: u8,
 }
 
+const GRAIN_TAP: u32 = 0x2000;
 const TWO32: f32 = 4_294_967_296.0;
 const SUB: usize = 32;
-
-struct Stage {
-    mul: i32,
-    add: i32,
-}
 
 impl Voice {
     pub const IDLE: Voice = Voice {
@@ -170,6 +168,7 @@ impl Voice {
         attack_n: 1,
         sustain_n: 1,
         decay: 0,
+        decay_sub: 0,
         env: 0,
         peak: 1.0,
         vary: 0.0,
@@ -190,6 +189,7 @@ impl Voice {
         gap_n: 0.0,
         gap_jitter: 0.0,
         rng: Rng::new(1),
+        tap: 0,
         fm: false,
         slot: 0,
     };
@@ -225,6 +225,7 @@ impl Voice {
             attack_n,
             sustain_n: attack_n + samples(p.hold),
             decay: q(decay_mul(p.decay, rate)),
+            decay_sub: q(decay_mul(p.decay, rate).powi(SUB as i32)),
             env: 0,
             peak,
             vary: p.vary,
@@ -244,6 +245,7 @@ impl Voice {
             next: 0,
             gap_n: p.gap * rate,
             gap_jitter: p.gap_jitter,
+            tap: rng.next_u32(),
             rng,
             fm: p.fm_index != 0.0,
             slot: slot as u8,
@@ -280,7 +282,7 @@ impl Voice {
         self.pulses == 0 && self.t > self.sustain_n && unq(self.env) < 2e-5
     }
 
-    fn stage(&mut self, len: usize) -> Stage {
+    fn stage(&mut self, len: usize) -> i32 {
         if self.pulses > 0 && self.t >= self.next {
             self.pulses -= 1;
             self.t = 0;
@@ -291,14 +293,19 @@ impl Voice {
             self.next = self.gap();
         }
         let top = q(self.peak * self.gain);
-        let one = q(1.0);
         match self.t {
-            t if t < self.attack_n => Stage { mul: one, add: (top - self.env) / (self.attack_n - t).max(len as u32) as i32 },
+            t if t < self.attack_n => (top - self.env) / (self.attack_n - t).max(len as u32) as i32,
             t if t < self.sustain_n => {
                 self.env = top;
-                Stage { mul: one, add: 0 }
+                0
             }
-            _ => Stage { mul: self.decay, add: 0 },
+            _ => {
+                let end = match len == SUB {
+                    true => mulc(self.env, self.decay_sub),
+                    false => (0..len).fold(self.env, |e, _| mulc(e, self.decay)),
+                };
+                (end - self.env) / len as i32
+            }
         }
     }
 
@@ -347,21 +354,23 @@ impl Voice {
         let buzzes = self.buzz != 0;
         let (gn, gt, gd, gb) = (self.noise, self.tone, self.dry, self.buzz);
         let (glp, gbp, ghp) = (self.lpg, self.bpg, self.hpg);
+        let (has_lp, has_hp) = (glp != 0, ghp != 0);
         for chunk in mono.chunks_mut(SUB) {
-            let stage = self.stage(chunk.len());
+            let step = self.stage(chunk.len());
             let (inc, minc) = self.bend();
             let f = q(self.f);
             let fd = q(self.f + self.damp);
             let c1 = q(1.0 - self.f * (self.f + self.damp));
             let fm_amt = (self.fm_scale * unq(self.env) * 131_072.0) as i32;
             let (mut env, mut lp, mut bp) = (self.env, self.lp, self.bp);
-            let (mut phase, mut mphase) = (self.phase, self.mphase);
+            let (mut phase, mut mphase, mut tap) = (self.phase, self.mphase, self.tap);
             for out in chunk.iter_mut() {
-                env = mulc(env, stage.mul) + stage.add;
+                env += step;
                 let mut src = 0;
                 if NOISE {
-                    let n = noise(&mut self.rng);
-                    src = match grainy && self.rng.next_u32() > self.grain {
+                    let n = white_at(tap);
+                    tap = tap.wrapping_add(1);
+                    src = match grainy && (white_at(tap ^ GRAIN_TAP) as u32) << 16 > self.grain {
                         true => 0,
                         false => mulq(n, gn),
                     };
@@ -385,15 +394,21 @@ impl Voice {
                     }
                 }
                 if FILTER {
-                    let hp = src - lp - mulq(bp, fd);
+                    let high = match has_hp {
+                        true => mulq(src - lp - mulq(bp, fd), ghp),
+                        false => 0,
+                    };
                     let bp_next = mulq(bp, c1) + mulq(src - lp, f);
                     lp += mulq(bp, f);
                     bp = bp_next;
-                    y += mulq(lp, glp) + mulq(bp, gbp) + mulq(hp, ghp);
+                    y += mulq(bp, gbp) + high;
+                    if has_lp {
+                        y += mulq(lp, glp);
+                    }
                 }
                 *out += mulq(y, env);
             }
-            (self.env, self.lp, self.bp, self.phase, self.mphase) = (env, lp, bp, phase, mphase);
+            (self.env, self.lp, self.bp, self.phase, self.mphase, self.tap) = (env, lp, bp, phase, mphase, tap);
             self.t += chunk.len() as u32;
         }
     }

@@ -1,14 +1,14 @@
 use super::pad::{Key, list};
+use crate::map::Map;
 use crate::net::{self, Link, Listing, Net, Reason};
 use crate::render::Ui2d;
-use crate::ui::{self, DIM, FAINT, GOLD, INK, Item, Line, SCREEN, centered, shadowed};
-use std::fmt::Write;
+use crate::ui::lore::{CHARACTERS, character, legend};
+use crate::ui::{self, FAINT, INK, Item, Line, Party, PartySeat, SCREEN, centered, line};
 
 pub const RELAYS: [(&str, Option<&str>); 5] =
     [("nenhum", None), ("São Paulo", Some("saopaulo")), ("Nova York", Some("nyc")), ("Madri", Some("madrid")), ("Singapura", Some("singapore"))];
-pub const NIGHTS: [u32; 7] = [60, 120, 180, 240, 360, 480, 600];
-const DEFAULT_NIGHT: u32 = 360;
 const MAIN_ITEMS: usize = 5;
+const PARTY_ITEMS: usize = 3;
 const NO_ANSWER_FRAMES: u32 = 20 * 60;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -24,8 +24,10 @@ pub enum Notice {
 pub enum Screen {
     Title,
     Main { sel: usize },
-    Couch { sel: usize },
+    Campaign { sel: usize, couch: bool },
+    Party { sel: usize, couch: bool },
     HowTo,
+    Credits { page: usize },
     Online { sel: usize },
     Create { sel: usize, public: bool, relay: usize },
     Rooms { sel: usize },
@@ -38,6 +40,14 @@ impl Screen {
     pub const fn main() -> Screen {
         Screen::Main { sel: 0 }
     }
+
+    pub fn picking(self) -> bool {
+        matches!(self, Screen::Party { .. } | Screen::Lobby { .. })
+    }
+
+    pub fn joining(self) -> bool {
+        matches!(self, Screen::Party { couch: true, .. } | Screen::Lobby { .. })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -45,8 +55,10 @@ pub enum Action {
     None,
     Solo,
     Couch,
-    CouchReset,
-    Night(i8),
+    Phase(u8),
+    PhaseStep(i8),
+    Character(i8),
+    Begin,
     Host { public: bool, relay: usize },
     Refresh,
     Join(usize),
@@ -62,17 +74,8 @@ pub struct Ctx {
     pub players: usize,
     pub remote: bool,
     pub frame: u32,
-}
-
-pub fn night_choice(var: Option<u32>) -> u32 {
-    var.filter(|s| (60..=3600).contains(s)).unwrap_or(DEFAULT_NIGHT)
-}
-
-pub fn next_night(secs: u32, dir: i8) -> u32 {
-    match dir < 0 {
-        true => NIGHTS.iter().rev().find(|&&n| n < secs).copied().unwrap_or(NIGHTS[NIGHTS.len() - 1]),
-        false => NIGHTS.iter().find(|&&n| n > secs).copied().unwrap_or(NIGHTS[0]),
-    }
+    pub phases: usize,
+    pub unlocked: usize,
 }
 
 pub fn lost_notice(reason: Option<Reason>) -> Notice {
@@ -84,6 +87,11 @@ pub fn lost_notice(reason: Option<Reason>) -> Notice {
     }
 }
 
+pub fn next_free(current: u8, dir: i8, taken: u8) -> u8 {
+    let n = CHARACTERS.len() as i8;
+    (1..=n).map(|k| (current as i8 + dir.signum() * k).rem_euclid(n) as u8).find(|&c| taken & 1 << c == 0).unwrap_or(current)
+}
+
 fn side(key: Option<Key>) -> Option<i8> {
     match key {
         Some(Key::Left) => Some(-1),
@@ -92,24 +100,44 @@ fn side(key: Option<Key>) -> Option<i8> {
     }
 }
 
+fn lobby_items(hosting: bool) -> usize {
+    if hosting { 4 } else { 3 }
+}
+
 pub fn step(screen: Screen, key: Option<Key>, c: &Ctx) -> (Screen, Action) {
     use Screen as S;
+    let sideways = matches!(key, Some(Key::Left | Key::Right | Key::Confirm));
     match (screen, key) {
         (S::Title, Some(Key::Confirm)) => (S::main(), Action::None),
         (S::Main { .. }, Some(Key::Back)) => (S::Title, Action::None),
-        (S::Main { sel: 3 }, k @ Some(Key::Left | Key::Right | Key::Confirm)) => (screen, side(k).map_or(Action::None, Action::Night)),
         (S::Main { sel }, Some(Key::Confirm)) => match sel {
-            0 => (screen, Action::Solo),
-            1 => (S::Couch { sel: 0 }, Action::CouchReset),
+            0 => (S::Campaign { sel: 0, couch: false }, Action::Solo),
+            1 => (S::Campaign { sel: 0, couch: true }, Action::Couch),
             2 if c.lobby => (S::Online { sel: 0 }, Action::None),
-            4 => (S::HowTo, Action::None),
+            3 => (S::HowTo, Action::None),
+            4 => (S::Credits { page: 0 }, Action::None),
             _ => (screen, Action::None),
         },
         (S::Main { sel }, k) => (S::Main { sel: list(sel, MAIN_ITEMS, k) }, Action::None),
-        (S::Couch { .. }, Some(Key::Back)) | (S::Couch { sel: 1 }, Some(Key::Confirm)) => (S::Main { sel: 1 }, Action::CouchReset),
-        (S::Couch { sel: 0 }, Some(Key::Confirm)) if c.players >= 2 => (screen, Action::Couch),
-        (S::Couch { sel }, k) => (S::Couch { sel: list(sel, 2, k) }, Action::None),
-        (S::HowTo, Some(Key::Back | Key::Confirm)) => (S::Main { sel: 4 }, Action::None),
+        (S::Campaign { couch, .. }, Some(Key::Back)) => (S::Main { sel: couch as usize }, Action::None),
+        (S::Campaign { sel, couch }, Some(Key::Confirm)) => match sel {
+            0 => (S::Party { sel: 0, couch }, Action::Phase(c.unlocked.saturating_sub(1) as u8)),
+            s if s <= c.unlocked.min(c.phases) => (S::Party { sel: 0, couch }, Action::Phase(s as u8 - 1)),
+            s if s == c.phases + 1 => (S::Main { sel: couch as usize }, Action::None),
+            _ => (screen, Action::None),
+        },
+        (S::Campaign { sel, couch }, k) => (S::Campaign { sel: list(sel, c.phases + 2, k), couch }, Action::None),
+        (S::Party { couch, .. }, Some(Key::Back)) | (S::Party { sel: 2, couch }, Some(Key::Confirm)) => {
+            (S::Campaign { sel: 0, couch }, Action::None)
+        }
+        (S::Party { sel: 0, .. }, k) if sideways => (screen, side(k).map_or(Action::None, Action::Character)),
+        (S::Party { sel: 1, couch }, Some(Key::Confirm)) if !couch || c.players >= 2 => (screen, Action::Begin),
+        (S::Party { sel, couch }, k) => (S::Party { sel: list(sel, PARTY_ITEMS, k), couch }, Action::None),
+        (S::HowTo, Some(Key::Back | Key::Confirm)) => (S::Main { sel: 3 }, Action::None),
+        (S::Credits { .. }, Some(Key::Back)) => (S::Main { sel: 4 }, Action::None),
+        (S::Credits { page }, Some(Key::Right | Key::Confirm)) if page + 1 >= ui::PAGES => (S::Main { sel: 4 }, Action::None),
+        (S::Credits { page }, Some(Key::Right | Key::Confirm)) => (S::Credits { page: page + 1 }, Action::None),
+        (S::Credits { page }, Some(Key::Left)) => (S::Credits { page: page.saturating_sub(1) }, Action::None),
         (S::Online { .. }, Some(Key::Back)) | (S::Online { sel: 2 }, Some(Key::Confirm)) => (S::Main { sel: 2 }, Action::None),
         (S::Online { sel: 0 }, Some(Key::Confirm)) => (S::Create { sel: 0, public: false, relay: 0 }, Action::None),
         (S::Online { sel: 1 }, Some(Key::Confirm)) => (S::Rooms { sel: 0 }, Action::Refresh),
@@ -135,28 +163,29 @@ pub fn step(screen: Screen, key: Option<Key>, c: &Ctx) -> (Screen, Action) {
             _ => (S::Online { sel: 1 }, Action::None),
         },
         (S::Rooms { sel }, k) => (S::Rooms { sel: list(sel.min(c.rooms + 1), c.rooms + 2, k) }, Action::None),
-        (S::Lobby { hosting, .. }, Some(Key::Back)) | (S::Lobby { hosting, sel: 1, .. }, Some(Key::Confirm)) => {
-            (S::Online { sel: if hosting { 0 } else { 1 } }, Action::Leave)
+        (S::Lobby { hosting, .. }, Some(Key::Back)) => (S::Online { sel: !hosting as usize }, Action::Leave),
+        (S::Lobby { hosting, sel, .. }, Some(Key::Confirm)) if sel + 1 == lobby_items(hosting) => {
+            (S::Online { sel: !hosting as usize }, Action::Leave)
         }
-        (S::Lobby { sel: 0, .. }, Some(Key::Left | Key::Right)) if c.link == Link::Joined => (screen, Action::Ready),
-        (S::Lobby { .. }, Some(Key::Confirm)) => match c.link {
-            Link::Hosting if c.remote => (screen, Action::Start),
-            Link::Joined => (screen, Action::Ready),
-            _ => (screen, Action::None),
+        (S::Lobby { sel: 0, .. }, k) if sideways => (screen, side(k).map_or(Action::None, Action::Character)),
+        (S::Lobby { hosting: true, sel: 1, .. }, k) if sideways => (screen, side(k).map_or(Action::None, Action::PhaseStep)),
+        (S::Lobby { hosting: true, sel: 2, .. }, Some(Key::Confirm)) => match c.link == Link::Hosting && c.remote {
+            true => (screen, Action::Start),
+            false => (screen, Action::None),
         },
-        (S::Lobby { since, hosting, sel }, k) => (S::Lobby { since, hosting, sel: list(sel, 2, k) }, Action::None),
+        (S::Lobby { hosting: false, sel: 1, .. }, _) if sideways && c.link == Link::Joined => (screen, Action::Ready),
+        (S::Lobby { since, hosting, sel }, k) => (S::Lobby { since, hosting, sel: list(sel, lobby_items(hosting), k) }, Action::None),
         (S::Notice(_), Some(Key::Confirm | Key::Back)) => (S::main(), Action::None),
         _ => (screen, Action::None),
     }
 }
 
-fn minutes(secs: u32) -> Line {
-    let mut l = Line::new();
-    let _ = match secs % 60 {
-        0 => write!(l, "{} min", secs / 60),
-        s => write!(l, "{}:{s:02} min", secs / 60),
-    };
-    l
+pub struct Look<'a> {
+    pub net: &'a Net,
+    pub maps: &'a [&'static Map<'static>],
+    pub unlocked: usize,
+    pub focus: u8,
+    pub t: u32,
 }
 
 fn heading(ui: &mut Ui2d, s: &str) {
@@ -164,52 +193,88 @@ fn heading(ui: &mut Ui2d, s: &str) {
 }
 
 fn footer(ui: &mut Ui2d, s: &str) {
-    centered(ui, SCREEN, 200, s, FAINT, 1);
+    centered(ui, SCREEN, 204, s, FAINT, 1);
 }
 
-fn main_menu(ui: &mut Ui2d, sel: usize, lobby: bool, night_secs: u32, t: u32) {
+fn main_menu(ui: &mut Ui2d, sel: usize, lobby: bool, t: u32) {
     centered(ui, SCREEN, 18, "DOPPIO", INK, 3);
-    let night = minutes(night_secs);
     let items = [
-        Item::new("Jogar sozinho"),
+        Item { note: Some("uma pessoa, fase a fase"), ..Item::new("Campanha") },
         Item { note: Some("dois a quatro controles nesta TV"), ..Item::new("Jogar no sofá") },
-        Item { enabled: lobby, note: (!lobby).then_some("não disponível nesta caixinha"), ..Item::new("Jogar online") },
-        Item { value: Some(night.as_str()), note: Some("quanto dura cada noite"), ..Item::new("Noite") },
+        Item { enabled: lobby, note: Some(if lobby { "cada um na sua TV" } else { "não disponível nesta caixinha" }), ..Item::new("Jogar online") },
         Item::new("Como jogar"),
+        Item::new("Créditos"),
     ];
     ui::menu(ui, 120, 70, &items, sel, t);
     footer(ui, "A escolher   B voltar");
 }
 
-fn couch(ui: &mut Ui2d, ports: &[Option<u8>; 4], sel: usize, t: u32) {
-    heading(ui, "Jogar no sofá");
-    (0..4).for_each(|i| {
-        let y = 44 + i as i16 * 14;
-        let mut l = Line::new();
-        let _ = match ports[i] {
-            Some(p) => write!(l, "jogador {}: controle {}", i + 1, p + 1),
-            None => write!(l, "jogador {}: aperte START", i + 1),
-        };
-        let color = if ports[i].is_some() { GOLD } else if t / 30 % 2 == 0 { DIM } else { FAINT };
-        shadowed(ui, 104, y, l.as_str(), color, 1);
+fn campaign(ui: &mut Ui2d, sel: usize, couch: bool, l: &Look) {
+    heading(ui, if couch { "Sofá: escolha a fase" } else { "Campanha" });
+    let names: [Line; 8] = std::array::from_fn(|i| match l.maps.get(i) {
+        Some(m) => line(format_args!("{}. {}", i + 1, m.name)),
+        None => Line::new(),
     });
-    let enough = ports.iter().flatten().count() >= 2;
+    let notes: [Line; 8] = std::array::from_fn(|i| match l.maps.get(i) {
+        Some(m) if i < l.unlocked => line(format_args!("lenda: {}", legend(m.legend).name)),
+        _ => line(format_args!("trancada")),
+    });
+    let last = l.unlocked.clamp(1, l.maps.len().max(1)) - 1;
+    let resume = line(format_args!("fase {}: {}", last + 1, l.maps.get(last).map_or("", |m| m.name)));
+    let n = l.maps.len().min(names.len());
+    let items: [Item; 10] = std::array::from_fn(|i| match i {
+        0 => Item { note: Some(resume.as_str()), ..Item::new("Continuar") },
+        i if i <= n => Item { enabled: i <= l.unlocked, note: Some(notes[i - 1].as_str()), ..Item::new(names[i - 1].as_str()) },
+        _ => Item::new("Voltar"),
+    });
+    ui::menu(ui, 64, 42, &items[..n + 2], sel, l.t);
+    footer(ui, "A escolher   B voltar");
+}
+
+fn seat_nicks(net: &Net, local_names: bool) -> [Line; 4] {
+    std::array::from_fn(|i| match net.seats().get(i) {
+        Some(s) if local_names => line(format_args!("controle {}", s.local_port.map_or(0, |p| p + 1))),
+        Some(s) => line(format_args!("{}", net::name(&s.nick))),
+        None => Line::new(),
+    })
+}
+
+fn party_seats<'a>(net: &Net, nicks: &'a [Line; 4]) -> ([PartySeat<'a>; 4], usize) {
+    let seats = std::array::from_fn(|i| {
+        let s = net.seats().get(i);
+        PartySeat {
+            character: s.map_or(0, |s| s.character),
+            nick: nicks[i].as_str(),
+            here: s.is_some_and(|s| s.local_port.is_some()),
+            ready: s.is_some_and(|s| s.ready),
+        }
+    });
+    (seats, net.seats().len().min(4))
+}
+
+fn party(ui: &mut Ui2d, sel: usize, couch: bool, l: &Look) {
+    let nicks = seat_nicks(l.net, true);
+    let (seats, n) = party_seats(l.net, &nicks);
+    let phase = l.net.phase() as usize;
+    let map = l.maps.get(phase);
+    let sub = line(format_args!("fase {} - lenda: {}", phase + 1, map.map_or("", |m| legend(m.legend).name)));
+    let mine = l.net.seats().iter().find(|s| s.local_port.is_some()).map_or(0, |s| s.character);
+    let enough = !couch || n >= 2;
     let items = [
-        Item { enabled: enough, note: (!enough).then_some("precisa de 2 controles"), ..Item::new("Começar") },
+        Item { value: Some(character(mine).short), ..Item::new("Personagem") },
+        Item { enabled: enough, ..Item::new(if enough { "Começar" } else { "Começar (2+)" }) },
         Item::new("Voltar"),
     ];
-    ui::menu(ui, 136, 106, &items, sel, t);
-    centered(ui, SCREEN, 156, "Outro controle: START entra, B sai.", DIM, 1);
-    centered(ui, SCREEN, 167, "A tela se divide entre os jogadores.", DIM, 1);
-    centered(ui, SCREEN, 182, "Na caixinha da TV só existe um controle:", FAINT, 1);
-    centered(ui, SCREEN, 192, "chame os amigos pelo Jogar online.", FAINT, 1);
+    let footer = if couch { "outro controle: START entra, B sai" } else { "setas trocam   A escolher   B voltar" };
+    let p = Party { head: map.map_or("", |m| m.name), sub: sub.as_str(), seats: &seats[..n], items: &items, sel, focus: l.focus, footer };
+    ui::party(ui, &p, l.t);
 }
 
 fn online(ui: &mut Ui2d, sel: usize, t: u32) {
     heading(ui, "Jogar online");
     let items = [
-        Item { note: Some("seus amigos entram na sua casa"), ..Item::new("Criar sala") },
-        Item { note: Some("entrar na casa de alguém"), ..Item::new("Procurar salas") },
+        Item { note: Some("seus amigos entram na sua sala"), ..Item::new("Criar sala") },
+        Item { note: Some("entrar na sala de alguém"), ..Item::new("Procurar salas") },
         Item::new("Voltar"),
     ];
     ui::menu(ui, 128, 70, &items, sel, t);
@@ -247,34 +312,41 @@ fn rooms(ui: &mut Ui2d, sel: usize, net: &Net, t: u32) {
     ui::rooms(ui, &rows[..n], sel.min(n + 1), status, t);
 }
 
-fn lobby(ui: &mut Ui2d, net: &Net, since: u32, hosting: bool, sel: usize, t: u32) {
-    let rows: [ui::SeatRow; 4] = std::array::from_fn(|i| {
-        let s = net.seats().get(i);
-        ui::SeatRow { nick: s.map_or("", |s| net::name(&s.nick)), here: s.is_some_and(|s| s.local_port.is_some()), ready: s.is_some_and(|s| s.ready) }
-    });
-    let n = net.seats().len().min(4);
+fn lobby(ui: &mut Ui2d, since: u32, hosting: bool, sel: usize, l: &Look) {
+    let net = l.net;
+    let nicks = seat_nicks(net, false);
+    let (seats, n) = party_seats(net, &nicks);
     let remote = net.seats().iter().any(|s| s.local_port.is_none());
     let all = remote && net.seats().iter().all(|s| s.ready || s.local_port.is_some());
     let ready = net.ready();
-    let waiting = t.wrapping_sub(since) > NO_ANSWER_FRAMES;
-    let (head, status) = match net.link() {
-        Link::Hosting if all => ("Sua sala", "todos prontos: pode começar"),
-        Link::Hosting if remote => ("Sua sala", "esperando todos ficarem prontos"),
-        Link::Hosting => ("Sua sala", "esperando outra TV entrar"),
-        Link::Joined if ready => ("Na sala", "pronto. esperando o anfitrião começar"),
-        Link::Joined => ("Na sala", "marque Pronto quando quiser começar"),
-        _ if waiting => ("Sala", "sem resposta"),
-        _ if hosting => ("Sala", "abrindo a sala..."),
-        _ => ("Sala", "entrando..."),
+    let waiting = l.t.wrapping_sub(since) > NO_ANSWER_FRAMES;
+    let status = match net.link() {
+        Link::Hosting if all => "todos prontos: pode começar",
+        Link::Hosting if remote => "esperando todos ficarem prontos",
+        Link::Hosting => "esperando outra TV entrar",
+        Link::Joined if ready => "pronto. esperando o anfitrião",
+        Link::Joined => "marque Pronto quando quiser",
+        _ if waiting => "sem resposta",
+        _ if hosting => "abrindo a sala...",
+        _ => "entrando...",
     };
-    let first = match net.link() {
-        Link::Joined => Item { value: Some(if ready { "sim" } else { "não" }), ..Item::new("Pronto") },
-        link => Item { enabled: link == Link::Hosting && all, ..Item::new(if hosting { "Começar" } else { "Pronto" }) },
-    };
-    ui::lobby(ui, head, &rows[..n], status, &[first, Item::new("Sair da sala")], sel, t);
-    if n > 0 {
-        centered(ui, SCREEN, 196, "outro controle nesta TV: START entra", FAINT, 1);
-    }
+    let phase = net.phase() as usize;
+    let place = line(format_args!("{} de {}", phase + 1, l.maps.len()));
+    let mine = net.seats().iter().find(|s| s.local_port.is_some()).map_or(0, |s| s.character);
+    let pick = Item { value: Some(character(mine).short), ..Item::new("Personagem") };
+    let leave = Item::new("Sair da sala");
+    let host_items = [
+        pick,
+        Item { value: Some(place.as_str()), ..Item::new("Fase") },
+        Item { enabled: net.link() == Link::Hosting && all, ..Item::new("Começar") },
+        leave,
+    ];
+    let guest_items = [pick, Item { value: Some(if ready { "sim" } else { "não" }), ..Item::new("Pronto") }, leave];
+    let items: &[Item] = if hosting { &host_items } else { &guest_items };
+    let head = l.maps.get(phase).map_or("Sala", |m| m.name);
+    let footer = if n > 0 { "outro controle nesta TV: START entra" } else { "B sair da sala" };
+    let p = Party { head, sub: status, seats: &seats[..n], items, sel, focus: l.focus, footer };
+    ui::party(ui, &p, l.t);
 }
 
 fn notice(ui: &mut Ui2d, n: Notice) {
@@ -283,23 +355,42 @@ fn notice(ui: &mut Ui2d, n: Notice) {
         Notice::Version => ("Versões diferentes", "as TVs têm versões diferentes do doppio"),
         Notice::Full => ("Sala cheia", "não há lugar para todos desta TV"),
         Notice::Started => ("Já começou", "a noite desta sala já começou"),
-        Notice::Desync => ("A casa se dividiu", "as TVs viram noites diferentes"),
+        Notice::Desync => ("A noite se dividiu", "as TVs viram coisas diferentes"),
     };
     ui::notice(ui, head, detail);
 }
 
-pub fn draw(ui: &mut Ui2d, s: Screen, net: &Net, ports: &[Option<u8>; 4], night_secs: u32, t: u32) {
+pub fn draw(ui: &mut Ui2d, s: Screen, l: &Look) {
     match s {
         Screen::Title | Screen::Game => {}
-        Screen::Main { sel } => main_menu(ui, sel, net.lobby_supported(), night_secs, t),
-        Screen::Couch { sel } => couch(ui, ports, sel, t),
-        Screen::HowTo => ui::howto(ui, t),
-        Screen::Online { sel } => online(ui, sel, t),
-        Screen::Create { sel, public, relay } => create(ui, sel, public, relay, t),
-        Screen::Rooms { sel } => rooms(ui, sel, net, t),
-        Screen::Lobby { since, hosting, sel } => lobby(ui, net, since, hosting, sel, t),
+        Screen::Main { sel } => main_menu(ui, sel, l.net.lobby_supported(), l.t),
+        Screen::Campaign { sel, couch } => campaign(ui, sel, couch, l),
+        Screen::Party { sel, couch } => party(ui, sel, couch, l),
+        Screen::HowTo => ui::howto(ui, l.t),
+        Screen::Credits { page } => ui::credits(ui, page),
+        Screen::Online { sel } => online(ui, sel, l.t),
+        Screen::Create { sel, public, relay } => create(ui, sel, public, relay, l.t),
+        Screen::Rooms { sel } => rooms(ui, sel, l.net, l.t),
+        Screen::Lobby { since, hosting, sel } => lobby(ui, since, hosting, sel, l),
         Screen::Notice(n) => notice(ui, n),
     }
+}
+
+pub fn portraits(s: Screen, net: &Net) -> ([([u16; 4], u8); 4], usize) {
+    let mut out = [([0; 4], 0); 4];
+    let n = match s {
+        Screen::Party { .. } | Screen::Lobby { .. } => {
+            let rects = ui::party_rects(net.seats().len());
+            net.seats().iter().take(4).zip(out.iter_mut()).zip(rects).for_each(|((seat, o), r)| *o = (r, seat.character));
+            net.seats().len().min(4)
+        }
+        Screen::Credits { page } => {
+            ui::legend_portrait(page).iter().for_each(|&p| out[0] = p);
+            ui::legend_portrait(page).is_some() as usize
+        }
+        _ => 0,
+    };
+    (out, n)
 }
 
 #[cfg(test)]
@@ -307,19 +398,40 @@ mod tests {
     use super::*;
 
     fn ctx() -> Ctx {
-        Ctx { lobby: true, rooms: 2, link: Link::Offline, players: 1, remote: false, frame: 7 }
+        Ctx { lobby: true, rooms: 2, link: Link::Offline, players: 1, remote: false, frame: 7, phases: 5, unlocked: 2 }
     }
 
     #[test]
-    fn night_choices_cycle() {
-        assert_eq!(night_choice(None), 360);
-        assert_eq!(night_choice(Some(60)), 60);
-        assert_eq!(night_choice(Some(5)), 360);
-        assert_eq!(next_night(360, 1), 480);
-        assert_eq!(next_night(600, 1), 60);
-        assert_eq!(next_night(60, -1), 600);
-        assert_eq!(next_night(100, -1), 60);
-        assert_eq!(minutes(90).as_str(), "1:30 min");
+    fn characters_cycle_past_taken_ones() {
+        assert_eq!(next_free(0, 1, 0), 1);
+        assert_eq!(next_free(0, -1, 0), 3);
+        assert_eq!(next_free(0, 1, 0b0110), 3);
+        assert_eq!(next_free(3, 1, 0b0001), 1);
+        assert_eq!(next_free(2, 1, 0b1011), 2);
+        assert_eq!(next_free(2, -1, 0b0010), 0);
+    }
+
+    #[test]
+    fn campaign_picks_unlocked_phases_only() {
+        let c = ctx();
+        let (s, a) = step(Screen::main(), Some(Key::Confirm), &c);
+        assert_eq!((s, a), (Screen::Campaign { sel: 0, couch: false }, Action::Solo));
+        assert_eq!(step(s, Some(Key::Confirm), &c), (Screen::Party { sel: 0, couch: false }, Action::Phase(1)));
+        let fase = |sel| Screen::Campaign { sel, couch: false };
+        assert_eq!(step(fase(1), Some(Key::Confirm), &c).1, Action::Phase(0));
+        assert_eq!(step(fase(2), Some(Key::Confirm), &c).1, Action::Phase(1));
+        assert_eq!(step(fase(3), Some(Key::Confirm), &c), (fase(3), Action::None));
+        assert_eq!(step(fase(6), Some(Key::Confirm), &c).0, Screen::Main { sel: 0 });
+        assert_eq!(step(fase(6), Some(Key::Down), &c).0, fase(0));
+        let p = Screen::Party { sel: 0, couch: false };
+        assert_eq!(step(p, Some(Key::Right), &c).1, Action::Character(1));
+        assert_eq!(step(p, Some(Key::Left), &c).1, Action::Character(-1));
+        assert_eq!(step(p, Some(Key::Confirm), &c).1, Action::Character(1));
+        assert_eq!(step(Screen::Party { sel: 1, couch: false }, Some(Key::Confirm), &c).1, Action::Begin);
+        assert_eq!(step(Screen::Party { sel: 1, couch: true }, Some(Key::Confirm), &c).1, Action::None);
+        let two = Ctx { players: 2, ..ctx() };
+        assert_eq!(step(Screen::Party { sel: 1, couch: true }, Some(Key::Confirm), &two).1, Action::Begin);
+        assert_eq!(step(Screen::Main { sel: 1 }, Some(Key::Confirm), &c), (Screen::Campaign { sel: 0, couch: true }, Action::Couch));
     }
 
     #[test]
@@ -340,21 +452,14 @@ mod tests {
         let (s, a) = step(s, Some(Key::Confirm), &c);
         assert_eq!(a, Action::Host { public: true, relay: 4 });
         assert_eq!(s, Screen::Lobby { since: 7, hosting: true, sel: 0 });
-        assert_eq!(step(s, Some(Key::Confirm), &c).1, Action::None);
+        assert_eq!(step(s, Some(Key::Right), &c).1, Action::Character(1));
+        let (f, _) = step(s, Some(Key::Down), &c);
+        assert_eq!(step(f, Some(Key::Left), &c).1, Action::PhaseStep(-1));
+        let (go, _) = step(f, Some(Key::Down), &c);
+        assert_eq!(step(go, Some(Key::Confirm), &c).1, Action::None);
         let hosting = Ctx { link: Link::Hosting, remote: true, ..ctx() };
-        assert_eq!(step(s, Some(Key::Confirm), &hosting).1, Action::Start);
+        assert_eq!(step(go, Some(Key::Confirm), &hosting).1, Action::Start);
         assert_eq!(step(s, Some(Key::Back), &c), (Screen::Online { sel: 0 }, Action::Leave));
-    }
-
-    #[test]
-    fn online_needs_lobby_and_couch_needs_two() {
-        let off = Ctx { lobby: false, ..ctx() };
-        assert_eq!(step(Screen::Main { sel: 2 }, Some(Key::Confirm), &off).0, Screen::Main { sel: 2 });
-        assert_eq!(step(Screen::Couch { sel: 0 }, Some(Key::Confirm), &ctx()).1, Action::None);
-        let two = Ctx { players: 2, ..ctx() };
-        assert_eq!(step(Screen::Couch { sel: 0 }, Some(Key::Confirm), &two).1, Action::Couch);
-        assert_eq!(step(Screen::Couch { sel: 1 }, Some(Key::Confirm), &two), (Screen::Main { sel: 1 }, Action::CouchReset));
-        assert_eq!(step(Screen::Main { sel: 0 }, Some(Key::Confirm), &ctx()).1, Action::Solo);
     }
 
     fn reaches_main(from: Screen, c: &Ctx) -> bool {
@@ -363,7 +468,7 @@ mod tests {
         while next < seen.len() && !matches!(seen[next], Screen::Main { .. }) {
             let s = seen[next];
             next += 1;
-            [Key::Up, Key::Down, Key::Confirm].iter().map(|&k| step(s, Some(k), c).0).for_each(|n| {
+            [Key::Up, Key::Down, Key::Left, Key::Right, Key::Confirm].iter().map(|&k| step(s, Some(k), c).0).for_each(|n| {
                 if !seen.contains(&n) {
                     seen.push(n);
                 }
@@ -372,12 +477,30 @@ mod tests {
         next < seen.len()
     }
 
+    fn reachable(from: Screen, c: &Ctx) -> Vec<Screen> {
+        let mut seen = vec![from];
+        let mut next = 0;
+        while next < seen.len() {
+            let s = seen[next];
+            next += 1;
+            [Key::Up, Key::Down, Key::Left, Key::Right, Key::Confirm].iter().map(|&k| step(s, Some(k), c).0).for_each(|n| {
+                if !seen.contains(&n) {
+                    seen.push(n);
+                }
+            });
+        }
+        seen
+    }
+
     #[test]
     fn every_screen_gets_back_with_arrows_and_a() {
         let lobby = |hosting| Screen::Lobby { since: 0, hosting, sel: 0 };
         let screens = [
-            Screen::Couch { sel: 0 },
+            Screen::Campaign { sel: 3, couch: true },
+            Screen::Party { sel: 0, couch: false },
+            Screen::Party { sel: 0, couch: true },
             Screen::HowTo,
+            Screen::Credits { page: 0 },
             Screen::Online { sel: 0 },
             Screen::Create { sel: 0, public: false, relay: 0 },
             Screen::Rooms { sel: 0 },
@@ -390,9 +513,31 @@ mod tests {
             screens.iter().for_each(|&s| assert!(reaches_main(s, &c), "{s:?} stuck with {link:?}"));
         });
         let joined = Ctx { link: Link::Joined, ..ctx() };
-        assert_eq!(step(lobby(false), Some(Key::Confirm), &joined).1, Action::Ready);
         let (s, _) = step(lobby(false), Some(Key::Down), &joined);
+        assert_eq!(step(s, Some(Key::Confirm), &joined).1, Action::Ready);
+        let (s, _) = step(s, Some(Key::Down), &joined);
         assert_eq!(step(s, Some(Key::Confirm), &joined), (Screen::Online { sel: 1 }, Action::Leave));
+    }
+
+    #[test]
+    fn every_menu_screen_is_reachable_from_the_title_with_arrows_and_a() {
+        let c = Ctx { players: 2, ..ctx() };
+        let all = reachable(Screen::Title, &c);
+        let kinds = |s: &Screen| std::mem::discriminant(s);
+        let want = [
+            Screen::main(),
+            Screen::Campaign { sel: 0, couch: false },
+            Screen::Party { sel: 0, couch: false },
+            Screen::HowTo,
+            Screen::Credits { page: 0 },
+            Screen::Online { sel: 0 },
+            Screen::Create { sel: 0, public: false, relay: 0 },
+            Screen::Rooms { sel: 0 },
+            Screen::Lobby { since: 0, hosting: true, sel: 0 },
+        ];
+        want.iter().for_each(|w| assert!(all.iter().any(|s| kinds(s) == kinds(w)), "{w:?} unreachable"));
+        assert!(all.contains(&Screen::Credits { page: ui::PAGES - 1 }));
+        assert!(all.contains(&Screen::Party { sel: 1, couch: true }));
     }
 
     #[test]

@@ -1,122 +1,141 @@
-use super::lamps::{self, Lamps};
+use super::lamps::Lamps;
 use super::mat::{self, M4, V3};
-use super::mesh::{Mesh, Vert};
-use super::props::{self, Parts, Sink};
+use super::mesh::{Faces, Mesh, Pen, Vert};
+use super::props::{self, Hinge, Mark, Parts, Sink};
 use super::texture;
-use crate::map::{Map, TaskKind, Tile};
+use super::zones::{self, DIRS, Mask, Zones};
+use crate::assets::TEXTURES;
+use crate::map::{HideKind, Map, PortalKind, Tile};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-pub const H: f32 = 2.6;
 pub const HEAD: f32 = 2.1;
+pub const WATER_Y: f32 = -0.14;
 const SILL: f32 = 0.9;
 const BASE: f32 = 0.12;
 const MARGIN: f32 = 0.18;
 const RECESS: f32 = 0.42;
-const DIRS: [[i32; 2]; 4] = [[0, -1], [0, 1], [1, 0], [-1, 0]];
-const ROWS: [f32; 5] = [0.0, BASE, SILL, HEAD, H];
 const CHUNK: f32 = 3.0;
-const DRAPE_REACH: f32 = 1.5;
+const CELL: f32 = 4.0;
+const BANK: f32 = 0.45;
+const RAIL: f32 = 1.1;
+const WELL: f32 = 1.3;
+const PAGE: usize = 65535;
+const NOTE_Y: f32 = 1.45;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Mat {
+    Opaque,
+    Alpha,
+    Water,
+}
+
+pub fn mat_of(tex: u8) -> Mat {
+    match TEXTURES[tex as usize].0 {
+        "agua" | "agua_rio" => Mat::Water,
+        n if texture::alpha(n) => Mat::Alpha,
+        _ => Mat::Opaque,
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Chunk {
     pub lo: V3,
     pub hi: V3,
+    pub page: u16,
     pub first: usize,
     pub count: usize,
 }
 
-pub struct RoomGeo {
-    pub outdoor: bool,
-    pub chunks: Range<usize>,
+#[derive(Clone, Copy, Debug)]
+pub struct Group {
+    pub rooms: Mask,
+    pub mat: Mat,
+    pub chunk: Chunk,
 }
 
-pub struct Portal {
-    pub x: u8,
-    pub y: u8,
-    pub rooms: u32,
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Drive {
+    Prop(u16),
+    Lock(u8),
+}
+
+pub struct Mover {
+    pub drive: Drive,
+    pub hinge: Hinge,
+    pub xf: M4,
+    pub opaque: Mesh,
+    pub alpha: Mesh,
+    pub rooms: Mask,
     pub lo: V3,
     pub hi: V3,
 }
 
-pub struct Shutter {
-    pub run: u8,
-    pub room: u8,
-    pub chunk: Chunk,
+pub struct Note {
+    pub pos: V3,
+    pub rooms: Mask,
 }
 
-pub struct Drape {
-    pub room: u8,
-    pub xf: M4,
-    pub chunk: Chunk,
+#[derive(Default)]
+pub struct Page {
+    pub verts: Vec<Vert>,
+    pub idx: Vec<u16>,
 }
 
 pub struct Level {
-    pub verts: Vec<Vert>,
-    pub idx: Vec<u16>,
-    pub rooms: Vec<RoomGeo>,
-    pub chunks: Vec<Chunk>,
-    pub portals: Vec<Portal>,
+    pub pages: Vec<Page>,
+    pub groups: Vec<Group>,
+    pub passes: [Range<usize>; 3],
     pub screens: Mesh,
-    pub shutters: Vec<Shutter>,
-    pub drapes: Vec<Drape>,
-    pub glows: Vec<(V3, u8)>,
-    runs: Vec<i16>,
-    width: i32,
+    pub screen_rooms: Vec<Mask>,
+    pub marks: Vec<Mark>,
+    pub movers: Vec<Mover>,
+    pub notes: Vec<Note>,
+    pub supports: Vec<Support>,
 }
 
-fn solid(t: Tile) -> bool {
-    matches!(t, Tile::Wall | Tile::Window)
+#[derive(Clone, Copy, Debug)]
+pub struct Support {
+    pub c: [f32; 2],
+    pub rot: f32,
+    pub half: [f32; 2],
+    pub top: f32,
+    pub prop: Option<u16>,
 }
 
-fn open(t: Tile) -> bool {
-    matches!(t, Tile::Floor | Tile::Door | Tile::Blocker)
+impl Support {
+    pub fn holds(&self, x: f32, z: f32) -> bool {
+        let d = [x - self.c[0], z - self.c[1]];
+        let (s, c) = self.rot.sin_cos();
+        (d[0] * c - d[1] * s).abs() <= self.half[0] && (d[0] * s + d[1] * c).abs() <= self.half[1]
+    }
 }
 
-fn window_runs(map: &Map) -> Vec<i16> {
-    let mut runs = vec![-1i16; (map.w * map.h) as usize];
-    let mut next = 0i16;
-    (0..map.h).flat_map(|y| (0..map.w).map(move |x| (x, y))).for_each(|(x, y)| {
-        if map.tile(x, y) != Tile::Window || runs[(y * map.w + x) as usize] >= 0 {
-            return;
-        }
-        let mut stack = vec![(x, y)];
-        while let Some((cx, cy)) = stack.pop() {
-            let at = (cy * map.w + cx) as usize;
-            if map.tile(cx, cy) != Tile::Window || runs[at] >= 0 {
-                continue;
-            }
-            runs[at] = next;
-            stack.extend(DIRS.iter().map(|d| (cx + d[0], cy + d[1])));
-        }
-        next += 1;
-    });
-    assert!(next <= 64, "{next} window runs");
-    runs
-}
-
-fn portals(map: &Map) -> Vec<Portal> {
-    (0..map.h)
-        .flat_map(|y| (0..map.w).map(move |x| (x, y)))
-        .filter(|&(x, y)| map.tile(x, y) == Tile::Door)
-        .map(|(x, y)| {
-            let rooms = DIRS
-                .iter()
-                .filter(|d| open(map.tile(x + d[0], y + d[1])))
-                .filter_map(|d| lamps::room_near(map, x + d[0], y + d[1]))
-                .fold(0u32, |m, r| m | 1 << r);
-            let (fx, fy) = (x as f32, y as f32);
-            Portal { x: x as u8, y: y as u8, rooms, lo: [fx, 0.0, fy], hi: [fx + 1.0, HEAD, fy + 1.0] }
-        })
-        .collect()
+pub fn hide_kind(k: HideKind) -> &'static str {
+    match k {
+        HideKind::Cama => "cama",
+        HideKind::GuardaRoupa => "guarda_roupa",
+        HideKind::Armario => "armario",
+        HideKind::Tumulo => "tumulo",
+        HideKind::CaixaDagua => "caixa_dagua",
+        HideKind::Confessionario => "confessionario",
+        HideKind::Carro => "carro",
+        HideKind::Cesto => "cesto",
+        HideKind::Mesa => "mesa",
+    }
 }
 
 struct Builder<'a> {
     map: &'a Map<'a>,
+    z: &'a Zones,
     parts: Parts,
+    roofs: Parts,
     screens: Mesh,
-    shutters: Vec<(i32, i32, u8, Mesh)>,
-    drapes: Vec<(u8, M4, Mesh)>,
-    glows: Vec<(V3, u8)>,
+    marks: Vec<Mark>,
+}
+
+fn open(t: Tile) -> bool {
+    zones::see_through(t) || t == Tile::Door
 }
 
 impl<'a> Builder<'a> {
@@ -124,67 +143,84 @@ impl<'a> Builder<'a> {
         self.parts.entry((room, texture::id(tex))).or_default()
     }
 
-    fn vface(&mut self, room: u8, tex: &str, a: [f32; 2], f: [f32; 2], len: f32, h: [f32; 2]) {
+    fn vface(&mut self, room: u8, tex: &str, a: [f32; 2], f: [f32; 2], len: f32, h: [f32; 2], top: f32) {
         let r = [f[1], -f[0]];
         let b = [a[0] + r[0] * len, a[1] + r[1] * len];
         let u0 = (a[0] * r[0] + a[1] * r[1]).rem_euclid(1.0);
         let p = [[a[0], h[0], a[1]], [b[0], h[0], b[1]], [b[0], h[1], b[1]], [a[0], h[1], a[1]]];
-        let uv = [[u0, H - h[0]], [u0 + len, H - h[0]], [u0 + len, H - h[1]], [u0, H - h[1]]];
+        let uv = [[u0, top - h[0]], [u0 + len, top - h[0]], [u0 + len, top - h[1]], [u0, top - h[1]]];
         self.part(room, tex).quad_facing(p, uv, [f[0], 0.0, f[1]]);
     }
 
-    fn hface(&mut self, room: u8, tex: &str, lo: [f32; 2], hi: [f32; 2], y: f32, up: bool) {
+    fn hface_in(parts: &mut Parts, room: u8, tex: &str, lo: [f32; 2], hi: [f32; 2], y: f32, up: bool) {
         let p = [[lo[0], y, hi[1]], [hi[0], y, hi[1]], [hi[0], y, lo[1]], [lo[0], y, lo[1]]];
         let (u0, v0) = (lo[0].rem_euclid(1.0), lo[1].rem_euclid(1.0));
         let (du, dv) = (hi[0] - lo[0], hi[1] - lo[1]);
         let uv = [[u0, v0 + dv], [u0 + du, v0 + dv], [u0 + du, v0], [u0, v0]];
-        self.part(room, tex).quad_facing(p, uv, [0.0, if up { 1.0 } else { -1.0 }, 0.0]);
+        parts.entry((room, texture::id(tex))).or_default().quad_facing(p, uv, [0.0, if up { 1.0 } else { -1.0 }, 0.0]);
     }
 
-    fn room_tex(&self, room: u8) -> (&'a str, &'a str, Option<&'a str>, bool) {
-        let r = &self.map.rooms[room as usize];
-        (r.floor, r.wall, r.ceil, r.ceil.is_none())
+    fn hface(&mut self, room: u8, tex: &str, lo: [f32; 2], hi: [f32; 2], y: f32, up: bool) {
+        Self::hface_in(&mut self.parts, room, tex, lo, hi, y, up);
     }
 
-    fn grid(&mut self, room: u8, a: [f32; 2], f: [f32; 2], cols: &[f32], rows: &[f32], hole: [f32; 4]) {
-        let (_, wall, _, outdoor) = self.room_tex(room);
+    fn style(&self, x: i32, y: i32, viewer: u8) -> (&'a str, f32, bool) {
+        let r = &self.map.rooms[viewer as usize];
+        if !r.out {
+            return (r.wall, r.h.to_f32(), true);
+        }
+        let inside = (-1..=1)
+            .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+            .filter_map(|(dx, dy)| self.z.room(x + dx, y + dy))
+            .map(|i| &self.map.rooms[i as usize])
+            .find(|i| !i.out);
+        inside.map_or((r.wall, r.h.to_f32(), false), |i| (i.ext.unwrap_or(r.wall), i.h.to_f32(), false))
+    }
+
+    fn grid(&mut self, room: u8, tex: &str, base: bool, a: [f32; 2], f: [f32; 2], cols: &[f32], rows: &[f32], hole: [f32; 4], top: f32) {
         let r = [f[1], -f[0]];
         cols.windows(2).for_each(|c| {
             rows.windows(2)
+                .filter(|h| h[1] > h[0])
                 .filter(|h| !(c[0] >= hole[0] && c[1] <= hole[1] && h[0] >= hole[2] && h[1] <= hole[3]))
                 .for_each(|h| {
-                    let tex = if !outdoor && h[1] <= BASE { "madeira_escura" } else { wall };
-                    self.vface(room, tex, [a[0] + r[0] * c[0], a[1] + r[1] * c[0]], f, c[1] - c[0], [h[0], h[1]]);
+                    let t = if base && h[1] <= BASE { "madeira_escura" } else { tex };
+                    self.vface(room, t, [a[0] + r[0] * c[0], a[1] + r[1] * c[0]], f, c[1] - c[0], [h[0], h[1]], top);
                 })
         });
     }
 
-    fn wall_side(&mut self, x: i32, y: i32, d: [i32; 2], window: bool) {
-        let Some(room) = lamps::room_near(self.map, x + d[0], y + d[1]) else { return };
+    fn wall_side(&mut self, x: i32, y: i32, d: [i32; 2], window: bool) -> Option<(u8, f32)> {
+        let room = self.z.room(x + d[0], y + d[1])?;
+        let (tex, top, base) = self.style(x, y, room);
         let f = [d[0] as f32, d[1] as f32];
         let r = [f[1], -f[0]];
         let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
         let a = [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5];
+        let rows = [0.0, BASE, SILL, HEAD, top];
+        let out = self.map.rooms[room as usize].out.then_some((room, top));
         if !window {
-            return self.grid(room, a, f, &[0.0, 1.0], &ROWS, [2.0; 4]);
+            let (plain, bare) = ([0.0, BASE, top], [0.0, top]);
+            let rows: &[f32] = if base { &plain } else { &bare };
+            self.grid(room, tex, base, a, f, &[0.0, 1.0], rows, [2.0; 4], top);
+            return out;
         }
-        let (_, wall, _, _) = self.room_tex(room);
         let along = |k: i32| self.map.tile(x + d[1] * k, y - d[0] * k) == Tile::Window;
         let (ml, mr) = (if along(-1) { 0.0 } else { MARGIN }, if along(1) { 0.0 } else { MARGIN });
         let at = |k: f32, depth: f32| [a[0] + r[0] * k - f[0] * depth, a[1] + r[1] * k - f[1] * depth];
         let mut cols = vec![0.0, ml, 1.0 - mr, 1.0];
         cols.dedup();
-        self.grid(room, a, f, &cols, &ROWS, [ml, 1.0 - mr, SILL, HEAD]);
+        self.grid(room, tex, base, a, f, &cols, &rows, [ml, 1.0 - mr, SILL, HEAD], top);
         if ml > 0.0 {
-            self.vface(room, wall, at(ml, 0.0), r, RECESS, [SILL, HEAD]);
+            self.vface(room, tex, at(ml, 0.0), r, RECESS, [SILL, HEAD], top);
         }
         if mr > 0.0 {
-            self.vface(room, wall, at(1.0 - mr, RECESS), [-r[0], -r[1]], RECESS, [SILL, HEAD]);
+            self.vface(room, tex, at(1.0 - mr, RECESS), [-r[0], -r[1]], RECESS, [SILL, HEAD], top);
         }
         let (p0, p1) = (at(ml, 0.0), at(1.0 - mr, RECESS));
         let (lo, hi) = ([p0[0].min(p1[0]), p0[1].min(p1[1])], [p0[0].max(p1[0]), p0[1].max(p1[1])]);
         self.hface(room, "madeira_escura", lo, hi, SILL, true);
-        self.hface(room, wall, lo, hi, HEAD, false);
+        self.hface(room, tex, lo, hi, HEAD, false);
         let w = 1.0 - ml - mr;
         let rp = |k: f32, depth: f32| {
             let p = at(ml + k, RECESS - depth);
@@ -195,103 +231,206 @@ impl<'a> Builder<'a> {
         self.part(room, "vidro_noite").quad_facing(glass, [[u(0.0), 1.0], [u(w), 1.0], [u(w), 0.0], [u(0.0), 0.0]], [f[0], 0.0, f[1]]);
         let mid = (SILL + HEAD) * 0.5;
         let post = 0.5 - ml - 0.025;
-        self.vface(room, "madeira_escura", at(ml + post, RECESS - 0.012), f, 0.05, [SILL, HEAD]);
+        self.vface(room, "madeira_escura", at(ml + post, RECESS - 0.012), f, 0.05, [SILL, HEAD], top);
         let bar = [rp(0.0, 0.012)(mid - 0.025), rp(w, 0.012)(mid - 0.025), rp(w, 0.012)(mid + 0.025), rp(0.0, 0.012)(mid + 0.025)];
         self.part(room, "madeira_escura").quad_facing(bar, [[0.0, 0.05], [w, 0.05], [w, 0.0], [0.0, 0.0]], [f[0], 0.0, f[1]]);
-        let mut leaves = Mesh::default();
-        [(0.0, w * 0.5 - 0.01), (w * 0.5 + 0.01, w)].iter().for_each(|&(k0, k1)| {
-            let q = [rp(k0, 0.03)(SILL + 0.02), rp(k1, 0.03)(SILL + 0.02), rp(k1, 0.03)(HEAD - 0.02), rp(k0, 0.03)(HEAD - 0.02)];
-            let v = (HEAD - SILL) * 2.0;
-            leaves.quad_facing(q, [[k0, v], [k1, v], [k1, 0.0], [k0, 0.0]], [f[0], 0.0, f[1]]);
-        });
-        self.shutters.push((x, y, room, leaves));
+        out
     }
 
-    fn door_tile(&mut self, x: i32, y: i32) {
-        let horizontal = solid(self.map.tile(x - 1, y)) && solid(self.map.tile(x + 1, y));
-        let dirs: [[i32; 2]; 2] = if horizontal { [[0, -1], [0, 1]] } else { [[-1, 0], [1, 0]] };
-        dirs.iter().for_each(|d| {
-            let Some(room) = lamps::room_near(self.map, x + d[0], y + d[1]) else { return };
-            let f = [d[0] as f32, d[1] as f32];
-            let r = [f[1], -f[0]];
-            let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
-            self.grid(room, [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5], f, &[0.0, 1.0], &[HEAD, H], [2.0; 4]);
-        });
-        if let Some(room) = lamps::room_near(self.map, x, y) {
-            let (floor, wall, _, _) = self.room_tex(room);
-            let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
-            self.hface(room, floor, lo, hi, 0.0, true);
-            self.hface(room, wall, lo, hi, HEAD, false);
-        }
+    fn roof_of(&self, room: u8) -> Option<u8> {
+        let r = &self.map.rooms[room as usize];
+        (!r.out && r.ceil.is_some() && self.map.rooms.iter().any(|o| o.out && o.area == r.area)).then_some(room)
     }
 
-    fn floor_tile(&mut self, x: i32, y: i32) {
-        let Some(room) = lamps::room_near(self.map, x, y) else { return };
-        let (floor, _, ceil, _) = self.room_tex(room);
-        let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
-        self.hface(room, floor, lo, hi, 0.0, true);
-        ceil.into_iter().for_each(|c| self.hface(room, c, lo, hi, H, false));
+    fn roof(&mut self, room: u8, x: i32, y: i32, h: f32) {
+        Self::hface_in(&mut self.roofs, room, "telha", [x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0], h, true);
     }
 
     fn wall_tile(&mut self, x: i32, y: i32) {
         let window = self.map.tile(x, y) == Tile::Window;
-        DIRS.iter().filter(|d| open(self.map.tile(x + d[0], y + d[1]))).for_each(|d| self.wall_side(x, y, *d, window));
-        let outdoor = (-1..=1)
-            .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
-            .filter_map(|(dx, dy)| self.map.room_at(x + dx, y + dy))
-            .find(|r| r.ceil.is_none())
-            .and_then(|r| self.map.rooms.iter().position(|q| q.id == r.id));
-        outdoor.into_iter().for_each(|room| {
-            let (_, wall, _, _) = self.room_tex(room as u8);
-            self.hface(room as u8, wall, [x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0], H, true);
-        });
+        let faces: Vec<(u8, f32)> = DIRS.iter().filter(|d| open(self.map.tile(x + d[0], y + d[1]))).filter_map(|d| self.wall_side(x, y, *d, window)).collect();
+        let lo = [x as f32, y as f32];
+        let hi = [lo[0] + 1.0, lo[1] + 1.0];
+        match faces.iter().copied().max_by(|a, b| a.1.total_cmp(&b.1)) {
+            Some((room, top)) => {
+                let (tex, _, _) = self.style(x, y, room);
+                self.hface(room, tex, lo, hi, top, true);
+            }
+            None => {
+                let inner = (-1..=1).flat_map(|dy| (-1..=1).map(move |dx| (dx, dy))).filter_map(|(dx, dy)| self.z.room(x + dx, y + dy)).filter_map(|r| self.roof_of(r));
+                if let Some((r, h)) = inner.map(|r| (r, self.map.rooms[r as usize].h.to_f32())).max_by(|a, b| a.1.total_cmp(&b.1)) {
+                    self.roof(r, x, y, h);
+                }
+            }
+        }
     }
 
-    fn props(&mut self) {
-        let map = self.map;
-        let support = |i: usize, x: f32, z: f32| {
-            map.props
-                .iter()
-                .enumerate()
-                .filter(|(j, _)| *j != i)
-                .filter_map(|(_, p)| props::surface(p.kind).map(|s| (p, s)))
-                .filter(|(p, (half, _))| {
-                    let (a, c) = (p.rot.to_rad(), [p.pos.x.to_f32(), p.pos.y.to_f32()]);
-                    let d = [x - c[0], z - c[1]];
-                    let lx = d[0] * a.cos() - d[1] * a.sin();
-                    let lz = d[0] * a.sin() + d[1] * a.cos();
-                    lx.abs() <= half[0] && lz.abs() <= half[1]
-                })
-                .map(|(_, (_, top))| top)
-                .fold(None, |a: Option<f32>, t| Some(a.map_or(t, |a| a.max(t))))
-        };
-        let windowed = |x: f32, z: f32| {
-            map.tasks.iter().filter(|t| t.kind == TaskKind::Window).any(|t| {
-                let (dx, dz) = (t.pos.x.floor() as f32 + 0.5 - x, t.pos.y.floor() as f32 + 0.5 - z);
-                dx * dx + dz * dz < DRAPE_REACH * DRAPE_REACH
-            })
-        };
-        map.props.iter().enumerate().for_each(|(i, p)| {
-            let (x, z) = (p.pos.x.to_f32(), p.pos.y.to_f32());
-            let Some(room) = lamps::room_near(map, x.floor() as i32, z.floor() as i32) else { return };
-            let base = support(i, x, z);
-            let xf = mat::mul(&mat::translate([x, base.unwrap_or(0.0), z]), &mat::rot_y(p.rot.to_rad()));
-            let mut sink = Sink { parts: &mut self.parts, screens: &mut self.screens, room, xf };
-            match p.kind {
-                "cortina" if windowed(x, z) => {
-                    props::rod(&mut sink);
-                    let mut cloth = Parts::new();
-                    props::cloth(&mut Sink { parts: &mut cloth, screens: &mut self.screens, room, xf });
-                    self.drapes.extend(cloth.into_values().map(|m| (room, xf, m)));
-                }
-                "abajur" => {
-                    props::build(p.kind, &mut sink, base.is_some());
-                    self.glows.push((mat::point(&xf, props::shade_centre(base.is_some())), room));
-                }
-                kind => props::build(kind, &mut sink, base.is_some()),
-            }
+    fn door_tile(&mut self, x: i32, y: i32) {
+        let horizontal = zones::solid(self.map.tile(x - 1, y)) && zones::solid(self.map.tile(x + 1, y));
+        let dirs: [[i32; 2]; 2] = if horizontal { [[0, -1], [0, 1]] } else { [[-1, 0], [1, 0]] };
+        dirs.iter().for_each(|d| {
+            let Some(room) = self.z.room(x + d[0], y + d[1]) else { return };
+            let (tex, top, _) = self.style(x, y, room);
+            let f = [d[0] as f32, d[1] as f32];
+            let r = [f[1], -f[0]];
+            let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
+            self.grid(room, tex, false, [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5], f, &[0.0, 1.0], &[HEAD, top], [2.0; 4], top);
         });
+        if let Some(room) = self.z.room(x, y) {
+            let r = &self.map.rooms[room as usize];
+            let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
+            self.hface(room, r.floor, lo, hi, 0.0, true);
+            self.hface(room, r.wall, lo, hi, HEAD, false);
+            if let Some(roof) = self.roof_of(room) {
+                self.roof(roof, x, y, r.h.to_f32());
+            }
+        }
     }
+
+    fn plain(&self, x: i32, y: i32) -> bool {
+        let room = self.z.room(x, y);
+        room.is_some() && [(0, 0), (1, 0), (0, 1), (1, 1)].iter().all(|&(dx, dy)| matches!(self.map.tile(x + dx, y + dy), Tile::Floor | Tile::Blocker) && self.z.room(x + dx, y + dy) == room)
+    }
+
+    fn floor_tile(&mut self, x: i32, y: i32, floor: bool) {
+        let corner = (x & !1, y & !1);
+        let merged = floor && self.plain(corner.0, corner.1);
+        if merged && (x, y) != corner {
+            return;
+        }
+        let Some(room) = self.z.room(x, y) else { return };
+        let r = &self.map.rooms[room as usize];
+        let size = if merged { 2.0 } else { 1.0 };
+        let (lo, hi) = ([x as f32, y as f32], [x as f32 + size, y as f32 + size]);
+        if floor {
+            self.hface(room, r.floor, lo, hi, 0.0, true);
+        }
+        r.ceil.into_iter().for_each(|c| self.hface(room, c, lo, hi, r.h.to_f32(), false));
+        if let Some(roof) = self.roof_of(room) {
+            let n = size as i32;
+            (0..n * n).for_each(|i| self.roof(roof, x + i % n, y + i / n, r.h.to_f32()));
+        }
+    }
+
+    fn water_tile(&mut self, x: i32, y: i32) {
+        let Some(room) = self.z.room(x, y) else { return };
+        let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
+        self.hface(room, "agua_rio", lo, hi, WATER_Y, true);
+        let bank = if self.map.rooms[room as usize].out { "barro" } else { self.map.rooms[room as usize].floor };
+        DIRS.iter().filter(|d| !matches!(self.map.tile(x + d[0], y + d[1]), Tile::Water | Tile::Void) && !zones::solid(self.map.tile(x + d[0], y + d[1]))).for_each(|d| {
+            let f = [-d[0] as f32, -d[1] as f32];
+            let r = [f[1], -f[0]];
+            let c = [x as f32 + 0.5 - f[0] * 0.5, y as f32 + 0.5 - f[1] * 0.5];
+            self.vface(room, bank, [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5], f, 1.0, [WATER_Y - BANK, 0.0], 0.0);
+        });
+        let r = &self.map.rooms[room as usize];
+        r.ceil.into_iter().for_each(|c| self.hface(room, c, lo, hi, r.h.to_f32(), false));
+    }
+
+    fn fence_tile(&mut self, x: i32, y: i32) {
+        self.floor_tile(x, y, true);
+        let Some(room) = self.z.room(x, y) else { return };
+        let joins = |dx: i32, dy: i32| matches!(self.map.tile(x + dx, y + dy), Tile::Fence | Tile::Wall | Tile::Window | Tile::Door);
+        let c = [x as f32 + 0.5, y as f32 + 0.5];
+        let mut segs: Vec<([f32; 2], [f32; 2])> = DIRS.iter().filter(|d| joins(d[0], d[1])).map(|d| (c, [c[0] + d[0] as f32 * 0.5, c[1] + d[1] as f32 * 0.5])).collect();
+        if segs.is_empty() {
+            segs.push(([c[0] - 0.5, c[1]], [c[0] + 0.5, c[1]]));
+        }
+        segs.iter().for_each(|(a, b)| {
+            let len = ((b[0] - a[0]).abs() + (b[1] - a[1]).abs()).max(0.01);
+            let u0 = (a[0] + a[1]).rem_euclid(1.0);
+            let q = [[a[0], 0.0, a[1]], [b[0], 0.0, b[1]], [b[0], RAIL, b[1]], [a[0], RAIL, a[1]]];
+            let uv = [[u0, 1.0], [u0 + len, 1.0], [u0 + len, 0.0], [u0, 0.0]];
+            let m = self.part(room, "grade_a");
+            let n = [b[1] - a[1], 0.0, a[0] - b[0]];
+            m.quad_facing(q, uv, n);
+        });
+        let mut post = Pen { mesh: self.part(room, "ferrugem"), xf: mat::IDENTITY, density: 2.0 };
+        post.cuboid([c[0] - 0.03, 0.0, c[1] - 0.03], [c[0] + 0.03, RAIL + 0.05, c[1] + 0.03], Faces::NO_BOTTOM);
+    }
+
+    fn back(&self, x: i32, y: i32) -> [i32; 2] {
+        let walk = DIRS.iter().find(|d| self.map.tile(x + d[0], y + d[1]).walkable()).copied();
+        walk.map(|d| [-d[0], -d[1]]).filter(|d| zones::solid(self.map.tile(x + d[0], y + d[1]))).or_else(|| DIRS.iter().find(|d| zones::solid(self.map.tile(x + d[0], y + d[1]))).copied()).or(walk.map(|d| [-d[0], -d[1]])).unwrap_or([0, -1])
+    }
+
+    fn portal_tile(&mut self, x: i32, y: i32, movers: &mut Vec<(usize, M4, u8)>) {
+        let Some(pi) = self.map.portal_at(x, y) else { return self.floor_tile(x, y, true) };
+        let p = self.map.portals[pi];
+        let Some(room) = self.z.room(x, y) else { return };
+        let up = self.map.area_at(p.to_x, p.to_y).zip(self.map.area_at(x, y)).is_none_or(|(to, from)| to > from);
+        let b = self.back(x, y);
+        let yaw = (b[0] as f32).atan2(b[1] as f32);
+        let xf = mat::mul(&mat::translate([x as f32 + 0.5, 0.0, y as f32 + 0.5]), &mat::rot_y(yaw));
+        let well = !up && matches!(p.kind, PortalKind::Escada | PortalKind::EscadaMao);
+        self.floor_tile(x, y, !well);
+        let tex = self.map.rooms[room as usize].wall;
+        let floor = self.map.rooms[room as usize].floor;
+        let h = self.map.rooms[room as usize].h.to_f32();
+        let mut sink = Sink { parts: &mut self.parts, screens: &mut self.screens, marks: &mut self.marks, room, xf };
+        match p.kind {
+            PortalKind::Escada | PortalKind::EscadaMao if !up => stairwell(&mut sink, tex, floor, p.kind == PortalKind::Escada),
+            PortalKind::Escada => {}
+            PortalKind::EscadaMao => ladder(&mut sink, 0.0, h),
+            PortalKind::Bueiro => sink.pen("ferrugem").cylinder([0.0, 0.0, 0.0], 0.36, 0.36, 0.015, 8, true),
+            PortalKind::Portao => {
+                sink.pen("ferrugem").cuboid([-0.52, 0.0, 0.42], [-0.46, 2.2, 0.48], Faces::NO_BOTTOM);
+                sink.pen("ferrugem").cuboid([0.46, 0.0, 0.42], [0.52, 2.2, 0.48], Faces::NO_BOTTOM);
+                movers.push((pi, mat::mul(&xf, &mat::translate([0.0, 0.0, 0.45])), room));
+            }
+            PortalKind::JanelaAlta => {
+                let _ = props::build("engradado", &mut Sink { xf: mat::mul(&xf, &mat::translate([0.0, 0.0, 0.25])), ..sink }, false);
+                let mut s2 = Sink { parts: &mut self.parts, screens: &mut self.screens, marks: &mut self.marks, room, xf };
+                props::wall_panel(&mut s2, "madeira_escura", "vidro_noite", [0.35, 0.3], 2.05, 0.04);
+                Pen { mesh: s2.parts.entry((room, texture::id("madeira_escura"))).or_default(), xf: mat::mul(&xf, &mat::translate([0.0, 0.0, 0.5])), density: 2.0 }.cuboid([-0.35, 1.72, -0.06], [0.35, 1.75, 0.0], Faces::NO_BOTTOM);
+            }
+        }
+    }
+
+    fn hide_tile(&mut self, x: i32, y: i32) {
+        self.floor_tile(x, y, true);
+        let (Some(hi), Some(room)) = (self.map.hide_at(x, y), self.z.room(x, y)) else { return };
+        let h = self.map.hides[hi];
+        let mut xf = mat::mul(&mat::translate([x as f32 + 0.5, 0.0, y as f32 + 0.5]), &mat::rot_y(h.rot.to_rad()));
+        if h.kind == HideKind::Tumulo {
+            xf = mat::mul(&xf, &mat::scaling([1.0, 1.0, 0.45]));
+        }
+        let mut sink = Sink { parts: &mut self.parts, screens: &mut self.screens, marks: &mut self.marks, room, xf };
+        let _ = props::build(hide_kind(h.kind), &mut sink, false);
+        props::part(hide_kind(h.kind), &mut sink);
+    }
+}
+
+fn stairwell(s: &mut Sink, wall: &str, floor: &str, steps: bool) {
+    let mut w = s.pen(wall);
+    let d = -WELL;
+    w.quad([[-0.5, d, 0.5], [0.5, d, 0.5], [0.5, 0.0, 0.5], [-0.5, 0.0, 0.5]], [[0.0, 1.3], [1.0, 1.3], [1.0, 0.0], [0.0, 0.0]]);
+    w.quad([[0.5, d, -0.5], [-0.5, d, -0.5], [-0.5, 0.0, -0.5], [0.5, 0.0, -0.5]], [[0.0, 1.3], [1.0, 1.3], [1.0, 0.0], [0.0, 0.0]]);
+    w.quad([[0.5, d, 0.5], [0.5, d, -0.5], [0.5, 0.0, -0.5], [0.5, 0.0, 0.5]], [[0.0, 1.3], [1.0, 1.3], [1.0, 0.0], [0.0, 0.0]]);
+    w.quad([[-0.5, d, -0.5], [-0.5, d, 0.5], [-0.5, 0.0, 0.5], [-0.5, 0.0, -0.5]], [[0.0, 1.3], [1.0, 1.3], [1.0, 0.0], [0.0, 0.0]]);
+    let mut f = s.pen(floor);
+    match steps {
+        true => (0..5).for_each(|i| {
+            let (z0, y) = (-0.5 + i as f32 * 0.2, -(i as f32 + 1.0) * WELL / 5.0);
+            f.cuboid([-0.45, y, z0], [0.45, y + 0.04, 0.5], Faces(0x24));
+        }),
+        false => f.quad([[-0.5, d, 0.5], [0.5, d, 0.5], [0.5, d, -0.5], [-0.5, d, -0.5]], [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]]),
+    }
+    if !steps {
+        ladder(s, d, 0.6);
+    }
+    let mut r = s.pen("madeira_escura");
+    [[-0.5f32, -0.46], [0.46, 0.5]].iter().for_each(|x| r.cuboid([x[0], 0.0, -0.5], [x[1], 0.95, 0.5], Faces(0x37)));
+}
+
+fn ladder(s: &mut Sink, y0: f32, y1: f32) {
+    let mut p = s.pen("madeira_crua");
+    [-0.25f32, 0.21].iter().for_each(|&x| p.cuboid([x, y0, 0.42], [x + 0.04, y1, 0.47], Faces(0x37)));
+    let n = ((y1 - y0) / 0.3) as usize;
+    (1..=n).for_each(|i| {
+        let y = y0 + i as f32 * 0.3;
+        p.cuboid([-0.21, y, 0.43], [0.21, y + 0.03, 0.46], Faces(0x3c));
+    });
 }
 
 fn chunked(m: &Mesh) -> Vec<Mesh> {
@@ -311,90 +450,190 @@ fn chunked(m: &Mesh) -> Vec<Mesh> {
     cells.into_values().map(|(mesh, _)| mesh).collect()
 }
 
+fn bounds(verts: &[Vert]) -> (V3, V3) {
+    verts.iter().fold(([f32::MAX; 3], [f32::MIN; 3]), |(lo, hi), v| (std::array::from_fn(|k| lo[k].min(v.pos[k])), std::array::from_fn(|k| hi[k].max(v.pos[k]))))
+}
+
+fn bake(m: &Mesh, lamps: &Lamps, room: u8, tiles: &[[u8; 4]], tex: u8) -> Vec<Vert> {
+    m.verts
+        .iter()
+        .map(|v| {
+            let (moon, lit) = lamps.bake(room, v.pos, v.normal());
+            v.with_light(moon).with_lit(lit).with_tile(tiles[tex as usize])
+        })
+        .collect()
+}
+
+fn prop_xf(x: f32, y: f32, z: f32, rot: f32) -> M4 {
+    mat::mul(&mat::translate([x, y, z]), &mat::rot_y(rot))
+}
+
 impl Level {
-    pub fn new<'a>(map: &'a Map<'a>, lamps: &Lamps, tiles: &[[u8; 4]]) -> Level {
-        let mut b = Builder { map, parts: Parts::new(), screens: Mesh::default(), shutters: Vec::new(), drapes: Vec::new(), glows: Vec::new() };
+    pub fn new(map: &Map, z: &Zones, lamps: &Lamps, tiles: &[[u8; 4]]) -> Level {
+        let mut b = Builder { map, z, parts: Parts::new(), roofs: Parts::new(), screens: Mesh::default(), marks: Vec::new() };
+        let mut gates = Vec::new();
         (0..map.h).flat_map(|y| (0..map.w).map(move |x| (x, y))).for_each(|(x, y)| match map.tile(x, y) {
-            Tile::Floor | Tile::Blocker => b.floor_tile(x, y),
+            Tile::Floor | Tile::Blocker => b.floor_tile(x, y, true),
+            Tile::Hide => b.hide_tile(x, y),
+            Tile::Portal => b.portal_tile(x, y, &mut gates),
             Tile::Door => b.door_tile(x, y),
             Tile::Wall | Tile::Window => b.wall_tile(x, y),
+            Tile::Water => b.water_tile(x, y),
+            Tile::Fence => b.fence_tile(x, y),
             Tile::Void => {}
         });
-        b.props();
+        let supports = supports(map);
+        let mut movers = Vec::new();
+        let mut screen_rooms = Vec::new();
+        map.props.iter().enumerate().for_each(|(i, p)| {
+            let (x, zz) = (p.pos.x.to_f32(), p.pos.y.to_f32());
+            let Some(room) = z.at([x, 0.0, zz]) else { return };
+            let base = supports.iter().filter(|s| s.prop != Some(i as u16) && s.holds(x, zz)).map(|s| s.top).fold(None, |a: Option<f32>, t| Some(a.map_or(t, |a| a.max(t))));
+            let xf = prop_xf(x, base.unwrap_or(0.0), zz, p.rot.to_rad());
+            let screens = b.screens.verts.len();
+            let mut sink = Sink { parts: &mut b.parts, screens: &mut b.screens, marks: &mut b.marks, room, xf };
+            let _ = props::build(p.kind, &mut sink, base.is_some());
+            screen_rooms.extend((screens..b.screens.verts.len()).step_by(4).map(|_| 1 << room));
+            let hinge = props::hinge(p.kind).filter(|_| p.item.is_some() || p.lock.is_some());
+            match hinge {
+                Some(hinge) => {
+                    let mut parts = Parts::new();
+                    props::part(p.kind, &mut Sink { parts: &mut parts, screens: &mut b.screens, marks: &mut b.marks, room, xf: mat::IDENTITY });
+                    movers.push(mover(parts, Drive::Prop(i as u16), hinge, xf, room, lamps, tiles));
+                }
+                None => props::part(p.kind, &mut Sink { parts: &mut b.parts, screens: &mut b.screens, marks: &mut b.marks, room, xf }),
+            }
+        });
+        gates.iter().for_each(|&(pi, xf, room)| {
+            let mut parts = Parts::new();
+            props::part("portao_ferro", &mut Sink { parts: &mut parts, screens: &mut b.screens, marks: &mut b.marks, room, xf: mat::IDENTITY });
+            let hinge = props::hinge("portao_ferro").expect("gate hinge");
+            let drive = map.portals[pi].lock.map_or(Drive::Prop(u16::MAX), Drive::Lock);
+            movers.push(mover(parts, drive, hinge, xf, room, lamps, tiles));
+        });
+        let notes = map
+            .notes
+            .iter()
+            .filter_map(|n| {
+                let c = [n.x as f32 + 0.5, 0.0, n.y as f32 + 0.5];
+                let wall = zones::solid(map.tile(n.x, n.y));
+                let face = DIRS.iter().find(|d| map.tile(n.x + d[0], n.y + d[1]).walkable() || open(map.tile(n.x + d[0], n.y + d[1]))).copied().unwrap_or([0, 1]);
+                let room = if wall { z.room(n.x + face[0], n.y + face[1]) } else { z.room(n.x, n.y) }?;
+                let pos = match wall {
+                    true => [c[0] + face[0] as f32 * 0.51, NOTE_Y, c[2] + face[1] as f32 * 0.51],
+                    false => [c[0], supports.iter().filter(|s| s.holds(c[0], c[2])).map(|s| s.top).fold(0.0, f32::max) + 0.012, c[2]],
+                };
+                let (a, up) = match wall {
+                    true => ((face[0] as f32).atan2(face[1] as f32), false),
+                    false => (0.4, true),
+                };
+                let xf = mat::mul(&mat::translate(pos), &mat::rot_y(a));
+                let mut p = Pen { mesh: b.parts.entry((room, texture::id("bilhete"))).or_default(), xf, density: 1.0 };
+                match up {
+                    true => p.quad([[-0.1, 0.0, 0.14], [0.1, 0.0, 0.14], [0.1, 0.0, -0.14], [-0.1, 0.0, -0.14]], [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]]),
+                    false => p.quad([[-0.1, -0.14, 0.0], [0.1, -0.14, 0.0], [0.1, 0.14, 0.0], [-0.1, 0.14, 0.0]], [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]]),
+                }
+                Some(Note { pos, rooms: 1 << room })
+            })
+            .collect();
         let mut level = Level {
-            verts: Vec::new(),
-            idx: Vec::new(),
-            rooms: Vec::with_capacity(map.rooms.len()),
-            chunks: Vec::new(),
-            portals: portals(map),
+            pages: vec![Page::default()],
+            groups: Vec::new(),
+            passes: [0..0, 0..0, 0..0],
             screens: b.screens,
-            shutters: Vec::with_capacity(b.shutters.len()),
-            drapes: Vec::with_capacity(b.drapes.len()),
-            glows: b.glows,
-            runs: window_runs(map),
-            width: map.w,
+            screen_rooms,
+            marks: b.marks,
+            movers,
+            notes,
+            supports,
         };
         level.screens.verts.iter_mut().for_each(|v| *v = v.with_light(1.0));
-        (0..map.rooms.len() as u8).for_each(|room| {
-            let whole = b.parts.range((room, 0)..=(room, u8::MAX)).fold(Mesh::default(), |mut acc, ((_, tex), part)| {
-                let lit = part.verts.iter().map(|v| v.with_light(lamps.light(room, v.pos, Some(v.normal()))).with_tile(tiles[*tex as usize]));
-                let base = acc.verts.len() as u16;
-                acc.verts.extend(lit);
-                acc.idx.extend(part.idx.iter().map(|i| i + base));
-                acc
-            });
-            let start = level.chunks.len();
-            chunked(&whole).iter().for_each(|c| {
-                let chunk = level.push(c);
-                level.chunks.push(chunk);
-            });
-            let outdoor = map.rooms[room as usize].ceil.is_none();
-            level.rooms.push(RoomGeo { outdoor, chunks: start..level.chunks.len() });
+        let mut units: Vec<(Mat, Mask, Mesh)> = Vec::new();
+        b.parts.iter().for_each(|(&(room, tex), part)| {
+            let lit = Mesh { verts: bake(part, lamps, room, tiles, tex), idx: part.idx.clone() };
+            units.extend(chunked(&lit).into_iter().map(|m| (mat_of(tex), 1 << room, m)));
         });
-        let wood = tiles[texture::id("madeira_escura") as usize];
-        b.shutters.iter().for_each(|(x, y, room, m)| {
-            let lit = m.verts.iter().map(|v| v.with_light(lamps.light(*room, v.pos, Some(v.normal()))).with_tile(wood)).collect();
-            let chunk = level.push(&Mesh { verts: lit, idx: m.idx.clone() });
-            let run = level.runs[(y * map.w + x) as usize] as u8;
-            level.shutters.push(Shutter { run, room: *room, chunk });
+        b.roofs.iter().for_each(|(&(room, tex), part)| {
+            let area = map.rooms[room as usize].area;
+            let outside = map.rooms.iter().enumerate().filter(|(_, r)| r.out && r.area == area).fold(0 as Mask, |m, (i, _)| m | 1 << i);
+            let sky = outside.trailing_zeros() as u8;
+            let lit = Mesh { verts: bake(part, lamps, sky, tiles, tex), idx: part.idx.clone() };
+            units.extend(chunked(&lit).into_iter().map(|m| (Mat::Opaque, outside, m)));
         });
-        let cloth = tiles[texture::id("colcha") as usize];
-        b.drapes.iter().for_each(|(room, xf, m)| {
-            let lit = m.verts.iter().map(|v| v.with_light(lamps.light(*room, v.pos, Some(v.normal()))).with_tile(cloth)).collect();
-            let chunk = level.push(&Mesh { verts: lit, idx: m.idx.clone() });
-            level.drapes.push(Drape { room: *room, xf: *xf, chunk });
+        let merged = merge(units);
+        merged.into_iter().for_each(|(mat, rooms, m)| {
+            let chunk = level.push(&m);
+            level.groups.push(Group { rooms, mat, chunk });
         });
-        assert!(level.verts.len() <= u16::MAX as usize, "level has {} vertices", level.verts.len());
+        level.groups.sort_by_key(|g| (g.mat, g.chunk.page));
+        let at = |m: Mat| level.groups.iter().position(|g| g.mat >= m).unwrap_or(level.groups.len());
+        let (a, w) = (at(Mat::Alpha), at(Mat::Water));
+        level.passes = [0..a, a..w, w..level.groups.len()];
         level
     }
 
     fn push(&mut self, m: &Mesh) -> Chunk {
-        let base = self.verts.len();
-        let (lo, hi) = m.verts.iter().fold(([f32::MAX; 3], [f32::MIN; 3]), |(lo, hi), v| {
-            (std::array::from_fn(|k| lo[k].min(v.pos[k])), std::array::from_fn(|k| hi[k].max(v.pos[k])))
-        });
-        let chunk = Chunk { lo, hi, first: self.idx.len(), count: m.idx.len() };
-        self.verts.extend_from_slice(&m.verts);
-        self.idx.extend(m.idx.iter().map(|&i| (base + i as usize) as u16));
+        if self.pages.last().is_some_and(|p| p.verts.len() + m.verts.len() > PAGE) {
+            self.pages.push(Page::default());
+        }
+        let page = self.pages.len() - 1;
+        let p = &mut self.pages[page];
+        let base = p.verts.len();
+        let (lo, hi) = bounds(&m.verts);
+        let chunk = Chunk { lo, hi, page: page as u16, first: p.idx.len(), count: m.idx.len() };
+        p.verts.extend_from_slice(&m.verts);
+        p.idx.extend(m.idx.iter().map(|&i| (base + i as usize) as u16));
         chunk
     }
 
-    pub fn window_run(&self, x: i32, y: i32) -> Option<u8> {
-        [(0, 0), (0, -1), (0, 1), (-1, 0), (1, 0)]
-            .iter()
-            .map(|(dx, dy)| (x + dx, y + dy))
-            .filter(|&(x, y)| x >= 0 && y >= 0 && x < self.width && (y * self.width + x) < self.runs.len() as i32)
-            .find_map(|(x, y)| u8::try_from(self.runs[(y * self.width + x) as usize]).ok())
-    }
-
-    pub fn tris(&self) -> usize {
-        self.idx.len() / 3
-    }
-
     #[cfg(test)]
-    pub fn room_tris(&self, room: usize) -> usize {
-        self.chunks[self.rooms[room].chunks.clone()].iter().map(|c| c.count / 3).sum()
+    pub fn tris(&self) -> usize {
+        self.pages.iter().map(|p| p.idx.len() / 3).sum()
     }
+
+    pub fn rest(&self, x: f32, z: f32, open: impl Fn(u16) -> bool) -> f32 {
+        self.supports.iter().filter(|s| s.holds(x, z) && s.prop.is_none_or(&open)).map(|s| s.top).fold(0.0, f32::max)
+    }
+}
+
+fn merge(units: Vec<(Mat, Mask, Mesh)>) -> Vec<(Mat, Mask, Mesh)> {
+    let mut cells: BTreeMap<(Mat, u128, i32, i32), Mesh> = BTreeMap::new();
+    units.into_iter().for_each(|(mat, rooms, m)| {
+        let (lo, hi) = bounds(&m.verts);
+        let key = (mat, rooms, ((lo[0] + hi[0]) * 0.5 / CELL).floor() as i32, ((lo[2] + hi[2]) * 0.5 / CELL).floor() as i32);
+        cells.entry(key).or_default().append(&m);
+    });
+    cells.into_iter().map(|((mat, rooms, _, _), m)| (mat, rooms, m)).collect()
+}
+
+fn mover(parts: Parts, drive: Drive, hinge: Hinge, xf: M4, room: u8, lamps: &Lamps, tiles: &[[u8; 4]]) -> Mover {
+    let c = mat::point(&xf, [0.0, 0.8, 0.0]);
+    let s = lamps.sample(room, c, None);
+    let lit = super::lamps::Sample { electric: s.electric.map(|v| v.min(2.0)), flame: s.flame.min(2.0), moon: s.moon }.lit();
+    let (mut opaque, mut alpha) = (Mesh::default(), Mesh::default());
+    parts.iter().for_each(|(&(_, tex), m)| {
+        let dst = if mat_of(tex) == Mat::Alpha { &mut alpha } else { &mut opaque };
+        let base = dst.verts.len() as u16;
+        dst.verts.extend(m.verts.iter().map(|v| v.with_light(s.moon).with_lit(lit).with_tile(tiles[tex as usize])));
+        dst.idx.extend(m.idx.iter().map(|i| i + base));
+    });
+    let all: Vec<V3> = opaque.verts.iter().chain(&alpha.verts).flat_map(|v| [mat::point(&xf, v.pos), mat::point(&mat::mul(&xf, &hinge.at(1.0)), v.pos)]).collect();
+    let (lo, hi) = all.iter().fold(([f32::MAX; 3], [f32::MIN; 3]), |(lo, hi), p| (std::array::from_fn(|k| lo[k].min(p[k])), std::array::from_fn(|k| hi[k].max(p[k]))));
+    Mover { drive, hinge, xf, opaque, alpha, rooms: 1 << room, lo, hi }
+}
+
+fn supports(map: &Map) -> Vec<Support> {
+    map.props
+        .iter()
+        .enumerate()
+        .flat_map(|(i, p)| {
+            let c = [p.pos.x.to_f32(), p.pos.y.to_f32()];
+            let rot = p.rot.to_rad();
+            let surface = props::surface(p.kind).map(|(half, top)| Support { c, rot, half, top, prop: None });
+            let inside = (props::content(p.kind) > 0.0 && p.item.is_some()).then(|| Support { c, rot, half: [0.2, 0.2], top: props::content(p.kind), prop: Some(i as u16) });
+            surface.into_iter().chain(inside)
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -402,29 +641,54 @@ mod tests {
     use super::*;
     use crate::map;
 
-    #[test]
-    fn sobrado_builds_within_budget() {
-        let m = map::sobrado();
-        let l = Level::new(m, &Lamps::new(m), &texture::atlas().tiles);
-        assert!(l.tris() > 1000 && l.tris() < 20000, "{} tris", l.tris());
-        assert!(l.idx.iter().all(|&i| (i as usize) < l.verts.len()));
-        assert_eq!(l.screens.tris(), 2 * m.props.iter().filter(|p| p.kind == "tv_tubo").count());
-        (0..l.rooms.len()).for_each(|r| assert!(l.room_tris(r) < 2600, "room {r}: {}", l.room_tris(r)));
-        assert!(l.verts.iter().all(|v| v.tile[2] > 0 && v.tile[3] > 0));
-        l.chunks.iter().for_each(|c| {
-            assert!(c.hi[0] - c.lo[0] < CHUNK + 3.0 && c.hi[2] - c.lo[2] < CHUNK + 3.0, "chunk {:?}..{:?}", c.lo, c.hi);
-            assert!(l.idx[c.first..c.first + c.count].iter().all(|&i| (0..3).all(|k| (c.lo[k]..=c.hi[k]).contains(&l.verts[i as usize].pos[k]))));
+    fn build(m: &Map) -> Level {
+        let z = Zones::new(m);
+        let l = Lamps::new(m, &z);
+        Level::new(m, &z, &l, &texture::atlas().tiles)
+    }
+
+    fn check(l: &Level) {
+        l.pages.iter().for_each(|p| {
+            assert!(p.verts.len() <= PAGE);
+            assert!(p.idx.iter().all(|&i| (i as usize) < p.verts.len()));
+            assert!(p.verts.iter().all(|v| v.tile[2] > 0 && v.tile[3] > 0));
         });
+        l.groups.iter().for_each(|g| {
+            let c = g.chunk;
+            let p = &l.pages[c.page as usize];
+            assert!(g.rooms != 0);
+            assert!(p.idx[c.first..c.first + c.count].iter().all(|&i| (0..3).all(|k| (c.lo[k]..=c.hi[k]).contains(&p.verts[i as usize].pos[k]))));
+        });
+        assert!(l.passes[0].end <= l.passes[1].start && l.passes[1].end <= l.passes[2].start);
+        l.groups[l.passes[1].clone()].iter().for_each(|g| assert_eq!(g.mat, Mat::Alpha));
+        l.groups[l.passes[2].clone()].iter().for_each(|g| assert_eq!(g.mat, Mat::Water));
     }
 
     #[test]
-    fn every_window_task_has_shutters() {
-        let m = map::sobrado();
-        let l = Level::new(m, &Lamps::new(m), &texture::atlas().tiles);
-        m.tasks.iter().filter(|t| t.kind == map::TaskKind::Window).for_each(|t| {
-            let (x, y) = (t.pos.x.to_f32().floor() as i32, t.pos.y.to_f32().floor() as i32);
-            let run = l.window_run(x, y).unwrap_or_else(|| panic!("window task {x},{y} has no window"));
-            assert!(l.shutters.iter().any(|s| s.run == run && s.chunk.count > 0));
-        });
+    fn street_builds_water_fence_roofs_and_movers() {
+        let m = map::parse(include_str!("testdata/rua.map")).expect("rua");
+        let l = build(&m);
+        check(&l);
+        assert!(!l.passes[2].is_empty(), "water");
+        assert!(!l.passes[1].is_empty(), "alpha fence and trees");
+        assert!(l.groups.iter().any(|g| g.rooms.count_ones() > 1), "roofs seen from outside");
+        assert!(l.marks.iter().any(|m| m.kind == props::MarkKind::Flame));
+        assert!(l.tris() < 60000, "{}", l.tris());
+    }
+
+    #[test]
+    fn sobrado_builds_within_budget() {
+        let m = map::campaign()[0];
+        let l = build(m);
+        check(&l);
+        assert!(l.tris() > 1000, "{}", l.tris());
+        assert_eq!(l.screens.tris(), 2 * m.props.iter().filter(|p| p.kind == "tv_tubo").count());
+        assert_eq!(l.screen_rooms.len() * 2, l.screens.tris());
+    }
+
+    #[test]
+    fn supports_hold_inside_their_footprint() {
+        let s = Support { c: [2.0, 2.0], rot: std::f32::consts::FRAC_PI_2, half: [1.0, 0.2], top: 0.8, prop: None };
+        assert!(s.holds(2.0, 2.9) && !s.holds(2.9, 2.0));
     }
 }

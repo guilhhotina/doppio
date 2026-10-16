@@ -1,3 +1,9 @@
+mod cemetery;
+mod church;
+mod house;
+mod mata;
+mod town;
+
 use super::cloth;
 use super::mat::{self, M4, V3};
 use super::mesh::{Faces, Mesh, Pen};
@@ -5,37 +11,99 @@ use super::texture;
 use std::collections::BTreeMap;
 
 pub type Parts = BTreeMap<(u8, u8), Mesh>;
-
 #[cfg(test)]
-pub const KINDS: [&str; 24] = [
+pub const KINDS: &[&str] = &[
     "sofa", "poltrona", "tv_tubo", "rack", "cristaleira", "mesa", "cadeira", "cama", "criado_mudo", "guarda_roupa",
     "geladeira", "fogao", "pia", "filtro_barro", "quadro_santo", "relogio_parede", "disjuntor", "estante", "banheira",
-    "vaso", "espelho", "cortina", "abajur", "rede",
+    "vaso", "espelho", "cortina", "abajur", "rede", "escada", "fogao_lenha", "pilao", "moringa", "oratorio",
+    "maquina_costura", "radio_antigo", "calendario", "quadro_fusivel", "cofre", "bau", "caixa_correio", "armario", "cesto",
+    "poste", "orelhao", "banco_praca", "coreto", "chafariz", "fusca", "kombi", "onibus", "bicicleta", "carroca", "placa",
+    "banca_jornal", "balcao", "prateleira_padaria", "mesa_bar", "engradado", "geladeira_bar", "caixa_dagua", "muro_baixo",
+    "portao_ferro", "lixeira", "letreiro_padaria", "letreiro_bar", "letreiro_farmacia", "letreiro_rodoviaria", "cartaz",
+    "caixa_registradora", "carro", "banco_igreja", "altar", "pulpito", "confessionario", "sino", "santo_estatua",
+    "vela_castical", "pia_batismal", "carteira_escolar", "quadro_negro", "vitral", "arvore", "bananeira", "bambu",
+    "cerca_madeira", "tronco", "pedra", "canoa", "forno_farinha", "poco", "lapide", "tumulo", "cruz_ferro", "anjo_estatua",
+    "cova_aberta", "ossario", "capela_altar", "vela_chao",
 ];
 
 const SIDES: Faces = Faces::NO_BOTTOM;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MarkKind {
+    Flame,
+    Abajur,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Mark {
+    pub kind: MarkKind,
+    pub pos: V3,
+    pub room: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Hinge {
+    pub pivot: V3,
+    pub axis: usize,
+    pub angle: f32,
+    pub slide: V3,
+}
+
+impl Hinge {
+    pub fn at(&self, f: f32) -> M4 {
+        let r = match self.axis {
+            0 => mat::rot_x(self.angle * f),
+            1 => mat::rot_y(self.angle * f),
+            _ => mat::rot_z(self.angle * f),
+        };
+        let back = mat::mul(&r, &mat::translate(mat::scale(self.pivot, -1.0)));
+        mat::mul(&mat::translate(mat::add(self.pivot, mat::scale(self.slide, f))), &back)
+    }
+}
+
 pub struct Sink<'a> {
     pub parts: &'a mut Parts,
     pub screens: &'a mut Mesh,
+    pub marks: &'a mut Vec<Mark>,
     pub room: u8,
     pub xf: M4,
 }
 
 impl Sink<'_> {
-    fn pen(&mut self, tex: &str) -> Pen<'_> {
+    pub fn pen(&mut self, tex: &str) -> Pen<'_> {
         let mesh = self.parts.entry((self.room, texture::id(tex))).or_default();
         Pen { mesh, xf: self.xf, density: 2.0 }
     }
 
-    fn pen_at(&mut self, tex: &str, local: &M4) -> Pen<'_> {
+    pub fn pen_at(&mut self, tex: &str, local: &M4) -> Pen<'_> {
         let xf = mat::mul(&self.xf, local);
         let mesh = self.parts.entry((self.room, texture::id(tex))).or_default();
         Pen { mesh, xf, density: 2.0 }
     }
 
-    fn screen(&mut self, lo: V3, hi: V3) {
+    pub fn screen(&mut self, lo: V3, hi: V3) {
         Pen { mesh: self.screens, xf: self.xf, density: 1.0 }.panel(lo, hi);
+    }
+
+    pub fn mark(&mut self, kind: MarkKind, local: V3) {
+        let pos = mat::point(&self.xf, local);
+        self.marks.push(Mark { kind, pos, room: self.room });
+    }
+
+    pub fn cross(&mut self, tex: &str, c: V3, w: f32, h: f32, n: usize, tilt: f32) {
+        let mut p = self.pen(tex);
+        (0..n).for_each(|i| {
+            let a = i as f32 * std::f32::consts::PI / n as f32 + tilt;
+            let (s, k) = (a.sin() * w * 0.5, a.cos() * w * 0.5);
+            let q = [[c[0] - k, c[1], c[2] - s], [c[0] + k, c[1], c[2] + s], [c[0] + k, c[1] + h, c[2] + s], [c[0] - k, c[1] + h, c[2] - s]];
+            let uv = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+            p.quad(q, uv);
+        });
+    }
+
+    pub fn flat(&mut self, tex: &str, lo: V3, hi: V3) {
+        let q = [[lo[0], lo[1], lo[2]], [hi[0], lo[1], hi[2]], [hi[0], hi[1], hi[2]], [lo[0], hi[1], lo[2]]];
+        self.pen(tex).quad(q, [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]]);
     }
 }
 
@@ -44,11 +112,71 @@ pub fn surface(kind: &str) -> Option<([f32; 2], f32)> {
         "rack" => Some(([0.6, 0.2], 0.5)),
         "criado_mudo" => Some(([0.22, 0.2], 0.55)),
         "mesa" => Some(([0.8, 0.45], 0.78)),
+        "mesa_bar" => Some(([0.4, 0.4], 0.74)),
+        "balcao" => Some(([1.0, 0.3], 1.0)),
+        "altar" => Some(([1.1, 0.4], 1.0)),
+        "capela_altar" => Some(([0.8, 0.35], 0.95)),
+        "carteira_escolar" => Some(([0.3, 0.22], 0.72)),
+        "engradado" => Some(([0.25, 0.2], 0.3)),
+        "oratorio" => Some(([0.25, 0.12], 0.06)),
+        "tumulo" => Some(([0.5, 1.05], 0.7)),
+        "maquina_costura" => Some(([0.45, 0.22], 0.78)),
+        "banca_jornal" => Some(([0.7, 0.4], 0.95)),
         _ => None,
     }
 }
 
-pub fn build(kind: &str, s: &mut Sink, supported: bool) {
+pub fn content(kind: &str) -> f32 {
+    match kind {
+        "bau" | "cesto" | "engradado" => 0.25,
+        "cofre" => 0.32,
+        "geladeira" | "geladeira_bar" | "guarda_roupa" | "armario" | "estante" | "prateleira_padaria" => 0.95,
+        "cristaleira" => 0.45,
+        "criado_mudo" => 0.4,
+        "caixa_correio" | "quadro_fusivel" => 1.2,
+        "oratorio" => 1.3,
+        "balcao" => 0.6,
+        _ => 0.0,
+    }
+}
+
+pub fn hinge(kind: &str) -> Option<Hinge> {
+    let h = |pivot: V3, axis: usize, angle: f32| Some(Hinge { pivot, axis, angle, slide: [0.0; 3] });
+    let slide = |d: V3| Some(Hinge { pivot: [0.0; 3], axis: 1, angle: 0.0, slide: d });
+    match kind {
+        "bau" => h([0.0, 0.42, -0.25], 0, -1.7),
+        "cofre" => h([-0.25, 0.0, 0.25], 1, -1.8),
+        "guarda_roupa" => h([0.76, 0.0, 0.306], 1, 1.7),
+        "armario" => h([0.45, 0.0, 0.26], 1, 1.7),
+        "cristaleira" => h([0.44, 0.0, 0.24], 1, 1.7),
+        "geladeira" | "geladeira_bar" => h([-0.35, 0.0, 0.34], 1, -1.8),
+        "criado_mudo" | "balcao" => slide([0.0, 0.0, 0.28]),
+        "caixa_correio" => h([0.0, 1.05, 0.12], 0, 1.4),
+        "caixa_dagua" => h([0.0, 1.4, -0.6], 0, -1.2),
+        "portao_ferro" => h([-0.5, 0.0, 0.0], 1, -1.5),
+        "tumulo" | "ossario" => slide([0.7, 0.0, 0.0]),
+        _ => None,
+    }
+}
+
+pub fn wheel(s: &mut Sink, tex: &str, c: V3, r: f32, w: f32, outward: f32, sides: usize) {
+    let local = mat::mul(&mat::translate(c), &mat::rot_z(outward * std::f32::consts::FRAC_PI_2));
+    s.pen_at(tex, &local).cylinder([0.0, -w * 0.5, 0.0], r, r, w, sides, true);
+}
+
+pub fn build(kind: &str, s: &mut Sink, supported: bool) -> bool {
+    let known = v1(kind, s, supported) || house::build(kind, s) || town::build(kind, s) || church::build(kind, s) || mata::build(kind, s) || cemetery::build(kind, s);
+    if !known {
+        s.pen("concreto").cuboid([-0.3, 0.0, -0.3], [0.3, 0.6, 0.3], SIDES);
+    }
+    known
+}
+
+pub fn part(kind: &str, s: &mut Sink) {
+    let _ = v1_part(kind, s) || house::part(kind, s) || town::part(kind, s) || cemetery::part(kind, s);
+}
+
+fn v1(kind: &str, s: &mut Sink, supported: bool) -> bool {
     match kind {
         "sofa" => sofa(s, 0.95, 3),
         "poltrona" => sofa(s, 0.45, 1),
@@ -74,11 +202,26 @@ pub fn build(kind: &str, s: &mut Sink, supported: bool) {
         "cortina" => cortina(s),
         "abajur" => abajur(s, supported),
         "rede" => rede(s),
-        _ => s.pen("concreto").cuboid([-0.3, 0.0, -0.3], [0.3, 0.6, 0.3], SIDES),
+        _ => return false,
     }
+    true
 }
 
-fn legs(p: &mut Pen, x: f32, z0: f32, z1: f32, h: f32, t: f32) {
+fn v1_part(kind: &str, s: &mut Sink) -> bool {
+    match kind {
+        "criado_mudo" => s.pen("madeira_porta").cuboid([-0.19, 0.1, 0.0], [0.19, 0.5, 0.206], Faces(0x1f)),
+        "cristaleira" => s.pen("madeira_porta").cuboid([0.0, 0.08, 0.226], [0.44, 0.85, 0.24], Faces::ALL),
+        "guarda_roupa" => s.pen("madeira_porta").cuboid([0.01, 0.06, 0.29], [0.76, 2.0, 0.306], Faces(0x3f)),
+        "geladeira" => {
+            s.pen("reboco").cuboid([-0.35, 0.06, 0.33], [0.35, 1.58, 0.36], Faces::ALL);
+            s.pen("metal").cuboid([0.24, 0.9, 0.36], [0.28, 1.35, 0.4], Faces::NO_BACK);
+        }
+        _ => return false,
+    }
+    true
+}
+
+pub fn legs(p: &mut Pen, x: f32, z0: f32, z1: f32, h: f32, t: f32) {
     [(-x, z0), (x - t, z0), (-x, z1 - t), (x - t, z1 - t)]
         .iter()
         .for_each(|&(lx, lz)| p.cuboid([lx, 0.0, lz], [lx + t, h, lz + t], Faces(0x33)));
@@ -137,7 +280,6 @@ fn cristaleira(s: &mut Sink) {
     p.cuboid([-0.54, 1.85, -0.24], [0.54, 1.95, 0.26], Faces::ALL);
     s.pen("vidro_noite").panel([-0.42, 0.95, 0.0], [0.42, 1.78, 0.226]);
     s.pen("madeira_porta").panel([-0.44, 0.08, 0.0], [0.0, 0.85, 0.226]);
-    s.pen("madeira_porta").panel([0.0, 0.08, 0.0], [0.44, 0.85, 0.226]);
     let mut c = s.pen("ceramica_barro");
     [1.05f32, 1.45].iter().for_each(|&y| c.cuboid([-0.36, y, 0.05], [0.36, y + 0.18, 0.06], Faces(0x10)));
 }
@@ -171,7 +313,6 @@ fn criado_mudo(s: &mut Sink) {
     let mut p = s.pen("madeira_escura");
     p.cuboid([-0.22, 0.06, -0.2], [0.22, 0.55, 0.2], SIDES);
     legs(&mut p, 0.21, -0.19, 0.19, 0.06, 0.035);
-    s.pen("madeira_porta").panel([-0.19, 0.1, 0.0], [0.19, 0.5, 0.206]);
     s.pen("metal").cuboid([-0.025, 0.4, 0.2], [0.025, 0.43, 0.23], Faces::NO_BACK);
 }
 
@@ -180,9 +321,8 @@ fn guarda_roupa(s: &mut Sink) {
     p.cuboid([-0.8, 0.0, -0.3], [0.8, 2.05, 0.3], SIDES);
     p.cuboid([-0.84, 2.05, -0.32], [0.84, 2.15, 0.33], Faces::NO_BOTTOM);
     s.pen("madeira_porta").panel([-0.76, 0.06, 0.0], [-0.01, 2.0, 0.306]);
-    s.pen("madeira_porta").panel([0.01, 0.06, 0.0], [0.76, 2.0, 0.306]);
     let mut m = s.pen("metal");
-    [-0.08f32, 0.05].iter().for_each(|&x| m.cuboid([x, 0.95, 0.3], [x + 0.03, 1.15, 0.33], Faces::NO_BACK));
+    [-0.08f32].iter().for_each(|&x| m.cuboid([x, 0.95, 0.3], [x + 0.03, 1.15, 0.33], Faces::NO_BACK));
 }
 
 fn geladeira(s: &mut Sink) {
@@ -193,10 +333,7 @@ fn geladeira(s: &mut Sink) {
         [[-0.35, 1.58, 0.33], [0.35, 1.58, 0.33], [0.31, 1.66, 0.3], [-0.31, 1.66, 0.3]],
         [[0.0, 0.2], [1.4, 0.2], [1.3, 0.0], [0.1, 0.0]],
     );
-    let mut m = s.pen("metal");
-    m.cuboid([0.24, 0.9, 0.33], [0.28, 1.35, 0.37], Faces::NO_BACK);
-    m.cuboid([-0.35, 1.08, 0.33], [0.35, 1.1, 0.335], Faces(0x10));
-    legs(&mut m, 0.32, -0.3, 0.3, 0.06, 0.04);
+    legs(&mut s.pen("metal"), 0.32, -0.3, 0.3, 0.06, 0.04);
 }
 
 fn fogao(s: &mut Sink) {
@@ -240,7 +377,7 @@ fn filtro(s: &mut Sink) {
     s.pen("metal").cuboid([-0.015, 0.88, 0.15], [0.015, 0.91, 0.22], Faces::NO_BACK);
 }
 
-fn wall_panel(s: &mut Sink, frame: &str, face: &str, half: [f32; 2], y: f32, d: f32) {
+pub fn wall_panel(s: &mut Sink, frame: &str, face: &str, half: [f32; 2], y: f32, d: f32) {
     let (lo, hi) = ([-half[0], y - half[1], 0.0], [half[0], y + half[1], d]);
     s.pen(frame).cuboid(lo, hi, Faces::NO_BACK);
     s.pen(face).panel([lo[0] + 0.03, lo[1] + 0.03, 0.0], [hi[0] - 0.03, hi[1] - 0.03, d + 0.006]);
@@ -304,27 +441,14 @@ fn vaso(s: &mut Sink) {
     s.pen("concreto").cylinder([0.0, 0.386, 0.05], 0.13, 0.13, 0.001, 8, true);
 }
 
-pub fn rod(s: &mut Sink) {
-    s.pen("metal").cuboid([-0.75, 2.3, 0.06], [0.75, 2.33, 0.09], Faces(0x17));
-}
-
-pub fn cloth(s: &mut Sink) {
-    let mut p = s.pen("colcha");
-    cloth::quads(1, |_, _| 0.0, |q, uv| p.quad(q, uv));
-}
-
 fn cortina(s: &mut Sink) {
-    rod(s);
-    cloth(s);
+    s.pen("metal").cuboid([-0.75, 2.3, 0.06], [0.75, 2.33, 0.09], Faces(0x17));
+    let mut p = s.pen("colcha");
+    cloth::quads(1, |q, uv| p.quad(q, uv));
 }
 
 fn abajur_dims(supported: bool) -> (f32, f32, f32) {
     if supported { (0.28, 0.18, 0.15) } else { (1.35, 0.28, 0.24) }
-}
-
-pub fn shade_centre(supported: bool) -> V3 {
-    let (stem, shade, _) = abajur_dims(supported);
-    [0.0, stem - 0.02 + shade * 0.5, 0.0]
 }
 
 fn abajur(s: &mut Sink, supported: bool) {
@@ -333,6 +457,7 @@ fn abajur(s: &mut Sink, supported: bool) {
     m.cylinder([0.0, 0.0, 0.0], 0.09, 0.07, 0.03, 6, true);
     m.cylinder([0.0, 0.03, 0.0], 0.012, 0.012, stem, 4, false);
     s.pen("colcha").cylinder([0.0, stem - 0.02, 0.0], r, r * 0.6, shade, 6, false);
+    s.mark(MarkKind::Abajur, [0.0, stem - 0.02 + shade * 0.5, 0.0]);
 }
 
 fn rede(s: &mut Sink) {
@@ -362,27 +487,49 @@ mod tests {
     use super::*;
     use crate::map;
 
-    fn build_one(kind: &str) -> (usize, usize) {
-        let (mut parts, mut screens) = (Parts::new(), Mesh::default());
-        build(kind, &mut Sink { parts: &mut parts, screens: &mut screens, room: 0, xf: mat::IDENTITY }, false);
-        (parts.values().map(Mesh::tris).sum::<usize>(), screens.tris())
+    pub fn build_one(kind: &str) -> (usize, usize, usize, bool) {
+        let (mut parts, mut screens, mut marks) = (Parts::new(), Mesh::default(), Vec::new());
+        let mut sink = Sink { parts: &mut parts, screens: &mut screens, marks: &mut marks, room: 0, xf: mat::IDENTITY };
+        let known = build(kind, &mut sink, false);
+        let mut moving = Parts::new();
+        part(kind, &mut Sink { parts: &mut moving, screens: &mut screens, marks: &mut marks, room: 0, xf: mat::IDENTITY });
+        (parts.values().map(Mesh::tris).sum::<usize>(), screens.tris(), moving.values().map(Mesh::tris).sum::<usize>(), known)
     }
 
     #[test]
-    fn catalog_is_low_poly() {
+    fn catalog_is_low_poly_and_known() {
+        let big = ["coreto", "onibus", "kombi", "fusca", "carro", "carroca", "chafariz", "altar", "arvore", "ponte", "bicicleta", "capela_altar", "maquina_costura"];
         KINDS.iter().for_each(|k| {
-            let (t, _) = build_one(k);
-            assert!((8..=160).contains(&t), "{k}: {t} tris");
+            let (t, _, _, known) = build_one(k);
+            let cap = if big.contains(k) { 420 } else { 200 };
+            assert!((2..=cap).contains(&t), "{k}: {t} tris");
+            assert!(known, "{k} fell back to the placeholder");
         });
     }
 
     #[test]
-    fn map_props_are_cataloged() {
-        map::sobrado().props.iter().for_each(|p| assert!(KINDS.contains(&p.kind), "unknown prop {}", p.kind));
+    fn movers_have_a_moving_part() {
+        KINDS.iter().filter(|k| hinge(k).is_some_and(|h| h.angle != 0.0 || h.slide != [0.0; 3])).for_each(|k| {
+            assert!(build_one(k).2 > 0, "{k} has a hinge but no part");
+        });
+    }
+
+    #[test]
+    fn hinge_rotates_about_its_pivot() {
+        let h = hinge("bau").expect("bau");
+        assert!(mat::len(mat::sub(mat::point(&h.at(1.0), h.pivot), h.pivot)) < 1e-5);
+        let lid = mat::point(&h.at(1.0), [0.0, 0.42, 0.2]);
+        assert!(lid[1] > 0.7, "{lid:?}");
     }
 
     #[test]
     fn tv_has_screen() {
         assert_eq!(build_one("tv_tubo").1, 2);
+    }
+
+    #[test]
+    fn sample_map_props_are_cataloged() {
+        let m = map::parse(include_str!("testdata/rua.map")).expect("rua");
+        m.props.iter().for_each(|p| assert!(KINDS.contains(&p.kind), "unknown prop {}", p.kind));
     }
 }

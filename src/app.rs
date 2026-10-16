@@ -1,27 +1,25 @@
 mod backdrop;
-mod bench;
 mod clock;
 mod flow;
 mod game;
 mod layout;
 mod pad;
+mod save;
 
 use crate::audio::Audio;
 use crate::core::{Frontend, HEIGHT, SAMPLE_RATE, WIDTH};
-use crate::ffi::LOG_INFO;
+use crate::ffi::{LOG_INFO, LOG_WARN};
 use crate::gl::{self, Gl};
-use crate::map;
+use crate::map::{self, Map};
 use crate::net::{self, Link, Net};
-use crate::render::{Renderer, Tell, Ui2d, View};
-use crate::sim::{Anim, MAX_BODIES, MAX_PLAYERS};
+use crate::render::{Renderer, Ui2d, View};
+use crate::sim::MAX_PLAYERS;
 use crate::ui;
 use backdrop::Backdrop;
-use bench::{Bench, Spec};
-use clock::Clock;
-use flow::{Notice, Screen};
-use game::Game;
+use flow::{Look, Notice, Screen};
+use game::{Game, PauseAction, Stage, VIEWS};
 use pad::Pad;
-use std::ffi::CStr;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 const PERF_FRAMES: u32 = 300;
@@ -36,6 +34,7 @@ struct Perf {
 }
 
 pub struct App {
+    maps: &'static [&'static Map<'static>],
     net: Net,
     audio: Audio,
     gfx: Option<(Gl, Renderer)>,
@@ -44,52 +43,31 @@ pub struct App {
     screen: Screen,
     game: Option<Box<Game>>,
     backdrop: Backdrop,
-    bench: Option<(Bench, usize, Clock)>,
     ports: [Option<u8>; MAX_PLAYERS],
-    night_secs: u32,
+    save_dir: Option<PathBuf>,
+    unlocked: u8,
+    focus: usize,
     hashlog: u32,
+    stage: Option<Stage>,
     frame: u32,
     perf: Perf,
 }
 
-fn number<T: std::str::FromStr>(fe: &Frontend, key: &CStr) -> Option<T> {
-    fe.variable(key).and_then(|v| v.trim().parse().ok())
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct Direct {
+    phase: u8,
+    characters: [u8; MAX_PLAYERS],
+    players: usize,
 }
 
-fn triple(fe: &Frontend, key: &CStr) -> Option<[f32; 3]> {
-    fe.variable(key)
-        .map(|v| v.split(',').filter_map(|s| s.trim().parse::<f32>().ok()).collect::<Vec<f32>>())
-        .filter(|v| v.len() == 3)
-        .map(|v| [v[0], v[1], v[2]])
-}
-
-fn bench_spec(fe: &Frontend) -> Option<(Spec, usize)> {
-    let bodies = number::<usize>(fe, c"doppio_bench")?;
-    let spawn = map::sobrado().spawns[0];
-    let at = triple(fe, c"doppio_at").unwrap_or([spawn.pos.x.to_f32(), spawn.pos.y.to_f32(), spawn.rot.to_rad().to_degrees()]);
-    let anim = match fe.variable(c"doppio_anim").as_deref() {
-        Some("walk") => Anim::Walk,
-        Some("run") => Anim::Run,
-        Some("reach") => Anim::Reach,
-        Some("stagger") => Anim::Stagger,
-        _ => Anim::Idle,
-    };
-    let spec = Spec {
-        bodies: bodies.clamp(1, MAX_BODIES),
-        at,
-        power: number::<u8>(fe, c"doppio_power") != Some(0),
-        lantern: number::<u8>(fe, c"doppio_lantern") != Some(0),
-        anim,
-        tells: match fe.variable(c"doppio_tells").as_deref() {
-            Some("pending") => Tell::Pending,
-            Some("done") => Tell::Done,
-            _ => Tell::Idle,
-        },
-        gaze: number::<f32>(fe, c"doppio_gaze"),
-        caught: number::<u8>(fe, c"doppio_caught").is_some_and(|c| c != 0),
-        echo: triple(fe, c"doppio_echo"),
-    };
-    Some((spec, number::<usize>(fe, c"doppio_views").unwrap_or(1).clamp(1, 4)))
+fn direct(phase: Option<&str>, chars: Option<&str>, phases: usize) -> Option<Direct> {
+    let phase = phase.and_then(|p| p.trim().parse::<usize>().ok()).filter(|&p| p < phases);
+    let list: Vec<u8> = chars.map_or(vec![], |c| c.split(',').filter_map(|s| s.trim().parse().ok()).filter(|&c: &u8| (c as usize) < MAX_PLAYERS).collect());
+    (phase.is_some() || !list.is_empty()).then(|| Direct {
+        phase: phase.unwrap_or(0) as u8,
+        characters: std::array::from_fn(|i| list.get(i).copied().unwrap_or(i as u8)),
+        players: list.len().clamp(1, MAX_PLAYERS),
+    })
 }
 
 fn ports_list(ports: &[Option<u8>; MAX_PLAYERS]) -> ([u8; MAX_PLAYERS], usize) {
@@ -98,32 +76,52 @@ fn ports_list(ports: &[Option<u8>; MAX_PLAYERS]) -> ([u8; MAX_PLAYERS], usize) {
     (list, ports.iter().flatten().count())
 }
 
+fn side(bits: u16) -> Option<i8> {
+    match (bits & pad::LEFT != 0, bits & pad::RIGHT != 0) {
+        (true, false) => Some(-1),
+        (false, true) => Some(1),
+        _ => None,
+    }
+}
+
 impl App {
     pub fn new(fe: &Frontend) -> App {
         net::register(fe);
-        let net = Net::new(fe);
-        let night_secs = flow::night_choice(number(fe, c"doppio_night_seconds"));
-        let bench = bench_spec(fe).map(|(s, views)| (Bench::new(map::sobrado(), &s), views, Clock::new(Instant::now())));
+        let maps = map::campaign();
+        let save_dir = fe.save_dir();
+        let unlocked = save::load(save_dir.as_deref(), maps.len() as u8);
+        let start = direct(fe.variable(c"doppio_phase").as_deref(), fe.variable(c"doppio_chars").as_deref(), maps.len());
         fe.log(
             LOG_INFO,
-            &format!("{} loaded (night_seconds={night_secs}, lobby={})", env!("CARGO_PKG_VERSION"), net.lobby_supported()),
+            &format!("{} loaded ({} phases, {unlocked} unlocked, save dir {:?}, direct {start:?})", env!("CARGO_PKG_VERSION"), maps.len(), save_dir),
         );
-        App {
-            net,
+        let mut app = App {
+            maps,
+            net: Net::new(fe),
             audio: Audio::new(SAMPLE_RATE),
             gfx: None,
             ui: Ui2d::new(),
             pad: Pad::default(),
             screen: Screen::Title,
             game: None,
-            backdrop: Backdrop::new(map::sobrado()),
-            bench,
+            backdrop: Backdrop::new(maps, Instant::now()),
             ports: [Some(0), None, None, None],
-            night_secs,
-            hashlog: number(fe, c"doppio_hashlog").unwrap_or(0),
+            save_dir,
+            unlocked,
+            focus: 0,
+            hashlog: fe.variable(c"doppio_hashlog").and_then(|v| v.trim().parse().ok()).unwrap_or(0),
+            stage: fe.variable(c"doppio_stage").as_deref().and_then(game::stage_named),
             frame: 0,
             perf: Perf::default(),
-        }
+        };
+        start.iter().for_each(|d| {
+            app.ports = std::array::from_fn(|i| (i < d.players).then_some(i as u8));
+            app.sync_ports();
+            d.characters.iter().take(d.players).enumerate().for_each(|(i, &c)| app.net.set_character(i, c));
+            app.net.set_phase(d.phase);
+            app.net.start();
+        });
+        app
     }
 
     pub fn reset(&mut self) {
@@ -134,11 +132,8 @@ impl App {
 
     pub fn context_reset(&mut self, fe: &Frontend, gl: Gl) {
         fe.log(LOG_INFO, &format!("GL renderer: {}", gl.string(gl::RENDERER).unwrap_or("?")));
-        let r = Renderer::new(&gl, map::sobrado());
-        fe.log(
-            LOG_INFO,
-            &format!("level {} tris, mannequin {:?} tris, textures {} KB", r.level_tris(), r.body_tris(), r.texture_bytes() / 1024),
-        );
+        let r = Renderer::new(&gl, self.maps[0]);
+        fe.log(LOG_INFO, &format!("level {} tris, textures {} KB", r.level_tris(), r.texture_bytes() / 1024));
         self.gfx = Some((gl, r));
     }
 
@@ -153,14 +148,24 @@ impl App {
         self.screen = screen;
     }
 
-    fn begin(&mut self, solo: bool) {
-        if solo {
-            self.ports = [Some(0), None, None, None];
-        }
+    fn sync_ports(&mut self) {
         let (list, n) = ports_list(&self.ports);
         self.net.set_local_players(&list[..n]);
-        self.net.set_night_secs(self.night_secs);
+    }
+
+    fn begin(&mut self) {
+        self.sync_ports();
         self.net.start();
+    }
+
+    fn unlock(&mut self, fe: &Frontend, won: u8) {
+        let next = (won as usize + 2).min(self.maps.len()) as u8;
+        if next > self.unlocked {
+            self.unlocked = next;
+            if let Err(e) = save::store(self.save_dir.as_deref(), next) {
+                fe.log(LOG_WARN, &format!("could not save progress: {e}"));
+            }
+        }
     }
 
     fn watch_net(&mut self, fe: &Frontend) {
@@ -179,11 +184,10 @@ impl App {
             (_, None) => match self.net.started() {
                 Some(setup) => {
                     let online = link != Link::Offline;
-                    fe.log(
-                        LOG_INFO,
-                        &format!("game begins: seed {:08x}, {} players, {} s nights, online {online}", setup.seed, setup.players, setup.night_secs),
-                    );
-                    self.game = Some(Box::new(Game::new(setup, self.net.seats(), online, self.hashlog, Instant::now())));
+                    fe.log(LOG_INFO, &format!("game begins: {setup:?}, online {online}"));
+                    let mut g = Box::new(Game::new(self.maps, setup, self.net.seats(), online, self.hashlog, Instant::now()));
+                    self.stage.take().into_iter().for_each(|s| g.force(s));
+                    self.game = Some(g);
                     self.audio = Audio::new(SAMPLE_RATE);
                     self.screen = Screen::Game;
                 }
@@ -213,16 +217,34 @@ impl App {
             _ => false,
         };
         if changed {
-            let (list, n) = ports_list(&self.ports);
-            self.net.set_local_players(&list[..n]);
+            self.sync_ports();
         }
         changed
     }
 
+    fn pick(&mut self, local: usize, dir: i8) {
+        let (list, n) = ports_list(&self.ports);
+        let seats = self.net.seats();
+        let Some(i) = (local < n).then(|| seats.iter().position(|s| s.local_port == Some(list[local]))).flatten() else { return };
+        let taken = seats.iter().enumerate().filter(|&(k, _)| k != i).fold(0u8, |m, (_, s)| m | 1 << s.character);
+        let c = flow::next_free(seats[i].character, dir, taken);
+        self.net.set_character(local, c);
+        self.focus = i;
+    }
+
     fn menus(&mut self, edges: &[u16; 4]) {
-        let guest = matches!(self.screen, Screen::Couch { .. } | Screen::Lobby { .. }) && self.join_ports(edges);
-        let own = if guest { 0 } else { edges[0] | edges[1..].iter().fold(0, |m, e| m | e & !(pad::START | pad::B)) };
-        let key = pad::key(own);
+        let screen = self.screen;
+        let guest = screen.joining() && self.join_ports(edges);
+        if screen.picking() {
+            (1..4usize).for_each(|p| {
+                let local = self.ports.iter().flatten().position(|&q| q as usize == p);
+                if let (Some(d), Some(local)) = (side(edges[p]), local) {
+                    self.pick(local, d);
+                }
+            });
+        }
+        let mask = pad::START | pad::B | if screen.picking() { pad::LEFT | pad::RIGHT } else { 0 };
+        let own = if guest { 0 } else { edges[0] | edges[1..].iter().fold(0, |m, e| m | e & !mask) };
         let ctx = flow::Ctx {
             lobby: self.net.lobby_supported(),
             rooms: self.net.rooms().len(),
@@ -230,27 +252,36 @@ impl App {
             players: self.ports.iter().flatten().count(),
             remote: self.net.seats().iter().any(|s| s.local_port.is_none()),
             frame: self.frame,
+            phases: self.maps.len(),
+            unlocked: self.unlocked as usize,
         };
-        let (next, action) = flow::step(self.screen, key, &ctx);
+        let (next, action) = flow::step(screen, pad::key(own), &ctx);
         self.screen = next;
         match action {
             flow::Action::None => {}
-            flow::Action::Solo => self.begin(true),
-            flow::Action::Couch => self.begin(false),
-            flow::Action::Night(dir) => self.night_secs = flow::next_night(self.night_secs, dir),
+            flow::Action::Solo | flow::Action::Couch => {
+                self.ports = [Some(0), None, None, None];
+                self.focus = 0;
+                self.sync_ports();
+            }
+            flow::Action::Phase(p) => self.net.set_phase(p),
+            flow::Action::PhaseStep(d) => {
+                let p = (self.net.phase() as i16 + d as i16).rem_euclid(self.unlocked.max(1) as i16);
+                self.net.set_phase(p as u8);
+            }
+            flow::Action::Character(d) => self.pick(0, d),
+            flow::Action::Begin => self.begin(),
             flow::Action::Host { public, relay } => {
-                let (list, n) = ports_list(&self.ports);
-                self.net.set_local_players(&list[..n]);
+                self.sync_ports();
                 self.net.host(public, flow::RELAYS[relay].1);
+                self.net.set_phase(self.net.phase().min(self.unlocked.saturating_sub(1)));
             }
             flow::Action::Refresh => self.net.refresh_rooms(),
             flow::Action::Join(i) => {
-                let (list, n) = ports_list(&self.ports);
-                self.net.set_local_players(&list[..n]);
+                self.sync_ports();
                 self.net.join(i);
             }
             flow::Action::Start => {
-                self.net.set_night_secs(self.night_secs);
                 self.net.start();
             }
             flow::Action::Ready => {
@@ -258,7 +289,6 @@ impl App {
                 self.net.set_ready(ready);
             }
             flow::Action::Leave => self.quit_to(self.screen),
-            flow::Action::CouchReset => self.ports = [Some(0), None, None, None],
         }
     }
 
@@ -267,27 +297,38 @@ impl App {
         let now = Instant::now();
         let key = pad::key(pad::merged(edges));
         let held = g.held_to_pause(input, now);
+        let start = (0..4).find(|&p| edges[p] & pad::PAUSE != 0).and_then(|p| g.seat_of(p));
         match (g.over(), g.pause) {
             (true, _) if key == Some(pad::Key::Confirm) => return self.quit_to(Screen::main()),
             (true, _) => {}
-            (false, None) if held || pad::merged(edges) & pad::PAUSE != 0 => g.pause = Some(0),
-            (false, None) => {}
-            (false, Some(sel)) => match key {
-                Some(pad::Key::Confirm) if sel == 1 => return self.quit_to(Screen::main()),
-                Some(pad::Key::Confirm | pad::Key::Back) => g.resume(input),
-                k => g.pause = Some(pad::list(sel, 2, k)),
+            (false, None) => held.or(start).into_iter().for_each(|seat| g.open_pause(seat)),
+            (false, Some(p)) => match (key, g.pause_choice()) {
+                (Some(pad::Key::Confirm), Some(PauseAction::Quit)) => return self.quit_to(Screen::main()),
+                (Some(pad::Key::Confirm), Some(PauseAction::Drop)) => g.drop_item(input),
+                (Some(pad::Key::Confirm | pad::Key::Back), _) => g.resume(input),
+                (k, _) => g.pause = Some(game::Pause { sel: pad::list(p.sel, g.pause_len(), k), ..p }),
             },
         }
         g.advance(fe, &mut self.net, &mut self.audio, input, now);
+        if let Some(won) = g.take_won() {
+            self.unlock(fe, won);
+        }
+    }
+
+    fn focus_character(&self) -> u8 {
+        let seats = self.net.seats();
+        seats.get(self.focus).or_else(|| seats.iter().find(|s| s.local_port.is_some())).map_or(0, |s| s.character)
     }
 
     fn draw_menus(&mut self) {
-        let ui = &mut self.ui;
         let t = self.frame;
         match self.screen {
-            Screen::Title => ui::title(ui, t, concat!("v", env!("CARGO_PKG_VERSION"))),
+            Screen::Title => ui::title(&mut self.ui, t, concat!("v", env!("CARGO_PKG_VERSION"))),
             Screen::Game => {}
-            s => flow::draw(ui, s, &self.net, &self.ports, self.night_secs, t),
+            s => {
+                let look = Look { net: &self.net, maps: self.maps, unlocked: self.unlocked as usize, focus: self.focus_character(), t };
+                flow::draw(&mut self.ui, s, &look);
+            }
         }
     }
 
@@ -312,28 +353,19 @@ impl App {
         }
     }
 
-    fn bench_frame(&mut self) -> bool {
-        let Some((b, n, clock)) = &mut self.bench else { return false };
-        clock.run(Instant::now(), || {
-            b.step();
-            true
+    fn menu_views(&self) -> ([View; VIEWS], usize) {
+        let dim = if self.screen == Screen::Title { TITLE_FADE } else { MENU_FADE };
+        let (portraits, n) = flow::portraits(self.screen, &self.net);
+        let views = std::array::from_fn(|i| match i.checked_sub(1).filter(|&k| k < n) {
+            Some(k) => View { rect: portraits[k].0, follow: 0, fade: 0, portrait: Some(portraits[k].1) },
+            None => self.backdrop.view(dim),
         });
-        let rects = layout::rects(*n);
-        let views: [View; 4] = std::array::from_fn(|i| View { rect: rects[i], follow: (i * 5) as u8, fade: 0, duplo: false });
-        self.ui.clear();
-        let Some((gl, r)) = &mut self.gfx else { return false };
-        r.draw(gl, gl.target_framebuffer(), WIDTH, HEIGHT, &b.scene(), &views[..*n], &self.ui);
-        true
+        (views, n + 1)
     }
 
     pub fn frame(&mut self, fe: &Frontend, input: [u16; 4]) -> bool {
         let start = Instant::now();
         self.frame = self.frame.wrapping_add(1);
-        if self.bench.is_some() {
-            let drawn = self.bench_frame();
-            self.report(fe, start.elapsed());
-            return drawn;
-        }
         self.net.poll(fe);
         let edges = self.pad.edges(&input);
         self.watch_net(fe);
@@ -342,11 +374,15 @@ impl App {
             _ => self.menus(&edges),
         }
         self.watch_net(fe);
-        if self.game.is_none() {
-            self.backdrop.tick(self.frame);
+        let playing = self.game.as_ref().filter(|_| self.screen == Screen::Game);
+        if playing.is_none() {
+            self.backdrop.tick(start, self.unlocked as usize);
         }
-        let views = self.game.as_ref().filter(|_| self.screen == Screen::Game).map_or(1, |g| g.views().1);
-        if !self.gfx.as_mut().is_some_and(|(_, r)| r.due(views)) {
+        let (views, n) = match playing {
+            Some(g) => g.views(),
+            None => self.menu_views(),
+        };
+        if !self.gfx.as_mut().is_some_and(|(_, r)| r.due(n)) {
             self.report(fe, start.elapsed());
             return false;
         }
@@ -354,16 +390,12 @@ impl App {
         self.draw_menus();
         let Some((gl, r)) = &mut self.gfx else { return false };
         let target = gl.target_framebuffer();
-        match &self.game {
-            Some(g) if self.screen == Screen::Game => {
+        match self.game.as_ref().filter(|_| self.screen == Screen::Game) {
+            Some(g) => {
                 g.draw(&mut self.ui, self.frame);
-                let (views, n) = g.views();
                 r.frame(gl, target, WIDTH, HEIGHT, g.world(), &views[..n], &self.ui);
             }
-            _ => {
-                let dim = if self.screen == Screen::Title { TITLE_FADE } else { MENU_FADE };
-                r.draw(gl, target, WIDTH, HEIGHT, &self.backdrop.scene(), &[self.backdrop.view(dim)], &self.ui);
-            }
+            None => r.frame(gl, target, WIDTH, HEIGHT, self.backdrop.world(), &views[..n], &self.ui),
         }
         self.report(fe, start.elapsed());
         true
@@ -371,5 +403,36 @@ impl App {
 
     pub fn audio(&mut self, out: &mut [i16]) {
         self.audio.fill(out);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::LazyLock;
+
+    static SAMPLE: LazyLock<Map<'static>> = LazyLock::new(|| map::parse(include_str!("ui/sample.map")).unwrap_or_else(|e| panic!("{e}")));
+    static MAPS: LazyLock<[&'static Map<'static>; 3]> = LazyLock::new(|| [&*SAMPLE, &*SAMPLE, &*SAMPLE]);
+
+    pub fn sample_maps() -> &'static [&'static Map<'static>] {
+        &*MAPS
+    }
+
+    #[test]
+    fn direct_start_reads_phase_and_characters() {
+        assert_eq!(direct(None, None, 5), None);
+        assert_eq!(direct(Some("5"), None, 5), None);
+        assert_eq!(direct(Some("2"), None, 5), Some(Direct { phase: 2, characters: [0, 1, 2, 3], players: 1 }));
+        assert_eq!(direct(None, Some("3, 1"), 5), Some(Direct { phase: 0, characters: [3, 1, 2, 3], players: 2 }));
+        assert_eq!(direct(Some("4"), Some("2,0,1,3,1"), 5), Some(Direct { phase: 4, characters: [2, 0, 1, 3], players: 4 }));
+        assert_eq!(direct(Some("x"), Some("7,z"), 5), None);
+    }
+
+    #[test]
+    fn sides_and_ports() {
+        assert_eq!(side(pad::LEFT), Some(-1));
+        assert_eq!(side(pad::RIGHT | pad::A), Some(1));
+        assert_eq!(side(pad::LEFT | pad::RIGHT), None);
+        assert_eq!(ports_list(&[None, Some(2), None, Some(1)]), ([2, 1, 0, 0], 2));
     }
 }

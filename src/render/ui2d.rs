@@ -74,6 +74,11 @@ impl Ui2d {
     pub fn rect(&mut self, x: i16, y: i16, w: i16, h: i16, color: u16) {
         self.quad(x, y, w, h, font::SOLID, rgb(color));
     }
+
+    pub fn shade(&mut self, x: i16, y: i16, w: i16, h: i16, color: u16, alpha: u8) {
+        let [r, g, b, _] = rgb(color);
+        self.quad(x, y, w, h, font::SOLID, [r, g, b, alpha]);
+    }
 }
 
 #[cfg(test)]

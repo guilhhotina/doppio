@@ -29,10 +29,11 @@ struct Machine {
     nick: [u8; NICK],
     count: u8,
     ready: bool,
+    chars: [u8; SLOTS],
 }
 
-const NO_MACHINE: Machine = Machine { client: u16::MAX, nick: [0; NICK], count: 0, ready: false };
-const NO_SEAT: Seat = Seat { nick: [0; NICK], local_port: None, ready: false };
+const NO_MACHINE: Machine = Machine { client: u16::MAX, nick: [0; NICK], count: 0, ready: false, chars: [0; SLOTS] };
+const NO_SEAT: Seat = Seat { nick: [0; NICK], local_port: None, ready: false, character: 0 };
 
 pub struct Session {
     role: Role,
@@ -42,6 +43,8 @@ pub struct Session {
     ports: [u8; SLOTS],
     port_count: u8,
     ready: bool,
+    chars: [u8; SLOTS],
+    phase: u8,
     machines: [Machine; SLOTS],
     machine_count: usize,
     seats: [Seat; SLOTS],
@@ -65,6 +68,15 @@ fn ring(tic: u32) -> usize {
     tic as usize % RING
 }
 
+pub fn distinct(prefs: &[u8; SLOTS], count: usize) -> [u8; SLOTS] {
+    let mut used = 0u8;
+    std::array::from_fn(|i| {
+        let pick = (0..SLOTS as u8).map(|k| (prefs[i] % SLOTS as u8 + k) % SLOTS as u8).find(|&c| used & 1 << c == 0).filter(|_| i < count);
+        pick.iter().for_each(|&c| used |= 1 << c);
+        pick.unwrap_or(0)
+    })
+}
+
 impl Session {
     pub fn new(nick: [u8; NICK]) -> Session {
         let mut s = Session {
@@ -75,6 +87,8 @@ impl Session {
             ports: [0, 1, 2, 3],
             port_count: 1,
             ready: true,
+            chars: [0, 1, 2, 3],
+            phase: 0,
             machines: [NO_MACHINE; SLOTS],
             machine_count: 1,
             seats: [NO_SEAT; SLOTS],
@@ -98,8 +112,8 @@ impl Session {
     }
 
     pub fn reset(&mut self, role: Role, me: u16, w: &mut impl Wire) {
-        let (nick, ports, port_count, ready) = (self.nick, self.ports, self.port_count, self.ready);
-        *self = Session { ports, port_count, ready, ..Session::new(nick) };
+        let (nick, ports, port_count, ready, chars, phase) = (self.nick, self.ports, self.port_count, self.ready, self.chars, self.phase);
+        *self = Session { ports, port_count, ready, chars, phase, ..Session::new(nick) };
         self.role = role;
         self.me = me;
         match role {
@@ -146,6 +160,10 @@ impl Session {
         self.ready
     }
 
+    pub fn phase(&self) -> u8 {
+        self.phase
+    }
+
     pub fn accepting(&self) -> bool {
         self.role == Role::Host && self.game.is_none() && !self.lost
     }
@@ -165,15 +183,22 @@ impl Session {
     }
 
     fn hello(&self, w: &mut impl Wire) {
-        w.send(HOST, &Msg::Hello { version: VERSION, nick: self.nick, local_count: self.port_count, ready: self.ready });
+        w.send(HOST, &Msg::Hello { version: VERSION, nick: self.nick, local_count: self.port_count, ready: self.ready, chars: self.chars });
     }
 
     fn roster(&self) -> (u8, [RosterSeat; SLOTS]) {
         let mut it = self.machines[..self.machine_count].iter().flat_map(|m| {
-            (0..m.count).map(move |index| RosterSeat { owner: Owner { client: m.client, index }, ready: m.ready, nick: m.nick })
+            (0..m.count).map(move |index| RosterSeat {
+                owner: Owner { client: m.client, index },
+                ready: m.ready,
+                nick: m.nick,
+                character: m.chars[index as usize],
+            })
         });
         let seats: [RosterSeat; SLOTS] = std::array::from_fn(|_| it.next().unwrap_or(EMPTY_SEAT));
-        (seats.iter().filter(|s| s.owner != NO_OWNER).count() as u8, seats)
+        let count = seats.iter().filter(|s| s.owner != NO_OWNER).count();
+        let chars = distinct(&seats.map(|s| s.character), count);
+        (count as u8, std::array::from_fn(|i| RosterSeat { character: chars[i], ..seats[i] }))
     }
 
     fn local_port(&self, owner: Owner) -> Option<u8> {
@@ -183,7 +208,7 @@ impl Session {
     fn apply_roster(&mut self, count: u8, seats: &[RosterSeat; SLOTS]) {
         self.seat_count = count as usize;
         self.owners = seats.map(|s| s.owner);
-        self.seats = seats.map(|s| Seat { nick: s.nick, local_port: self.local_port(s.owner), ready: s.ready });
+        self.seats = seats.map(|s| Seat { nick: s.nick, local_port: self.local_port(s.owner), ready: s.ready, character: s.character });
     }
 
     fn others(&self, except: u16) -> u8 {
@@ -192,11 +217,11 @@ impl Session {
 
     fn publish(&mut self, w: &mut impl Wire) {
         let count = self.port_count.min(SLOTS as u8 - self.others(HOST));
-        self.machines[0] = Machine { client: self.me, nick: self.nick, count, ready: self.ready };
+        self.machines[0] = Machine { client: self.me, nick: self.nick, count, ready: self.ready, chars: self.chars };
         let (count, seats) = self.roster();
         self.apply_roster(count, &seats);
         if self.role == Role::Host {
-            w.send(BROADCAST, &Msg::Roster { count, seats });
+            w.send(BROADCAST, &Msg::Roster { count, phase: self.phase, seats });
         }
     }
 
@@ -227,6 +252,25 @@ impl Session {
         }
     }
 
+    pub fn set_character(&mut self, index: usize, character: u8, w: &mut impl Wire) {
+        if self.game.is_some() || index >= SLOTS {
+            return;
+        }
+        self.chars[index] = character % SLOTS as u8;
+        match self.role {
+            Role::Client => self.hello(w),
+            _ => self.publish(w),
+        }
+    }
+
+    pub fn set_phase(&mut self, phase: u8, w: &mut impl Wire) {
+        if self.game.is_some() || self.role == Role::Client {
+            return;
+        }
+        self.phase = phase;
+        self.publish(w);
+    }
+
     pub fn can_start(&self) -> bool {
         self.role != Role::Client
             && self.game.is_none()
@@ -235,12 +279,13 @@ impl Session {
             && self.machines[1..self.machine_count].iter().all(|m| m.count == 0 || m.ready)
     }
 
-    pub fn start(&mut self, seed: u32, night_secs: u32, w: &mut impl Wire) -> bool {
+    pub fn start(&mut self, seed: u32, w: &mut impl Wire) -> bool {
         let ok = self.can_start();
         if ok {
-            let game = Setup { seed, players: self.seat_count as u8, night_secs };
+            let characters = std::array::from_fn(|i| self.seats[i].character);
+            let game = Setup { seed, phase: self.phase, players: self.seat_count as u8, characters };
             if self.role == Role::Host {
-                w.send(BROADCAST, &Msg::Start { seed, players: game.players, night_secs, slots: self.owners });
+                w.send(BROADCAST, &Msg::Start { seed, phase: game.phase, players: game.players, characters, slots: self.owners });
             }
             self.begin(game, if self.role == Role::Offline { 0 } else { DELAY });
         }
@@ -352,7 +397,7 @@ impl Session {
         self.lose();
     }
 
-    fn host_hello(&mut self, from: u16, version: [u8; 16], nick: [u8; NICK], count: u8, ready: bool, w: &mut impl Wire) {
+    fn host_hello(&mut self, from: u16, version: [u8; 16], nick: [u8; NICK], count: u8, ready: bool, chars: [u8; SLOTS], w: &mut impl Wire) {
         let known = self.machines[1..self.machine_count].iter().position(|m| m.client == from).map(|i| i + 1);
         let count = count.min(SLOTS as u8);
         let fits = self.others(from) + count + self.port_count <= SLOTS as u8
@@ -371,11 +416,11 @@ impl Session {
                 }
             }
             (None, Some(i)) => {
-                self.machines[i] = Machine { nick, count, ready, ..self.machines[i] };
+                self.machines[i] = Machine { nick, count, ready, chars, ..self.machines[i] };
                 self.publish(w);
             }
             (None, None) => {
-                self.machines[self.machine_count] = Machine { client: from, nick, count, ready };
+                self.machines[self.machine_count] = Machine { client: from, nick, count, ready, chars };
                 self.machine_count += 1;
                 self.publish(w);
             }
@@ -404,16 +449,17 @@ impl Session {
         }
     }
 
-    fn client_start(&mut self, seed: u32, players: u8, night_secs: u32, slots: [Owner; SLOTS]) {
+    fn client_start(&mut self, seed: u32, phase: u8, players: u8, characters: [u8; SLOTS], slots: [Owner; SLOTS]) {
         if self.game.is_some() {
             return self.lose();
         }
         let seats = std::array::from_fn(|i| {
             let nick = (0..self.seat_count).find(|&k| self.owners[k] == slots[i]).map_or([0; NICK], |k| self.seats[k].nick);
-            RosterSeat { owner: slots[i], ready: true, nick }
+            RosterSeat { owner: slots[i], ready: true, nick, character: characters[i] }
         });
+        self.phase = phase;
         self.apply_roster(players, &seats);
-        self.begin(Setup { seed, players, night_secs }, DELAY);
+        self.begin(Setup { seed, phase, players, characters }, DELAY);
     }
 
     fn client_tic(&mut self, tic: u32, inputs: [u16; SLOTS]) {
@@ -428,14 +474,21 @@ impl Session {
 
     pub fn receive(&mut self, from: u16, msg: Msg, w: &mut impl Wire) {
         match (self.role, msg) {
-            (Role::Host, Msg::Hello { version, nick, local_count, ready }) => self.host_hello(from, version, nick, local_count, ready, w),
+            (Role::Host, Msg::Hello { version, nick, local_count, ready, chars }) => {
+                self.host_hello(from, version, nick, local_count, ready, chars, w)
+            }
             (Role::Host, Msg::Ready { ready }) => self.host_ready(from, ready, w),
             (Role::Host, Msg::Input { tic, slot, bits }) => self.host_input(from, tic, slot, bits, w),
             (Role::Host, Msg::Leave { .. }) => self.gone(from, w),
             (Role::Host, Msg::Hash { tic, hash }) => self.remote_hash(tic, hash),
             (Role::Client, _) if from != HOST => {}
-            (Role::Client, Msg::Roster { count, seats }) if self.game.is_none() => self.apply_roster(count, &seats),
-            (Role::Client, Msg::Start { seed, players, night_secs, slots }) => self.client_start(seed, players, night_secs, slots),
+            (Role::Client, Msg::Roster { count, phase, seats }) if self.game.is_none() => {
+                self.phase = phase;
+                self.apply_roster(count, &seats);
+            }
+            (Role::Client, Msg::Start { seed, phase, players, characters, slots }) => {
+                self.client_start(seed, phase, players, characters, slots)
+            }
             (Role::Client, Msg::Tic { tic, inputs }) => self.client_tic(tic, inputs),
             (Role::Client, Msg::Hash { tic, hash }) => self.remote_hash(tic, hash),
             (Role::Client, Msg::Leave { reason }) => {
@@ -592,14 +645,19 @@ mod tests {
         [1, 2].iter().for_each(|&i| {
             let p = &mut peers[i];
             p.s.set_ready(true, &mut p.out);
+            p.s.set_character(2 - i, 3, &mut p.out);
         });
+        let host = &mut peers[0];
+        host.s.set_phase(3, &mut host.out);
         (0..30).for_each(|_| net.frame(rng, &mut peers));
         let seats = peers[1].s.seats();
         assert_eq!(seats.iter().map(|s| s.local_port).collect::<Vec<_>>(), [None, Some(0), Some(1), None]);
         assert!(seats.iter().all(|s| s.ready || s.local_port.is_none()));
+        assert!(peers.iter().all(|p| p.s.seats().iter().map(|s| s.character).eq([0, 1, 3, 2]) && p.s.phase() == 3));
         assert!(peers[0].s.accepting());
         let host = &mut peers[0];
-        assert!(host.s.start(77, 360, &mut host.out));
+        assert!(host.s.start(77, &mut host.out));
+        assert_eq!(host.s.game(), Some(Setup { seed: 77, phase: 3, players: 4, characters: [0, 1, 3, 2] }));
         assert!(!peers[0].s.accepting());
         peers
     }
@@ -677,7 +735,7 @@ mod tests {
         host.set_local_players(&[0, 1, 2], &mut ());
         host.reset(Role::Host, HOST, &mut ());
         let mut out = Outbox::default();
-        let hello = |v, c| Msg::Hello { version: v, nick: nick("x"), local_count: c, ready: false };
+        let hello = |v, c| Msg::Hello { version: v, nick: nick("x"), local_count: c, ready: false, chars: [0; SLOTS] };
         host.receive(1, hello(*b"doppio 0\0\0\0\0\0\0\0\0", 1), &mut out);
         host.receive(2, hello(VERSION, 2), &mut out);
         host.receive(3, hello(VERSION, 1), &mut out);
@@ -686,7 +744,7 @@ mod tests {
         assert_eq!(host.seats().len(), 4);
         assert!(!host.can_start());
         host.receive(3, Msg::Ready { ready: true }, &mut out);
-        assert!(host.start(1, 120, &mut out));
+        assert!(host.start(1, &mut out));
         out.0.clear();
         host.receive(4, hello(VERSION, 1), &mut out);
         assert_eq!(Msg::decode(&out.0[0].1), Some(Msg::Leave { reason: Reason::Started }));
@@ -711,7 +769,7 @@ mod tests {
         assert_eq!(peers[0].s.seats().len(), 3);
         assert!(peers[0].s.seats()[1..].iter().all(|s| s.ready) && peers[0].s.can_start());
         let host = &mut peers[0];
-        assert!(host.s.start(5, 60, &mut host.out));
+        assert!(host.s.start(5, &mut host.out));
     }
 
     #[test]
@@ -720,9 +778,9 @@ mod tests {
         s.set_local_players(&[0, 2], &mut ());
         assert_eq!(s.seats().iter().map(|s| s.local_port).collect::<Vec<_>>(), [Some(0), Some(2)]);
         assert_eq!(s.pop_tic(), None);
-        assert!(s.start(3, 360, &mut ()));
+        assert!(s.start(3, &mut ()));
         assert_eq!(s.link(), Link::Offline);
-        assert_eq!(s.game(), Some(Setup { seed: 3, players: 2, night_secs: 360 }));
+        assert_eq!(s.game(), Some(Setup { seed: 3, phase: 0, players: 2, characters: [0, 1, 0, 0] }));
         s.push_local(&[1, 2, 3, 4], &mut ());
         s.push_local(&[9, 9, 9, 9], &mut ());
         assert_eq!(s.pop_tic(), Some([1, 3, 0, 0]));
@@ -747,7 +805,7 @@ mod tests {
     fn hosting_lockstep_does_not_allocate() {
         let mut s = Session::new(nick("me"));
         s.reset(Role::Host, HOST, &mut ());
-        assert!(s.start(9, 360, &mut ()));
+        assert!(s.start(9, &mut ()));
         let allocs = crate::audio::alloc::count(|| {
             (0..300u32).for_each(|t| {
                 s.push_local(&[1, 0, 0, 0], &mut ());
@@ -757,5 +815,27 @@ mod tests {
         });
         assert_eq!(allocs, 0);
         assert!(!s.desynced());
+    }
+
+    #[test]
+    fn characters_stay_distinct() {
+        assert_eq!(distinct(&[0, 0, 0, 0], 4), [0, 1, 2, 3]);
+        assert_eq!(distinct(&[3, 3, 2, 9], 4), [3, 0, 2, 1]);
+        assert_eq!(distinct(&[2, 2, 0, 0], 2), [2, 3, 0, 0]);
+        assert_eq!(distinct(&[255, 255, 0, 0], 2), [3, 0, 0, 0]);
+        (0..256u32).for_each(|k| {
+            let prefs = [0, 2, 4, 6].map(|s| (k >> s & 3) as u8);
+            let got = distinct(&prefs, 4);
+            assert_eq!(got.iter().fold(0u8, |m, &c| m | 1 << c), 0xF);
+            assert_eq!(got[0], prefs[0]);
+        });
+        let mut s = Session::new(nick("me"));
+        s.set_local_players(&[0, 1, 2], &mut ());
+        s.set_character(0, 2, &mut ());
+        s.set_character(2, 2, &mut ());
+        s.set_phase(4, &mut ());
+        assert!(s.seats().iter().map(|s| s.character).eq([2, 1, 3]));
+        assert!(s.start(1, &mut ()));
+        assert_eq!(s.game().map(|g| (g.phase, g.characters)), Some((4, [2, 1, 3, 0])));
     }
 }

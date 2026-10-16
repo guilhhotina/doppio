@@ -1,0 +1,5 @@
+sobrado
+cidade
+igreja
+mata
+cemiterio

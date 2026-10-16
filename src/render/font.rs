@@ -57,6 +57,10 @@ pub fn index(c: char) -> usize {
     match c as u32 {
         v @ 0x20..=0x7e => (v - 0x20) as usize,
         v @ 0xa0..=0xff => (v - 0xa0 + 96) as usize,
+        0x2013 | 0x2014 | 0x2212 => ('-' as u32 - 0x20) as usize,
+        0x2026 => ('.' as u32 - 0x20) as usize,
+        0x2018 | 0x2019 => ('\'' as u32 - 0x20) as usize,
+        0x201c | 0x201d => ('"' as u32 - 0x20) as usize,
         _ => ('?' as u32 - 0x20) as usize,
     }
 }

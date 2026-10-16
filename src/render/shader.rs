@@ -7,11 +7,15 @@ const WORLD_VS: &str = "attribute vec3 a_pos;
 attribute vec2 a_uv;
 attribute vec4 a_nrm;
 attribute vec4 a_tile;
+attribute vec4 a_lit;
 uniform mat4 u_mvp;
 uniform vec3 u_lamp;
+uniform vec3 u_moon;
+uniform vec3 u_flame;
 uniform vec3 u_amb;
 uniform vec4 u_lpos[4];
 uniform vec4 u_ldir[4];
+uniform vec4 u_lcol[4];
 uniform vec3 u_eye;
 uniform vec2 u_fog;
 uniform vec2 u_snap;
@@ -22,7 +26,7 @@ varying vec4 v_tile;
 void main() {
     vec3 wp = a_pos;
     vec3 n = a_nrm.xyz;
-    vec3 c = u_amb + u_lamp * a_nrm.w;
+    vec3 c = u_amb + u_moon * a_nrm.w + (u_lamp * a_lit.rgb + u_flame * a_lit.a) * 2.0;
     vec4 p = u_mvp * vec4(a_pos, 1.0);
     for (int i = 0; i < 4; i++) {
         vec3 d = u_lpos[i].xyz - wp;
@@ -30,7 +34,7 @@ void main() {
         vec3 l = d * inversesqrt(dd + 0.0001);
         float cone = smoothstep(u_ldir[i].w, u_ldir[i].w + 0.1, dot(-l, u_ldir[i].xyz));
         float wrap = max(dot(n, l), 0.0) * 0.8 + 0.2;
-        c += vec3(1.0, 0.88, 0.66) * (u_lpos[i].w * cone * wrap / (1.0 + dd * 0.16));
+        c += u_lcol[i].rgb * (u_lpos[i].w * cone * wrap / (1.0 + dd * u_lcol[i].w));
     }
     v_col = c;
     if (p.w > 0.05) {
@@ -39,7 +43,7 @@ void main() {
     v_fog = clamp((length(wp - u_eye) - u_fog.x) * u_fog.y, 0.0, 1.0);
     float q = p.w * 0.05;
     v_uvq = vec3(a_uv * (q / 2048.0), q);
-    v_tile = a_tile * vec4(0.0625, 0.125, 0.0625, 0.125);
+    v_tile = a_tile * vec4(0.0625, 0.03125, 0.0625, 0.03125);
     gl_Position = p;
 }
 ";
@@ -60,9 +64,61 @@ void main() {
     float line = fract(gl_FragCoord.y * 0.5) * 0.25 + 0.75;
     vec3 c = vec3(0.78, 0.86, 1.0) * (s * u_fx.z * line + u_fx.w) + v_col * 0.04;
 #else
-    vec3 c = texture2D(u_tex, v_tile.xy + fract(uv) * v_tile.zw).rgb * v_col;
+#ifdef WATER
+    vec2 w = uv + vec2(sin(uv.y * 5.0 + u_fx.z) * 0.06, cos(uv.x * 4.0 + u_fx.z * 0.8) * 0.06);
+    vec3 a = texture2D(u_tex, v_tile.xy + fract(w + u_fx.xy) * v_tile.zw).rgb;
+    vec3 b = texture2D(u_tex, v_tile.xy + fract(w.yx * 0.7 - u_fx.xy) * v_tile.zw).rgb;
+    vec3 m = (a + b) * 0.5;
+    vec3 c = m * v_col + vec3(0.55, 0.65, 0.8) * u_fx.w * max(a.g * b.g * 4.0 - 1.6, 0.0);
+#else
+    vec4 t = texture2D(u_tex, v_tile.xy + clamp(fract(uv), 0.004, 0.996) * v_tile.zw);
+#ifdef ALPHA
+    if (t.a < 0.5) discard;
+#endif
+    vec3 c = t.rgb * v_col;
+#endif
 #endif
     c = mix(c, u_fogc, v_fog);
+    float d = texture2D(u_dither, gl_FragCoord.xy * 0.25).r;
+    gl_FragColor = vec4(floor(c * 31.0 + d) * (1.0 / 31.0), 1.0);
+}
+";
+
+const SKY_VS: &str = "attribute vec3 a_pos;
+attribute vec2 a_uv;
+attribute vec4 a_nrm;
+attribute vec4 a_tile;
+uniform mat4 u_mvp;
+uniform vec3 u_eye;
+uniform vec2 u_snap;
+varying vec2 v_uv;
+varying vec4 v_tile;
+varying float v_fog;
+void main() {
+    vec4 p = u_mvp * vec4(a_pos + u_eye, 1.0);
+    if (p.w > 0.05) {
+        p.xy = floor(p.xy / p.w * u_snap + 0.5) / u_snap * p.w;
+    }
+    p.z = p.w * 0.99999;
+    v_uv = a_uv * (1.0 / 2048.0);
+    v_tile = a_tile * vec4(0.0625, 0.03125, 0.0625, 0.03125);
+    v_fog = a_nrm.w;
+    gl_Position = p;
+}
+";
+
+const SKY_FS: &str = "precision mediump float;
+uniform sampler2D u_tex;
+uniform sampler2D u_dither;
+uniform vec3 u_fogc;
+uniform vec3 u_tint;
+varying vec2 v_uv;
+varying vec4 v_tile;
+varying float v_fog;
+void main() {
+    vec4 t = texture2D(u_tex, v_tile.xy + clamp(fract(v_uv), 0.02, 0.98) * v_tile.zw);
+    if (t.a < 0.5) discard;
+    vec3 c = mix(t.rgb * u_tint, u_fogc, v_fog);
     float d = texture2D(u_dither, gl_FragCoord.xy * 0.25).r;
     gl_FragColor = vec4(floor(c * 31.0 + d) * (1.0 / 31.0), 1.0);
 }
@@ -184,6 +240,17 @@ pub mod world {
     pub const SNAP: usize = 13;
     pub const FOGC: usize = 14;
     pub const FX: usize = 15;
+    pub const MOON: usize = 16;
+    pub const FLAME: usize = 17;
+    pub const LCOL: usize = 18;
+}
+
+pub mod sky {
+    pub const MVP: usize = 0;
+    pub const EYE: usize = 1;
+    pub const SNAP: usize = 2;
+    pub const FOGC: usize = 3;
+    pub const TINT: usize = 4;
 }
 
 pub mod glow {
@@ -204,15 +271,21 @@ pub mod ui {
     pub const SCALE: usize = 0;
 }
 
-const WORLD_UNIFORMS: [&CStr; 18] = [
+const WORLD_UNIFORMS: [&CStr; 25] = [
     c"u_mvp", c"u_lamp", c"u_amb", c"u_lpos[0]", c"u_lpos[1]", c"u_lpos[2]", c"u_lpos[3]", c"u_ldir[0]", c"u_ldir[1]",
-    c"u_ldir[2]", c"u_ldir[3]", c"u_eye", c"u_fog", c"u_snap", c"u_fogc", c"u_fx", c"u_tex", c"u_dither",
+    c"u_ldir[2]", c"u_ldir[3]", c"u_eye", c"u_fog", c"u_snap", c"u_fogc", c"u_fx", c"u_moon", c"u_flame", c"u_lcol[0]",
+    c"u_lcol[1]", c"u_lcol[2]", c"u_lcol[3]", c"u_tex", c"u_dither", c"u_noise",
 ];
-const WORLD_ATTRIBS: [&CStr; 4] = [c"a_pos", c"a_uv", c"a_nrm", c"a_tile"];
+const WORLD_ATTRIBS: [&CStr; 5] = [c"a_pos", c"a_uv", c"a_nrm", c"a_tile", c"a_lit"];
+
+pub type World = Program<25>;
 
 pub struct Shaders {
-    pub world: Program<18>,
-    pub screen: Program<18>,
+    pub world: World,
+    pub alpha: World,
+    pub water: World,
+    pub screen: World,
+    pub sky: Program<7>,
     pub glow: Program<5>,
     pub blit: Program<3>,
     pub blit_fx: Program<6>,
@@ -221,11 +294,16 @@ pub struct Shaders {
 
 impl Shaders {
     pub fn new(gl: &Gl) -> Result<Shaders, String> {
-        let screen_fs = format!("#define SCREEN\n{WORLD_FS}");
+        let variant = |def: &str| -> Result<World, String> {
+            Program::new(gl, WORLD_VS, &format!("#define {def}\n{WORLD_FS}"), &WORLD_ATTRIBS, WORLD_UNIFORMS)
+        };
         Ok(Shaders {
             world: Program::new(gl, WORLD_VS, WORLD_FS, &WORLD_ATTRIBS, WORLD_UNIFORMS)?,
-            screen: Program::new(gl, WORLD_VS, &screen_fs, &WORLD_ATTRIBS, WORLD_UNIFORMS)?,
-            glow: Program::new(gl, GLOW_VS, GLOW_FS, &WORLD_ATTRIBS, [c"u_mvp", c"u_snap", c"u_color", c"u_eye", c"u_dither"])?,
+            alpha: variant("ALPHA")?,
+            water: variant("WATER")?,
+            screen: variant("SCREEN")?,
+            sky: Program::new(gl, SKY_VS, SKY_FS, &WORLD_ATTRIBS[..4], [c"u_mvp", c"u_eye", c"u_snap", c"u_fogc", c"u_tint", c"u_tex", c"u_dither"])?,
+            glow: Program::new(gl, GLOW_VS, GLOW_FS, &WORLD_ATTRIBS[..4], [c"u_mvp", c"u_snap", c"u_color", c"u_eye", c"u_dither"])?,
             blit: Program::new(gl, BLIT_VS, BLIT_FS, &[c"a_pos"], [c"u_rect", c"u_canvas", c"u_tex"])?,
             blit_fx: Program::new(
                 gl,
@@ -240,7 +318,7 @@ impl Shaders {
     }
 
     pub fn delete(&self, gl: &Gl) {
-        [self.world.id, self.screen.id, self.glow.id, self.blit.id, self.blit_fx.id, self.ui.id]
+        [self.world.id, self.alpha.id, self.water.id, self.screen.id, self.sky.id, self.glow.id, self.blit.id, self.blit_fx.id, self.ui.id]
             .iter()
             .for_each(|&p| gl.delete_program(p));
     }
@@ -255,5 +333,6 @@ mod tests {
     fn tile_scale_matches_atlas() {
         let scale = format!("vec4({}, {}, {}, {})", CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32, CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32);
         assert!(WORLD_VS.contains(&scale), "{scale}");
+        assert!(SKY_VS.contains(&scale), "{scale}");
     }
 }

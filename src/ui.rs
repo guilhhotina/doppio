@@ -1,18 +1,25 @@
 mod cards;
+mod credits;
 mod howto;
 mod hud;
+mod icons;
+pub mod lore;
 mod menu;
 mod online;
+mod overlay;
+mod party;
 mod title;
 
 use crate::render::{Ui2d, rgb565};
 use std::fmt;
 
-pub use cards::{dawn, dusk, ending, notice, pause, whisper};
+pub use cards::{Card, INTRO_PORTRAIT, card, notice, pause};
+pub use credits::{PAGES, credits, legend_portrait};
 pub use howto::howto;
-pub use hud::{hud, task_name};
-pub use menu::{Item, menu};
-pub use online::{RoomRow, SeatRow, lobby, rooms};
+pub use hud::hud;
+pub use menu::{Item, menu, menu_at};
+pub use online::{RoomRow, rooms};
+pub use party::{Party, PartySeat, party, party_rects};
 pub use title::title;
 
 pub const INK: u16 = rgb565(214, 206, 186);
@@ -57,8 +64,27 @@ pub fn arrow(ui: &mut Ui2d, x: i16, y: i16, dir: Dir, color: u16) {
     });
 }
 
-pub fn ordinal(night: u8) -> &'static str {
-    ["primeira", "segunda", "terceira", "quarta", "quinta"][night.clamp(1, 5) as usize - 1]
+pub fn wrap(s: &str, cols: usize) -> impl Iterator<Item = &str> {
+    let mut rest = s.trim();
+    std::iter::from_fn(move || {
+        (!rest.is_empty()).then(|| {
+            let fits = rest.char_indices().nth(cols).map_or(rest.len(), |(i, _)| i);
+            let cut = match fits == rest.len() || rest[fits..].starts_with(' ') {
+                true => fits,
+                false => rest[..fits].rfind(' ').filter(|&i| i > 0).unwrap_or(fits),
+            };
+            let line = rest[..cut].trim_end();
+            rest = rest[cut..].trim_start();
+            line
+        })
+    })
+}
+
+pub fn paragraph(ui: &mut Ui2d, x: i16, y: i16, s: &str, cols: usize, color: u16) -> i16 {
+    wrap(s, cols).fold(y, |y, l| {
+        shadowed(ui, x, y, l, color, 1);
+        y + 10
+    })
 }
 
 pub struct Line {
@@ -111,10 +137,13 @@ mod tests {
     }
 
     #[test]
-    fn ordinals_cover_five_nights() {
-        assert_eq!(ordinal(1), "primeira");
-        assert_eq!(ordinal(5), "quinta");
-        assert_eq!(ordinal(9), "quinta");
+    fn wraps_on_words() {
+        let w: Vec<&str> = wrap("a senha do cadeado é o ano da igreja", 12).collect();
+        assert_eq!(w, ["a senha do", "cadeado é o", "ano da", "igreja"]);
+        assert_eq!(wrap("palavragrandedemais x", 8).collect::<Vec<_>>(), ["palavrag", "randedem", "ais x"]);
+        assert_eq!(wrap("  ", 8).count(), 0);
+        assert_eq!(wrap("cabe certinho", 13).collect::<Vec<_>>(), ["cabe certinho"]);
+        assert!(wrap("ação é ótima também", 6).all(|l| l.chars().count() <= 6));
     }
 
     #[test]

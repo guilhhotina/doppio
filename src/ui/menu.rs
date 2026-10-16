@@ -18,6 +18,10 @@ impl<'a> Item<'a> {
 pub const ROW: i16 = 22;
 
 pub fn menu(ui: &mut Ui2d, x: i16, y: i16, items: &[Item], sel: usize, tick: u32) {
+    menu_at(ui, x, y, 144, items, sel, tick);
+}
+
+pub fn menu_at(ui: &mut Ui2d, x: i16, y: i16, value_x: i16, items: &[Item], sel: usize, tick: u32) {
     items.iter().enumerate().for_each(|(i, it)| {
         let ry = y + i as i16 * ROW;
         let on = i == sel;
@@ -31,7 +35,7 @@ pub fn menu(ui: &mut Ui2d, x: i16, y: i16, items: &[Item], sel: usize, tick: u32
         }
         shadowed(ui, x, ry, it.label, color, 1);
         it.value.iter().for_each(|v| {
-            let vx = x + 144;
+            let vx = x + value_x;
             if on {
                 arrow(ui, vx - 12, ry, Dir::Left, DIM);
                 arrow(ui, vx + width(v, 1) + 5, ry, Dir::Right, DIM);

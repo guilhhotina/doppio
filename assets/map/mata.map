@@ -1,0 +1,910 @@
+; Pedra Seca, fase 4: a mata da beira do rio. Matinta Perera assobia; a canoa do Zé do Remo é a única saída.
+[map] name="Pedra Seca — a mata do rio" w=64 h=56 sky=moon fog=26,32,36 fog_near=4 fog_far=16 legend=matinta power=on
+
+[solid]
+################################################################
+#BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB#
+#BB..........................................................BB#
+#BB..........................................................BB#
+#BB..........................................................BB#
+#BBBBBBBBBBBBBBBBBBBBBBBB..BBBBBBBBBBBB.....BBBBBBBBBB..BBBBBBB#
+################BBBBBBBBB..BBBBBBBBB##B.....B###BBBBBB..BBBBBB##
+################BBBBBBBBB..BBBBBBBBB#####D######BB..........BB##
+################BB................BB##H....BB###BB.B.....HB.BB##
+################BB..........BB....BB#W.......###BB....B.....BB##
+################BB................BB##.......W##BB.B.H....B.BB##
+################BB....H...........BB##.B....H###BB..........BB##
+########W##W####BB................BBB####D######BBB..BBBBBBBBB##
+#####B........H#............................B###BBB..BBBBBBBBB##
+#####.BB.BBB.B.#............................B#####B..B##########
+#####.BB.......#.B............H...BBBBBBB..BBBBBBBB..BBBBBBB####
+#BBB#..........#.B................BB####B..................BB###
+#B..#B...........B..B.............BB####B..................HB###
+#B..D............B................BB####B..BBBBBBBBBBBBBB..BB###
+#B..#..........#BBBBBBBBB..BBBBBBBBB####B..B############B..B####
+#B..#.......B..#.............BBBBBBB####B..B########W####..B####
+#B..#.........H#...........H.B#########BB..BB####H.....B#..B####
+#B..#H......B..#.............B#########B....B####.......#..B####
+#B..#####..#####.............B#########B....BBBB#...BB..#..B####
+#B..B#B......................BBBBBBBBBBB........D.......W..B####
+#B..B#B..............BB.........................#.......#..B####
+#B..B#B.....BBB......BB.....................BBBB#.......#..B####
+#B..B#B.........H............BB..BBBBBBBBBBBB####.B....H#..B####
+#B..B#B......................BB..B#######################..B####
+#B..B#BBBBBB..BBBBBBBBBBBBBBBBB..B###############BBBBBBBB..B####
+#B..BBBBBBBB..B###############B..B###############B.........B####
+#B............B###############B..B###############B.........B####
+#BBBB...BB....B#############BBB..B###############B..BBBBBBBB####
+###BB...BB....BB############B....B###############B..B###########
+###B...........BBBBBBBBBBBBBB....B###############B..B###########
+###B...........................BBB###############B..B###########
+###B...........................BBBBBBBBBBBBBBBBBBB..B###########
+###BB.........BBBBBBBBBBBBBBB.......................B###########
+####B........BBB############B.......................B###########
+####BB.......BBB############B..BBBBBBBBBBBBBBBBBBB..B###########
+#####BBB...BBB##############B..B##BBBB###########B..B#BBBBB#####
+###BBBBB...BBBBBBBBBB##BBBBBB..BBBBBBBBBB##BBBBBBB..BBBBBBBBBB##
+###B................B##B...........B....B##B..............B..B##
+###B.......B........BBBB................BBBB......###D###....B##
+BBBB..........................................BB..#.....#....BBB
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~..~~~~~~~~~~~~~~~~~~~#.....#~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~..~~~~~~~~~~~~~~~~~~~#~~~~~#~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~..~~~~~~~~~~~~~~~~~~~#~~~~~#~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.B~~~~~~~~~~~~~~~~~~~#~~~~~#~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+################################################################
+
+[rooms]
+----------------------------------------------------------------
+-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE-
+-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE-
+-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE-
+-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE-
+-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE-
+----------------eeeeeeeeeeeeeeeeEEEE--EEEEEEE---EEcccccccEccEE--
+----------------errrrrrrsssssssssssE-----R------cccccccccccccc--
+----------------rrrrrrrrrrssssssssss--RRRRRRR---cccccccccccccc--
+----------------rrrrrrrrrrssssssssss--RRRRRRR---cccccccccccccc--
+----------------rrrrrrrrrrssssssssss--RRRRRRR---cccccccccccccc--
+----------------rrrrrrrrrrssssssssss--RRRRRRR---cccccccccccccc--
+----------------yrrrrrrrrrsssssssssaa----R------cccccccccccccc--
+-----FFFFFFFFFF-yrrrrrrrrrsssssssssaaaaaaaaaa---uuuuuucccccccc--
+-----FFFFFFFFFF-yrrrrrrrrrsssssssssaaaaaaaaaa-----uuuu----------
+-----FFFFFFFFFF-yrrrrrrrrrsssssssssaaaaaattauuuuuuuuuuUUUUUU----
+-www-FFFFFFFFFF-yyrrrrrrrrsssssssssa----ttttuuuuuuuuuUUUUUUUU---
+-www-FFFFFFFFFFFyyrrrrrrrrssssssssss----ttttuuuuuuuuuUUUUUUUU---
+-wwwFFFFFFFFFFFFyyrrrrrrrrssssssssss----ttttuuuuuuuuuUUUUUUUU---
+-www-FFFFFFFFFF-yyrrrrrrrsssssssssss----tttt------------UUUU----
+-www-FFFFFFFFFF-yyyyyyyyyyyyyyssssss----tttt-------------VVV----
+-www-FFFFFFFFFF-yyyyyyyyyyyyyy---------tttttt----TTTTTTT-VVV----
+-www-FFFFFFFFFF-yyyyyyyyyyyyyy---------tttttt----TTTTTTT-VVV----
+-www-----FF-----yyyyyyyyyyyyyy---------ttttttkkk-TTTTTTT-VVV----
+-wwww-YYYYYYYYYYyyyyyyyyyyyyyyjjjjjjjjjtttttkkkkTTTTTTTT-VVV----
+-wwww-YYYYYYYYYYyyyyyyyyyyyyyjjjjjjjjjjjttttkkkk-TTTTTTT-VVV----
+-wwww-YYYYYYYYYYyyyyyyyyyyyyyjjjjjjjjjjjttttkkkk-TTTTTTT-VVV----
+-wwww-YYYYYYYYYYyyyyyyyyyyyyyjjoojjjjjjjttttk----TTTTTTT-VVV----
+-wwww-YYYYYYYYYYyyyyyyyyyyyyyyoooo-----------------------VVV----
+-wwww-YYYYYYqqYYyyyyyyyyyyyyyyoooo---------------VVVVVVVVVVV----
+-wwwwqqqqqqqqqq---------------oooo---------------VVVVVVVVVVV----
+-wwwqqqqqqqqqqq---------------oooo---------------VVVVVVVVVVV----
+-wwwqqqqqqqqqqq-------------oooooo---------------xxxVVVVVVVV----
+---wqqqqqqqqqqqq------------oooooo---------------xxxx-----------
+---qqqqqqqqqqqqqmmmmmmmmmmmmoooooo---------------xxxx-----------
+---qqqqqqqqqqqqmmmmmmmmmmmmmmooooo---------------xxxx-----------
+---qqqqqqqqqqqqmmmmmmmmmmmmmmooooppppppppppppppppxxxx-----------
+---qqqqqqqqqqqqmmmmmmmmmmmmmmoooopppppppppppppppppxxx-----------
+----qqqqqqqqqqqq------------ooooopppppppppppppppppxxx-----------
+----qqqqqqqqqqqq------------ooooopppppppppppppppppxxx-----------
+-----qqqqqqqqq--------------oooo--pppp-----------xxxx-hhhhh-----
+---bbbbqqqqqbbbbbbbbb--gggggooooggggggggg--hhhhhhxxxxhhhhhhhhh--
+---bbbbbbbbbbbbbbbbbb--gggggggggggggggggg--hhhhhhhhhhhhhhhhhhh--
+---bbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhh---K---hhhhh--
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhh-KKKKK-hhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggPPggggggggggghhhhhhhh-KKKKK-hhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggPPggggggggggghhhhhhhh-KKKKK-hhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggPPggggggggggghhhhhhhh-KKKKK-hhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggPPggggggggggghhhhhhhh-hhhhh-hhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+bbbbbbbbbbbbbbbbbbbbbbgggggggggggggggggggghhhhhhhhhhhhhhhhhhhhhh
+----------------------------------------------------------------
+
+[area]
+0 mata
+
+[room]
+F casa de farinha area=0 floor=terra wall=pau_a_pique ceil=sape ext=pau_a_pique h=3 light=22 out=0
+R rancho area=0 floor=terra wall=pau_a_pique ceil=sape ext=pau_a_pique h=2.6 light=10 out=0
+T tapera area=0 floor=terra wall=pau_a_pique ceil=- ext=pau_a_pique h=2.4 light=30 out=1
+c cemitério da beira da estrada area=0 floor=grama wall=casca ceil=- h=4 light=38 out=1
+r roça oeste area=0 floor=terra wall=casca ceil=- h=4 light=42 out=1
+s roça leste area=0 floor=terra wall=casca ceil=- h=4 light=42 out=1
+e estrada oeste area=0 floor=terra wall=casca ceil=- h=4 light=42 out=1
+E estrada leste area=0 floor=terra wall=casca ceil=- h=4 light=42 out=1
+a quintal do rancho area=0 floor=terra wall=casca ceil=- h=4 light=34 out=1
+t trilha do rancho area=0 floor=barro wall=casca ceil=- h=4 light=30 out=1
+k trilha da tapera area=0 floor=barro wall=casca ceil=- h=4 light=30 out=1
+j trilha central area=0 floor=barro wall=casca ceil=- h=4 light=30 out=1
+u trilha do cemitério area=0 floor=barro wall=casca ceil=- h=4 light=30 out=1
+U curva do cemitério area=0 floor=barro wall=casca ceil=- h=4 light=30 out=1
+V trilha dos fundos da tapera area=0 floor=barro wall=casca ceil=- h=4 light=26 out=1
+y terreiro area=0 floor=terra wall=casca ceil=- h=4 light=38 out=1
+Y terreiro da casa de farinha area=0 floor=terra wall=casca ceil=- h=4 light=38 out=1
+w trilha dos fundos area=0 floor=folhas_chao wall=casca ceil=- h=4 light=26 out=1
+q clareira da sumaúma area=0 floor=folhas_chao wall=casca ceil=- h=4 light=30 out=1
+m trilha do meio oeste area=0 floor=folhas_chao wall=casca ceil=- h=4 light=26 out=1
+o trilha da ponte area=0 floor=barro wall=casca ceil=- h=4 light=26 out=1
+p trilha do meio leste area=0 floor=folhas_chao wall=casca ceil=- h=4 light=26 out=1
+x trilha do trapiche area=0 floor=barro wall=casca ceil=- h=4 light=26 out=1
+P ponte quebrada area=0 floor=madeira_ponte wall=casca ceil=- h=4 light=38 out=1
+K barracão da canoa area=0 floor=madeira_ponte wall=madeira_ponte ceil=sape ext=madeira_ponte h=2.6 light=10 out=0
+b beira do rio oeste area=0 floor=barro wall=casca ceil=- h=4 light=38 out=1
+g beira do rio area=0 floor=barro wall=casca ceil=- h=4 light=38 out=1
+h beira do rio leste area=0 floor=barro wall=casca ceil=- h=4 light=38 out=1
+
+[lock]
+bau_l key chave_bau
+pescador code 1931
+corrente tool alicate
+canoa place remo1 53 45
+
+[item]
+chave_bau chave 13.5 14.5
+remo1 remo 44.5 8.5
+alicate1 alicate 55.5 41.5
+tabaco1 tabaco 55.5 21.5
+tabaco2 tabaco 40.5 10.5
+pilha1 lanterna_pilha 31.5 9.5
+pilha2 lanterna_pilha 30.5 47.5
+pilha3 lanterna_pilha 54.5 25.5
+foto1 foto 52.5 9.5
+
+[door]
+4 18 v closed
+41 7 h closed
+41 12 h open
+48 24 v closed
+53 43 h locked:corrente
+
+[note]
+7 15 forno "Ouviu um assobio fino? É a Matinta. Prometa fumo e café e deixe fumo de rolo no oco da sumaúma."
+12 20 bilhete "A canoa do Zé tá no barracão do rio. O remo tá no baú do rancho, depois da roça. A chave tá no pilão."
+37 10 parede "Passaram corrente no barracão da canoa. O alicate do Zé tá na caixa de pescador, na beira do rio."
+54 9 cruz "Aqui jaz José, o Zé do Remo, canoeiro. Nasceu em 1931. O rio levou em 1977. Rogai por ele."
+57 41 placa "Caixa do Zé do Remo. Cadeado de 4 números: o ano em que ele nasceu, tá na cruz da estrada."
+50 27 mesa "Fumo de rolo pra Matinta. Ela vai pro oco da sumaúma, a oeste, e esquece da gente um tempo."
+30 48 placa "A ponte caiu na cheia de 77. Pro outro lado só de canoa."
+54 43 parede "Barracão da canoa do Zé. Corrente no portão: só cortando. Remo na canoa e vamos embora."
+57 5 placa "PEDRA SECA 6 KM. A ponte do rio caiu: travessia só de canoa, no barracão do Zé."
+
+[hide]
+38 8 armario 90
+57 8 tumulo 180
+53 10 tumulo 0
+22 11 cesto 0
+44 11 cama 270
+14 13 cesto 180
+30 15 cesto 0
+59 17 cesto 270
+14 21 armario 270
+27 21 cesto 270
+49 21 armario 90
+5 22 cesto 90
+13 26 mesa 90
+16 27 cesto 90
+55 27 cama 270
+13 38 cesto 270
+36 39 cesto 0
+47 44 cesto 0
+
+[prop]
+; built: casas, cercas, poco, cemiterio, rio
+tronco 2.5 3 90
+pedra 2.5 4.5 0
+tronco 61.5 3 90
+pedra 61.5 4.5 0
+placa 57.5 5.3 180
+bau 44.5 8.5 270 lock=bau_l item=remo1
+mesa 39.5 11.5 0
+moringa 39.5 11.4 0
+oratorio 43.5 8.4 180
+forno_farinha 7 15 0
+pilao 13.5 14.5 0 item=chave_bau
+mesa 12.5 20.5 0
+moringa 12.6 20.4 0
+engradado 12.5 22.5 0
+oratorio 5.5 17.5 90
+rede 10.5 14.5 90
+fogao_lenha 5.5 13.5 0
+poco 22 26 0
+bau 55.5 21.5 270 item=tabaco1
+mesa 50.5 27.5 0
+tronco 53 23.5 0
+radio_antigo 50.5 27.4 0
+cruz_ferro 54.5 9.5 0
+lapide 51.5 8.5 0
+lapide 51.5 10.5 0
+lapide 58.5 8.5 0
+lapide 58.5 10.5 0
+vela_chao 55.3 10.2 0
+vela_chao 53.7 9.6 0
+arvore 8.4 32.4 0
+arvore 9.6 32.4 120
+arvore 8.4 33.5 45
+arvore 9.6 33.5 200
+vela_chao 8.3 34.3 0
+vela_chao 9.9 34.4 0
+tronco 14 38.5 0
+canoa 53 46.5 90
+placa 30.5 48.5 0
+vela_castical 12.5 20.5 0
+vela_chao 52.3 44.3 0
+tronco 29.5 50 20
+pedra 30.6 51.2 0
+pedra 11.5 43.5 0
+pedra 35.5 42.5 0
+pedra 58.5 42.5 0
+tronco 36 39.5 0
+tronco 47 44.5 0
+carroca 13.5 26.5 90
+bau 55.5 41.5 0 lock=pescador item=alicate1
+placa 57.5 41.6 0
+pedra 20.5 17.5 0
+tronco 29 9.5 0
+; cerca da roca e do cemiterio
+cerca_madeira 49.5 6.5 90
+cerca_madeira 50.5 6.5 0
+cerca_madeira 51.5 6.5 0
+cerca_madeira 52.5 6.5 0
+cerca_madeira 53.5 6.5 0
+cerca_madeira 56.5 6.5 0
+cerca_madeira 57.5 6.5 0
+cerca_madeira 58.5 6.5 0
+cerca_madeira 59.5 6.5 0
+cerca_madeira 60.5 6.5 90
+cerca_madeira 17.5 7.5 90
+cerca_madeira 18.5 7.5 0
+cerca_madeira 19.5 7.5 0
+cerca_madeira 20.5 7.5 0
+cerca_madeira 21.5 7.5 0
+cerca_madeira 22.5 7.5 0
+cerca_madeira 23.5 7.5 0
+cerca_madeira 24.5 7.5 0
+cerca_madeira 27.5 7.5 0
+cerca_madeira 28.5 7.5 0
+cerca_madeira 29.5 7.5 0
+cerca_madeira 30.5 7.5 0
+cerca_madeira 31.5 7.5 0
+cerca_madeira 32.5 7.5 0
+cerca_madeira 33.5 7.5 0
+cerca_madeira 34.5 7.5 90
+cerca_madeira 49.5 7.5 90
+cerca_madeira 60.5 7.5 90
+cerca_madeira 17.5 8.5 90
+cerca_madeira 34.5 8.5 90
+cerca_madeira 49.5 8.5 90
+cerca_madeira 60.5 8.5 90
+cerca_madeira 17.5 9.5 90
+cerca_madeira 34.5 9.5 90
+cerca_madeira 49.5 9.5 90
+cerca_madeira 60.5 9.5 90
+cerca_madeira 17.5 10.5 90
+cerca_madeira 34.5 10.5 90
+cerca_madeira 49.5 10.5 90
+cerca_madeira 60.5 10.5 90
+cerca_madeira 17.5 11.5 90
+cerca_madeira 34.5 11.5 90
+cerca_madeira 49.5 11.5 90
+cerca_madeira 60.5 11.5 90
+cerca_madeira 17.5 12.5 90
+cerca_madeira 34.5 12.5 90
+cerca_madeira 49.5 12.5 90
+cerca_madeira 50.5 12.5 0
+cerca_madeira 53.5 12.5 0
+cerca_madeira 54.5 12.5 0
+cerca_madeira 55.5 12.5 0
+cerca_madeira 56.5 12.5 0
+cerca_madeira 57.5 12.5 0
+cerca_madeira 58.5 12.5 0
+cerca_madeira 59.5 12.5 0
+cerca_madeira 60.5 12.5 90
+cerca_madeira 17.5 15.5 90
+cerca_madeira 34.5 15.5 90
+cerca_madeira 17.5 16.5 90
+cerca_madeira 34.5 16.5 90
+cerca_madeira 17.5 17.5 90
+cerca_madeira 34.5 17.5 90
+cerca_madeira 17.5 18.5 90
+cerca_madeira 34.5 18.5 90
+cerca_madeira 17.5 19.5 90
+cerca_madeira 18.5 19.5 0
+cerca_madeira 19.5 19.5 0
+cerca_madeira 20.5 19.5 0
+cerca_madeira 21.5 19.5 0
+cerca_madeira 22.5 19.5 0
+cerca_madeira 23.5 19.5 0
+cerca_madeira 24.5 19.5 0
+cerca_madeira 27.5 19.5 0
+cerca_madeira 28.5 19.5 0
+cerca_madeira 29.5 19.5 0
+cerca_madeira 30.5 19.5 0
+cerca_madeira 31.5 19.5 0
+cerca_madeira 32.5 19.5 0
+cerca_madeira 33.5 19.5 0
+cerca_madeira 34.5 19.5 90
+; mata: a vegetation ring on every forest tile that touches a trail, water or clearing
+arvore 1.5 1.5 60
+arvore 3.3 1.1 120
+bambu 4.3 1.3 150
+arvore 5.5 1.1 60
+arvore 7.5 1.1 210
+arvore 9.5 1.1 30
+bambu 10.6 1.7 300
+arvore 11.5 1.1 300
+arvore 13.5 1.1 240
+bambu 14.3 1.3 30
+arvore 15.5 1.1 180
+arvore 17.5 1.1 90
+bambu 18.3 1.4 120
+arvore 19.5 1.1 270
+arvore 21.5 1.1 210
+arvore 23.5 1.1 0
+bambu 24.6 1.3 270
+arvore 25.5 1.1 180
+arvore 27.5 1.1 330
+bambu 28.3 1.5 120
+arvore 29.5 1.1 270
+bambu 30.4 1.5 60
+arvore 31.5 1.1 210
+arvore 33.5 1.1 0
+bambu 34.5 1.7 150
+arvore 35.5 1.1 300
+arvore 37.5 1.1 120
+arvore 39.5 1.1 30
+bambu 40.6 1.3 60
+arvore 41.5 1.1 330
+arvore 43.5 1.1 240
+arvore 45.5 1.1 60
+bambu 46.6 1.4 330
+arvore 47.5 1.1 0
+arvore 49.5 1.1 30
+bambu 50.6 1.7 180
+arvore 51.5 1.1 210
+bambu 52.6 1.4 0
+arvore 53.5 1.1 150
+arvore 55.5 1.1 60
+bambu 56.3 1.3 330
+arvore 57.5 1.1 0
+bambu 60.7 1.3 300
+arvore 61.8 1.2 210
+bambu 62.7 1.6 240
+bambu 1.6 2.6 30
+arvore 62.3 2.7 270
+arvore 1.3 3.5 240
+bambu 1.3 4.6 330
+arvore 62.5 4.5 330
+arvore 1.3 5.7 300
+bambu 2.7 5.5 330
+arvore 3.3 5.9 0
+bambu 4.5 5.3 30
+arvore 5.5 6 60
+bambu 6.6 5.3 180
+arvore 7.5 6 210
+bambu 8.6 5.6 0
+arvore 9.5 6 270
+arvore 11.5 6 60
+arvore 13.5 6 240
+arvore 15.5 6 180
+bambu 16.3 5.4 210
+arvore 17.5 6 90
+bambu 18.3 5.3 0
+arvore 19.5 6 30
+bambu 20.7 5.6 60
+arvore 21.5 6 210
+bananeira 23.5 6 120
+arvore 27.8 5.8 90
+bananeira 29.5 6 30
+bananeira 31.5 6 90
+bananeira 33.5 6 240
+arvore 45.5 6 300
+bambu 46.7 5.5 210
+bananeira 47.5 6 0
+arvore 49.5 6 30
+arvore 51.5 6 210
+bambu 52.7 5.6 120
+arvore 53.2 5.8 150
+bambu 56.6 5.4 90
+arvore 59.5 6 270
+arvore 61.8 5.8 210
+bambu 62.4 5.4 240
+bananeira 16.6 6.7 120
+bambu 17.3 6.6 300
+bananeira 18.6 6.5 270
+bambu 19.3 6.4 120
+bananeira 20.4 6.7 90
+bananeira 22.5 6.5 120
+arvore 24.1 6.5 60
+bambu 27.5 6.4 180
+bananeira 28.6 6.7 30
+bambu 29.7 6.5 240
+bananeira 30.7 6.7 90
+arvore 32.7 6.7 150
+bambu 33.7 6.5 90
+arvore 34.7 6.4 300
+bambu 35.4 6.7 30
+arvore 38.1 6.7 150
+bananeira 44.9 6.7 180
+arvore 48.7 6.6 60
+bambu 16.3 7.5 150
+arvore 35.5 7.6 120
+arvore 61.5 7.6 150
+bananeira 16.5 8.6 300
+arvore 48.7 8.3 120
+bambu 61.7 8.5 0
+arvore 35.6 9.4 60
+arvore 61.5 9.3 210
+bananeira 16.3 10.5 0
+bambu 35.7 10.4 270
+arvore 48.3 10.4 300
+bambu 61.6 10.6 300
+bambu 16.6 11.3 150
+arvore 35.7 11.4 120
+bambu 48.6 11.4 330
+arvore 61.4 11.7 270
+arvore 16.3 12.1 300
+bananeira 36.5 12.1 60
+arvore 48.4 12.5 120
+bambu 61.3 12.7 0
+bambu 44.7 13.5 150
+arvore 49.6 13.7 150
+arvore 55.4 13.5 60
+arvore 57.7 13.5 0
+arvore 59.6 13.3 150
+bambu 60.7 13.4 60
+arvore 61.5 13.4 210
+bananeira 44.9 14.7 60
+arvore 50 14.5 330
+arvore 35.5 15.9 240
+bambu 36.7 15.7 30
+bananeira 37.5 15.9 180
+bambu 38.3 15.6 60
+arvore 45.5 15.1 0
+bambu 46.7 15.4 270
+bananeira 47.5 15.1 60
+bambu 48.3 15.7 90
+arvore 49.5 15.1 210
+bambu 50.5 15.7 120
+arvore 53.8 15.2 210
+bambu 54.7 15.3 330
+arvore 59.8 15.2 210
+arvore 2.3 16.1 60
+arvore 60.8 16.2 270
+bananeira 1.1 17.3 150
+arvore 35.6 17.6 150
+bambu 35.6 18.6 240
+arvore 40 18.5 0
+arvore 44.5 18.9 150
+bambu 45.7 18.5 240
+bananeira 46.5 18.9 330
+arvore 48.5 18.9 30
+bananeira 54.5 18.9 270
+bambu 59.6 18.3 30
+arvore 60.8 18.8 240
+bananeira 1.1 19.5 330
+arvore 35.6 19.4 210
+arvore 44 19.5 150
+bambu 56.3 19.4 0
+bananeira 60 19.5 120
+bananeira 30.3 20.6 60
+arvore 32.7 20.6 0
+bambu 33.7 20.5 120
+bananeira 34.4 20.3 90
+bambu 35.6 20.6 60
+arvore 40 20.5 300
+bambu 43.7 20.4 120
+bananeira 1.1 21.5 30
+arvore 29.9 21.5 180
+arvore 39.2 21.2 300
+bambu 40.6 21.4 330
+arvore 43.9 21.4 330
+arvore 60 21.5 180
+bambu 1.3 22.5 0
+bambu 29.5 22.7 30
+bambu 39.7 22.7 30
+arvore 44.9 22.3 270
+arvore 1.1 23.5 210
+arvore 29.9 23.5 0
+arvore 39 23.5 0
+bananeira 47.5 23.1 270
+bananeira 60 23.5 120
+bambu 1.5 24.5 300
+bananeira 5 24.5 330
+arvore 6.1 24.3 180
+arvore 30.5 24.1 300
+arvore 34.5 24.1 90
+bambu 35.4 24.3 300
+arvore 36.5 24.1 150
+bambu 37.5 24.4 120
+arvore 38.5 24.1 240
+bananeira 1.1 25.5 150
+bambu 6.7 25.5 90
+arvore 60 25.5 180
+bananeira 5 26.5 150
+bananeira 6 26.5 120
+arvore 44.6 26.9 270
+bambu 45.6 26.6 120
+arvore 46.5 26.9 210
+bambu 47.3 26.6 300
+bambu 59.7 26.5 30
+arvore 1.1 27.5 210
+arvore 29.8 27.8 0
+arvore 33.8 27.8 30
+bambu 34.5 27.3 180
+arvore 35.5 27.9 330
+bambu 36.3 27.5 120
+bambu 40.4 27.3 30
+arvore 41.5 27.9 300
+bambu 42.3 27.3 90
+arvore 43.7 27.9 30
+arvore 60 27.5 120
+bambu 1.5 28.4 180
+arvore 5 28.5 330
+arvore 6.1 28.7 180
+bambu 29.7 28.7 90
+arvore 30.1 28.5 60
+bambu 33.6 28.6 0
+bambu 59.6 28.4 90
+arvore 1.1 29.5 150
+bambu 6.6 29.3 330
+arvore 7.3 29.9 0
+bambu 8.5 29.6 150
+arvore 9.5 29.9 300
+bambu 14.6 29.3 120
+arvore 15.5 29.9 150
+bambu 16.6 29.7 180
+arvore 17.5 29.9 120
+arvore 19.5 29.9 180
+bambu 20.5 29.3 90
+arvore 21.5 29.9 120
+arvore 23.5 29.9 90
+bambu 24.5 29.4 120
+arvore 25.5 29.9 30
+arvore 27.5 29.9 240
+arvore 29.8 29.8 300
+bambu 30.4 29.4 90
+arvore 34 29.5 330
+bananeira 49.2 29.2 180
+arvore 51.5 29.1 240
+arvore 53.5 29.1 180
+bambu 54.4 29.4 240
+bananeira 55.5 29.1 270
+arvore 60 29.5 300
+bambu 1.7 30.7 240
+arvore 6.5 30.1 0
+bambu 7.3 30.3 330
+arvore 8.5 30.1 180
+arvore 14.9 30.5 150
+arvore 30.1 30.5 240
+bambu 33.7 30.3 60
+arvore 1.1 31.7 210
+bambu 14.4 31.4 300
+arvore 34 31.5 30
+bananeira 59.9 31.7 120
+bambu 1.4 32.3 300
+arvore 2.3 32.9 30
+arvore 14.9 32.5 210
+arvore 28.2 32.2 0
+bambu 33.7 32.4 240
+arvore 52.8 32.8 120
+bambu 53.4 32.5 90
+arvore 54.5 33 330
+arvore 56.5 33 30
+arvore 58.7 32.9 210
+bambu 59.7 32.3 90
+arvore 3.2 33.2 300
+arvore 15.8 33.2 0
+arvore 34 33.5 60
+arvore 49 33.5 210
+bambu 52.3 33.6 180
+arvore 16.5 34 300
+bambu 17.5 34.5 0
+arvore 18.5 34 90
+arvore 20.5 34 270
+arvore 22.5 34 60
+bambu 23.6 34.6 150
+arvore 24.5 34 0
+bambu 49.4 34.4 180
+arvore 53 34.5 330
+arvore 3 35.5 0
+arvore 33.8 35.8 240
+bambu 3.6 36.6 210
+arvore 34.5 36 60
+arvore 36.5 36 0
+arvore 38.5 36 270
+bambu 39.7 36.3 120
+arvore 40.5 36 210
+bambu 41.7 36.7 60
+arvore 42.5 36 30
+bambu 43.3 36.4 90
+arvore 44.5 36 180
+bambu 45.4 36.3 270
+arvore 46.5 36 0
+arvore 53 36.5 30
+arvore 3.2 37.8 180
+bambu 4.6 37.4 330
+arvore 15.5 38 240
+bambu 16.7 37.7 150
+arvore 17.5 38 270
+arvore 19.5 38 90
+bambu 20.3 37.6 120
+arvore 21.5 38 150
+bambu 22.7 37.7 30
+arvore 23.5 38 60
+bambu 24.7 37.7 90
+arvore 25.5 38 0
+arvore 27.5 38 30
+arvore 4.1 38.7 240
+arvore 28.1 38.5 330
+arvore 53 38.5 210
+arvore 5.2 39.8 60
+arvore 13.9 39.7 0
+bambu 14.4 39.4 150
+arvore 15.5 39.7 60
+bambu 28.4 39.6 240
+arvore 31.8 39.8 330
+bambu 32.4 39.5 120
+arvore 33.5 40 240
+arvore 37.5 40 120
+arvore 39.5 40 270
+arvore 41.5 40 90
+arvore 43.5 40 120
+bambu 44.7 39.5 150
+arvore 45.5 40 180
+bambu 52.7 39.5 0
+bambu 5.4 40.7 30
+arvore 6.3 40.9 330
+bambu 7.7 40.4 300
+arvore 12.7 40.9 240
+bambu 13.7 40.4 210
+arvore 28.1 40.5 30
+arvore 34.7 40.4 60
+bambu 35.6 40.4 150
+arvore 36.5 40.5 240
+arvore 53 40.5 270
+arvore 54.6 40.5 300
+bambu 55.7 40.4 270
+arvore 56.3 40.7 240
+bambu 57.7 40.5 210
+arvore 58.3 40.4 60
+arvore 3.2 41.2 60
+bambu 4.5 41.5 210
+bambu 5.4 41.4 240
+bambu 6.3 41.7 0
+arvore 7.2 41.2 150
+bambu 11.6 41.4 240
+bambu 12.3 41.6 150
+bambu 13.6 41.4 180
+bambu 14.4 41.3 90
+bambu 15.3 41.3 240
+arvore 17.5 41 270
+bambu 19.5 41.7 210
+arvore 23.2 41.2 300
+bambu 24.4 41.6 330
+bambu 25.4 41.3 0
+bambu 26.6 41.4 270
+bambu 27.6 41.5 30
+bambu 31.4 41.7 30
+bambu 32.5 41.5 180
+arvore 33.5 41 180
+arvore 35.5 41 120
+bambu 36.7 41.3 270
+bambu 37.5 41.7 300
+bambu 38.6 41.6 180
+arvore 39.7 41.1 90
+bambu 40.4 41.3 0
+arvore 43.2 41.2 300
+bambu 45.3 41.5 0
+arvore 47.5 41 300
+arvore 61.8 41.2 150
+bambu 3.7 42.4 150
+bambu 20.5 42.3 150
+bambu 40.5 42.6 150
+bambu 43.6 42.5 150
+bambu 61.5 42.7 120
+arvore 3 43.5 240
+bambu 20.7 43.7 180
+arvore 21.5 43 210
+bambu 22.5 43.3 210
+bambu 23.3 43.4 0
+bambu 40.3 43.3 180
+arvore 41.5 43 90
+bambu 42.5 43.4 120
+arvore 43.2 43.2 120
+arvore 62 43.5 210
+bambu 0.7 44.7 210
+bambu 1.6 44.6 270
+arvore 2.5 44 240
+arvore 62.5 44 30
+bambu 0.4 54.7 180
+arvore 2.5 55 30
+bambu 3.5 54.4 120
+bambu 4.4 54.7 330
+bambu 5.4 54.5 180
+bambu 6.5 54.4 300
+bambu 8.7 54.4 120
+bambu 9.5 54.6 90
+arvore 10.5 55 60
+bambu 11.7 54.3 60
+bambu 12.3 54.3 150
+bambu 14.3 54.3 90
+bambu 15.3 54.6 300
+arvore 16.5 55 150
+bambu 17.7 54.6 270
+arvore 18.5 55 120
+arvore 20.5 55 180
+bambu 21.5 54.6 30
+arvore 22.5 55 150
+bambu 23.6 54.3 240
+arvore 24.5 55 90
+arvore 26.5 55 270
+bambu 27.5 54.4 150
+arvore 28.5 55 240
+bambu 29.4 54.4 90
+arvore 30.5 55 60
+bambu 31.7 54.6 270
+arvore 32.5 55 120
+bambu 33.7 54.6 240
+bambu 34.4 54.6 330
+arvore 36.5 55 150
+bambu 38.4 54.3 120
+arvore 40.5 55 180
+arvore 42.5 55 0
+arvore 44.5 55 90
+bambu 45.7 54.5 180
+arvore 46.5 55 30
+bambu 47.3 54.5 120
+bambu 48.7 54.4 330
+arvore 50.5 55 180
+arvore 52.5 55 0
+bambu 53.3 54.3 210
+arvore 54.5 55 330
+bambu 55.7 54.7 60
+arvore 56.5 55 270
+bambu 57.7 54.6 120
+arvore 58.5 55 90
+bambu 59.4 54.6 210
+bambu 60.5 54.6 60
+arvore 62.5 55 120
+bambu 63.6 54.6 90
+
+[light]
+12.5 20.5 1.1 255,170,90 5 flicker
+7 15 0.8 255,120,50 4 flicker
+43.5 8.4 1.3 255,180,110 3 flicker
+54.6 9.9 0.3 255,150,60 3.5 flicker
+9.9 34.4 0.3 255,110,50 3 flicker
+52.3 44.3 0.3 255,170,90 4 flicker
+
+[cam]
+; casa de farinha (indoor, h 3): eye under the sape across the room, forno glow and lamparina in frame
+4 13 9 23 14 2.5 18.5 7.6 0.5 18.5 67
+10 13 15 23 6 2.5 17.5 12.5 0.5 18.2 67
+; estrada: above the trail, along the road so it bends away into the fog
+3 2 9 6 11.5 3.6 3.5 6.5 0.5 3.5 58
+10 2 16 6 8.5 3.6 3.5 13.5 0.5 3.5 58
+17 2 23 6 15.5 3.6 3.5 20.5 0.5 3.5 58
+24 2 30 6 22 3.6 4 27.3 0.5 3.9 50
+31 2 37 6 29.5 3.6 3.5 34.5 0.5 3.5 58
+38 2 44 6 36.5 3.6 4.5 41.5 0.5 4.3 58
+45 2 51 6 43.5 3.6 3.5 48.5 0.5 3.5 58
+52 2 56 6 59.5 3.6 3 54.6 0.5 4 50
+57 2 60 6 54 3.6 3.5 59 0.5 3.5 50
+; rancho (indoor): door first, then each half from the opposite wall, bau and oratorio candle across the room
+41 7 41 7 41.5 2.3 3.5 41.5 0.5 7.5 50
+37 8 41 12 44.5 2.3 9 40.2 0.5 10.2 50
+42 8 45 12 38.5 2.3 11.5 43.3 0.5 10.2 50
+; cemiterio: low-ish from the road side, cruz and candles against the fence
+49 7 54 12 58 2.2 7.5 52.4 0.5 9.7 50
+55 7 60 12 52.5 2.2 13 57.4 0.5 9.5 50
+; terreiro strip between the casa de farinha and the cerca, from the terreiro looking north
+16 12 16 18 16.5 3.4 22 16.5 0.5 16 50
+; roca: crane shots over the cerca, quadrant by quadrant
+16 7 25 13 23.5 3.6 16.5 22 0.5 11 69
+16 14 25 19 24.5 3.6 11.5 22 0.5 16.5 62
+26 7 34 13 28.5 3.6 16.5 30.1 0.5 11 70
+26 14 34 19 27.5 3.6 11.5 30 0.5 16.5 62
+; quintal do rancho
+35 13 43 14 32.5 3.4 14 39.5 0.5 14 50
+; trilha do cemiterio and its bend
+43 13 47 17 41.5 3.6 14 45.5 0.5 17 50
+48 13 52 17 56 3.6 17 51.1 0.5 16.1 50
+53 13 59 19 51.5 3.6 17.5 56.5 0.5 17.5 58
+; trilha do rancho: top shot down the corridor of trees
+40 15 43 21 39.5 3.6 14 42 0.5 18.5 52
+; tapera, roofless: door, then each half over the broken walls
+48 24 48 24 44.5 3 24.5 48.5 0.5 24.5 50
+49 20 52 28 55.5 3 22 51 0.5 24.5 52
+53 20 56 28 50.5 3 21.5 54.4 0.5 24.6 50
+; junction toward the tapera door
+40 22 47 26 38.5 3.6 26.5 43.1 0.5 24.6 62
+; terreiro: the casa de farinha from outside, the poco, the gap into the roca
+16 19 22 23 19.5 3.6 17 19.5 0.5 22 54
+16 24 22 28 17 3.6 22 19.3 0.5 26.5 58
+23 19 28 28 20 3.6 24.5 26 0.5 24.6 70
+5 24 15 28 11 3.6 32 11.4 0.5 26.5 68
+; trilha central
+29 24 34 27 27 3.6 26 32 0.5 26.2 50
+35 24 39 27 32.5 3.6 26 37.5 0.5 26 50
+; fundos da tapera: down the east side, then the bend toward the river
+57 18 58 23 58 3.6 17 58 0.5 22 50
+57 24 58 29 58 3.6 22 58 0.5 27 50
+54 30 58 31 50.5 3.4 31 56.5 0.5 31 50
+49 30 53 31 58 3.4 31 52 0.5 31 50
+; trilha dos fundos: narrow path behind the casa de farinha
+1 16 3 24 3 3.6 26.5 3 0.5 21 63
+1 25 3 31 5.5 3.6 33 3 0.5 28.5 52
+; clareira da sumauma: the hollow tree and its candles from above, then the south half
+4 29 8 35 11.5 3.6 33.5 6.5 0.5 33.6 50
+9 29 14 35 7 3.6 34 12.1 0.5 33.2 54
+4 36 14 41 9.5 3.6 43.5 9.4 0.5 38.3 61
+; trilhas do meio
+15 34 21 37 13.5 3.6 36 18.5 0.5 36 58
+22 34 28 37 30 3.6 33.5 25.5 0.5 36 52
+29 27 32 34 31 3.6 37 31.6 0.5 32.1 50
+29 35 32 41 31.5 3.6 33.5 30.4 0.5 38.4 53
+33 37 37 38 30.5 3.6 38 35.5 0.5 38 50
+38 37 41 38 35 3.6 38 40 0.5 38 50
+42 37 49 38 51 3.6 36 46 0.5 38 63
+50 32 51 36 48 3.6 38.5 51 0.5 34.5 50
+50 37 51 41 48 3.6 43.5 51 0.5 39.5 50
+; barracao da canoa (indoor): from the water side toward the chained door
+51 43 55 47 51 2 48 53.5 0.5 44.9 50
+; river: low over the water, the bank and the forest wall, the broken bridge
+29 42 30 48 24 1.1 46 30 0.5 45.3 50
+0 42 9 44 7 1.2 50.5 7 0.5 43.5 50
+10 42 19 44 15.5 1.2 50.5 15.1 0.5 43.5 50
+20 42 28 44 29.5 1.2 49.5 25.6 0.5 43.7 50
+31 42 39 44 35 1.2 50.5 35.5 0.5 43.5 50
+40 42 49 44 47.5 1.2 50.5 46 0.5 43.6 50
+50 42 55 44 59 1.5 42.5 53 0.5 42.5 50
+56 42 63 44 63 1.2 48 58.8 0.5 43.5 50
+
+[wake]
+0 8.5 17.5 90
+1 8.5 19.5 90
+2 10.5 17.5 90
+3 10.5 19.5 90
+
+[legend]
+spawn 30.5 43.5 180
+patrol 22 35
+patrol 30 40
+patrol 40 44
+patrol 58 43
+patrol 51 36
+patrol 57 25
+patrol 55 16
+patrol 55 9
+patrol 45 3
+patrol 25 3
+patrol 25 12
+patrol 19 23
+patrol 42 19
+patrol 35 25
+patrol 31 31
+patrol 9 38
+patrol 3 24
+patrol 11 26
+patrol 25 22
+lair 9 34
+
+[exit]
+51 44 55 45 lock=canoa

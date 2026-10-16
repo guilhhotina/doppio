@@ -1,0 +1,584 @@
+[map] name="Pedra Seca — o cemitério" w=60 h=52 sky=moon fog=18,22,32 fog_near=4 fog_far=14 legend=corposeco
+; phase 5 finale: rebury the Corpo-seco (3 ossos in the cova aberta + vela lit on the capela altar), open the gate padlock, leave by the road
+[area]
+0 cemitério
+1 ossário
+[solid]
+############################################################
+#B.B.B.B.B.B.B.....#...B.B.......B.B.B..#....B.B.......B.B.#
+#.................B#.H.B.B.......B.B....#.........#####....#
+#.B.H.B.B.B.H.B....#...B.B.B.BB.BB.B....#....B.H..#BPB#.B.H#
+#.B...B...B...B....#.........BB.........#....B....#...#.B..#
+#..................D.......B.BB.B.......D.........#...#....#
+#.B.B.B.H.B.B.B....#....................#....B.B..#...#.H.B#
+#...B.....B........#.H..B.B.....B.B..H..#......B..##D##....#
+#.................B#....H..........H..B.#..................#
+#.H.B.B.B.B.H......#....................#....B.H.B.B.B.H.B.#
+#..................######D###############..................#
+#......................#B..BBBBB..B#BH.P#..................#
+#....#####............H#...........#....#B.................#
+#B.H.#BBB#.B.B....H....#...........D....#....B.H.B.B.B.H.B.#
+#....#.B.#.B...........W.BBB...BBB.#....D....B.....B.....B.#
+#....#...#.............#...........#B..B#..................#
+#B.B.#...#.H.B.........#.BBB...BBB.##W###....B.B.H.B.B.B.H.#
+#..B.#...#........B....W...........#...........B.......B...#
+#....##D##.............#.BBB...BBB.W.....B.................#
+#H.B.......B.B........H#...........#.........H.B.B.B.H.B.B.#
+#..........B......H....#H.........H#H............B.......B.#
+#B.B.B.H.B.B.B.........####W#D#W####.......B...............#
+##W#####W###..............B................................#
+#B.BB....B.#...............................................#
+#H.........#...............................................#
+#...BB.....D..B.H.B.B.B.H.BB...B.B.H.B.B.B.H...#####.B.H.B.#
+#B.........#..B.......B..............B.........#..B#.B.....#
+#.........B#...................B...............D..B#.......#
+###D####D###..B.B.H.B.H.B.B......B.B.H.B.B.B...#...#.B.B.H.#
+#B....#...BW....B.......B..B...B.B.......B.....#..B#...B...#
+#....H#....#...................................#####.......#
+#.....#....D..B.H.B.B.B.H..B.....H.B.B.B.H.B..B.H.B.B.B.H..#
+#.H.B.#B..H#........B..................B............B......#
+###########################|#D#|############################
+                      #####.....#####
+                      #####|#D#|#####
+                      #.............#
+                      #B...........B#
+ ##########################################################
+ ##########################################################
+ #P....H#BB####BB####BB#############BB####BB####BB#H.....##
+ #..................H...................................H##
+ #.......................................................##
+ #......#####..##########B.B....B.B#########..#####......##
+ #......#####H.##########B........B#########..#####.....P##
+ #H.....#####..##########..........#########.H#####......##
+ #......#####..##########H...BB...H#########..#####......##
+ #......................................................B##
+ #B...................................H..................##
+ ########BB######BB####BB##########BB###BB######BB#########
+ ##########################################################
+ ##########################################################
+[rooms]
+------------------------------------------------------------
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-gggggggggggggggggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-ggggggggg-----gggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-ggggggggg-jjj-gggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-ggggggggg-jjj-gggg-
+-ggggggggggggggggggaaaaaaaaaaaaaaaaaaaaaaggggggggg-jjj-gggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-ggggggggg-jjj-gggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-ggggggggg--j--gggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-gggggggggggggggggg-
+-gggggggggggggggggg-aaaaaaaaaaaaaaaaaaaa-gggggggggggggggggg-
+-gggggggggggggggccc------k---------------gggggggggggggggggg-
+-gggggggggggggggccccccc-kkkkkkkkkkk-ssss-gggggggggggggggggg-
+-gggg-----ggggggccccccc-kkkkkkkkkkk-ssss-gggggggggggggggggg-
+-gggg-mmm-ggggggccccccc-kkkkkkkkkkksssss-gggggggggggggggggg-
+-gggg-mmm-ggggggccccccc-kkkkkkkkkkk-sssssgggggggggggggggggg-
+-gggg-mmm-ggggggccccccc-kkkkkkkkkkk-ssss-gggggggggggggggggg-
+-gggg-mmm-ggggggccccccc-kkkkkkkkkkk------gggggggggggggggggg-
+-gggg-mmm-ggggggccccccc-kkkkkkkkkkk-ggggggggggggggggggggggg-
+-gggg--m--ggggggccccccc-kkkkkkkkkkk-ggggggggggggggggggggggg-
+-gggggggggggggggccccccc-kkkkkkkkkkk-ggggggggggggggggggggggg-
+-gggggggggggggggccccccc-kkkkkkkkkkk-ggggggggggggggggggggggg-
+-gggggggggggggggccccccc------k------ggggggggggggggggggggggg-
+------------ccccccccccccccccccccccccccccccccccccccccccccccc-
+-hhhhhhhhhh-ccccccccccccccccccccccccccccccccccccccccccccccc-
+-hhhhhhhhhh-gggggggggggggggcccccggggggggggggggggggggggggggg-
+-hhhhhhhhhhhgggggggggggggggcccccggggggggggggggg-----ggggggg-
+-hhhhhhhhhh-gggggggggggggggcccccggggggggggggggg-ttt-ggggggg-
+-hhhhhhhhhh-gggggggggggggggcccccgggggggggggggggtttt-ggggggg-
+---q----d---gggggggggggggggcccccggggggggggggggg-ttt-ggggggg-
+-qqqqq-dddd-gggggggggggggggcccccggggggggggggggg-ttt-ggggggg-
+-qqqqq-dddd-gggggggggggggggcccccggggggggggggggg-----ggggggg-
+-qqqqq-dddddgggggggggggggggcccccggggggggggggggggggggggggggg-
+-qqqqq-dddd-gggggggggggggggcccccggggggggggggggggggggggggggg-
+-----------------------------p------------------------------
+---------------------------ppppp----------------------------
+-----------------------------p------------------------------
+-----------------------xxxxxxxxxxxxx------------------------
+-----------------------xxxxxxxxxxxxx------------------------
+------------------------------------------------------------
+------------------------------------------------------------
+--rrrrrr-uu----uu----uu-------------uu----uu----uu-rrrrrr---
+--rrrrrruuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuurrrrrr---
+--rrrrrruuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuurrrrrr---
+--rrrrrr-----uu----------vvvvvvvvvv---------uu-----rrrrrr---
+--rrrrrr-----uu----------vvvvvvvvvv---------uu-----rrrrrr---
+--rrrrrr-----uu----------vvvvvvvvvv---------uu-----rrrrrr---
+--rrrrrr-----uu----------vvvvvvvvvv---------uu-----rrrrrr---
+--rrrrrruuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuurrrrrr---
+--rrrrrruuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuurrrrrr---
+---------uu------uu----uu----------uu---uu------uu----------
+------------------------------------------------------------
+------------------------------------------------------------
+[room]
+; outdoors: moonlit grass and earth, rough-cast cemetery walls
+g quadras do cemitério area=0 floor=grama wall=muro_chapiscado ceil=- h=2.4 light=14 out=1
+c alameda area=0 floor=terra wall=muro_chapiscado ceil=- h=2.4 light=16 out=1
+a adro da capela area=0 floor=terra wall=muro_chapiscado ceil=- h=2.4 light=18 out=1
+p portaria area=0 floor=paralelepipedo wall=muro_chapiscado ceil=- h=2.4 light=18 out=1
+x estrada area=0 floor=paralelepipedo wall=muro_chapiscado ceil=- h=1.2 light=24 out=1
+k capela area=0 floor=lajota wall=azulejo_capela ceil=madeira_escura ext=cal h=5 light=22
+s sacristia area=0 floor=ladrilho_hidraulico wall=cal ceil=forro ext=cal h=3.2 light=12
+h casa do coveiro area=0 floor=ceramica_barro wall=reboco_mofo ceil=forro ext=reboco light=18
+q quarto do coveiro area=0 floor=concreto wall=reboco_mofo ceil=forro ext=reboco light=10
+d depósito area=0 floor=concreto wall=tijolo ceil=concreto ext=reboco light=6
+m jazigo dos Arruda area=0 floor=marmore_sujo wall=marmore_sujo ceil=marmore_sujo ext=marmore_sujo h=3 light=4
+j mausoléu dos Anjos area=0 floor=marmore_sujo wall=marmore_sujo ceil=marmore_sujo ext=marmore_sujo h=3 light=4
+t túmulo lacrado area=0 floor=pedra wall=lapide_granito ceil=pedra ext=lapide_granito h=2.8 light=6
+; underground: low stone galleries lined with bone niches
+u galeria do ossário area=1 floor=terra wall=pedra ceil=pedra h=2.2 light=3
+r escadaria do ossário area=1 floor=pedra wall=pedra ceil=pedra h=2.6 light=7
+v câmara das ossadas area=1 floor=terra_cova wall=marmore_sujo ceil=pedra h=2.4 light=6
+[item]
+sal1 sal 2.5 24.5
+fosforo fosforo 5.5 25.5
+foto1 foto 7.5 24.5
+chave_arruda chave 1.5 29.5
+sal2 sal 9.5 30.5
+pilha1 lanterna_pilha 7.5 30.5
+cruz cruz 32.5 12.5
+pe_de_cabra pe_de_cabra 36.5 11.5
+sal3 sal 36.5 15.5
+osso_a ossos 29.5 44.5
+osso_b ossos 7.5 14
+osso_c ossos 50.5 27
+vela vela 54.5 47.5
+pilha2 lanterna_pilha 4.5 47.5
+foto2 foto 14.5 45.5
+[lock]
+k_arruda key chave_arruda
+k_lacre tool pe_de_cabra
+; reburial: three bones into the open pit (two covas side by side), a candle lit on the capela altar
+cova1 place osso_a 29 5
+cova2 place osso_b 30 5
+cova3 place osso_c 29 4
+altar_vela place vela 29 11
+altar_fogo place fosforo 30 11
+enterro all cova1 cova2 cova3 altar_vela altar_fogo
+; gate padlock: year of the Coronel's death, on his stone in the adro
+cadeado code 1897
+saida all enterro cadeado
+[door]
+; capela: front doors stand open, back door to the adro closed
+29 21 h open
+25 10 h closed
+35 13 v closed
+40 14 v closed
+; adro gates (iron), both sides outdoors
+19 5 v closed
+40 5 v closed
+; casa do coveiro
+11 25 v closed
+3 28 h open
+8 28 h closed
+11 31 v closed
+; mausoleus
+7 18 h locked:k_arruda
+52 7 h closed
+47 27 v locked:k_lacre
+; the main gate: padlocked grade, then the big portao that swings open by itself once he is reburied
+29 33 h locked:cadeado
+29 35 h locked:enterro
+[portal]
+39 11 -> 4 42 90 escada
+2 40 -> 38 12 0 escada
+52 3 -> 54 44 270 escada
+56 44 -> 52 5 0 escada
+[prop]
+cruz_ferro 1.5 1.5 0
+cruz_ferro 3.5 1.5 0
+cruz_ferro 5.5 1.5 0
+cruz_ferro 7.5 1.5 0
+cruz_ferro 9.5 1.5 0
+cruz_ferro 11.5 1.5 0
+cruz_ferro 13.5 1.5 0
+cruz_ferro 23.5 1.5 90
+cruz_ferro 25.5 1.5 90
+cruz_ferro 33.5 1.5 90
+cruz_ferro 35.5 1.5 90
+cruz_ferro 37.5 1.5 0
+cruz_ferro 45.5 1.5 0
+cruz_ferro 47.5 1.5 0
+cruz_ferro 55.5 1.5 0
+cruz_ferro 57.5 1.5 0
+cruz_ferro 18.5 2.5 0
+tumulo 23.5 3 0
+tumulo 25.5 3 0
+tumulo 33.5 3 0
+tumulo 35.5 3 0
+tumulo 2.5 4 0
+tumulo 6.5 4 0
+lapide 8.5 3.5 0
+tumulo 10.5 4 0
+tumulo 14.5 4 0
+anjo_estatua 27.5 3.5 0
+lapide 29.5 3.5 180
+cruz_ferro 30.5 3.5 180
+anjo_estatua 32.5 3.5 0
+tumulo 45.5 4 0
+tumulo 56.5 4 0
+cova_aberta 29.5 5 0
+cova_aberta 30.5 5 0
+vela_chao 27.5 5.5 0
+vela_chao 32.5 5.5 0
+lapide 2.5 6.5 0
+tumulo 4.5 7 0
+cruz_ferro 6.5 6.5 0
+tumulo 10.5 7 0
+cruz_ferro 12.5 6.5 0
+lapide 14.5 6.5 0
+lapide 45.5 6.5 0
+tumulo 47.5 7 0
+lapide 58.5 6.5 0
+lapide 24.5 7.5 180
+cruz_ferro 26.5 7.5 0
+cruz_ferro 32.5 7.5 0
+lapide 34.5 7.5 0
+cruz_ferro 18.5 8.5 0
+arvore 38.5 8.5 0
+cruz_ferro 4.5 9.5 0
+lapide 6.5 9.5 0
+lapide 8.5 9.5 0
+cruz_ferro 10.5 9.5 0
+cruz_ferro 45.5 9.5 0
+lapide 49.5 9.5 0
+cruz_ferro 51.5 9.5 0
+lapide 53.5 9.5 0
+cruz_ferro 57.5 9.5 0
+cruz_ferro 41.5 12.5 0
+cruz_ferro 1.5 13.5 0
+tumulo 11.5 14 0
+lapide 13.5 13.5 0
+tumulo 45.5 14 0
+cruz_ferro 49.5 13.5 0
+tumulo 51.5 14 0
+lapide 53.5 13.5 0
+tumulo 57.5 14 0
+lapide 1.5 16.5 0
+tumulo 3.5 17 0
+cruz_ferro 13.5 16.5 0
+lapide 45.5 16.5 0
+tumulo 47.5 17 0
+lapide 51.5 16.5 0
+cruz_ferro 53.5 16.5 0
+tumulo 55.5 17 0
+lapide 18.5 17.5 0
+lapide 41.5 18.5 0
+cruz_ferro 3.5 19.5 0
+tumulo 11.5 20 180
+lapide 13.5 19.5 0
+cruz_ferro 47.5 19.5 0
+tumulo 49.5 20 0
+lapide 51.5 19.5 0
+cruz_ferro 55.5 19.5 0
+tumulo 57.5 20 0
+cruz_ferro 1.5 21.5 180
+lapide 3.5 21.5 180
+cruz_ferro 5.5 21.5 180
+cruz_ferro 9.5 21.5 180
+lapide 11.5 21.5 90
+tumulo 14.5 26 0
+cruz_ferro 18.5 25.5 0
+lapide 20.5 25.5 0
+tumulo 22.5 26 0
+cruz_ferro 26.5 25.5 0
+anjo_estatua 27.5 25.5 0
+anjo_estatua 31.5 25.5 0
+cruz_ferro 33.5 25.5 0
+tumulo 37.5 26 0
+lapide 39.5 25.5 0
+cruz_ferro 41.5 25.5 0
+tumulo 53.5 26 0
+cruz_ferro 57.5 25.5 0
+lapide 14.5 28.5 0
+tumulo 16.5 29 0
+cruz_ferro 20.5 28.5 0
+tumulo 24.5 29 0
+lapide 26.5 28.5 0
+tumulo 33.5 29 0
+lapide 35.5 28.5 0
+cruz_ferro 39.5 28.5 0
+tumulo 41.5 29 0
+lapide 43.5 28.5 0
+lapide 53.5 28.5 0
+tumulo 55.5 29 0
+anjo_estatua 27.5 29.5 0
+anjo_estatua 31.5 29.5 0
+cruz_ferro 14.5 31.5 0
+lapide 18.5 31.5 0
+tumulo 20.5 32 180
+cruz_ferro 22.5 31.5 0
+cruz_ferro 35.5 31.5 0
+lapide 37.5 31.5 0
+tumulo 39.5 32 180
+cruz_ferro 43.5 31.5 0
+cruz_ferro 46.5 31.5 0
+lapide 50.5 31.5 0
+tumulo 52.5 32 180
+cruz_ferro 54.5 31.5 0
+ossario 10 40.6 0
+ossario 16 40.6 0
+ossario 22 40.6 0
+ossario 37 40.6 0
+ossario 43 40.6 0
+ossario 49 40.6 0
+ossario 10 49.4 180
+ossario 18 49.4 180
+ossario 24 49.4 180
+ossario 36 49.4 180
+ossario 41 49.4 180
+ossario 49 49.4 180
+capela_altar 29.5 11.5 0
+vela_castical 27.5 11.5 0
+vela_castical 31.5 11.5 0
+santo_estatua 24.5 11.5 135
+santo_estatua 34.5 11.5 225
+banco_igreja 26.5 14.5 180
+banco_igreja 32.5 14.5 180
+banco_igreja 26.5 16.5 180
+banco_igreja 32.5 16.5 180
+banco_igreja 26.5 18.5 180
+banco_igreja 32.5 18.5 180
+estante 36.5 11.4 0 item=pe_de_cabra
+bau 36.5 15.5 0 item=sal3
+oratorio 39.5 15.6 180
+fogao_lenha 1.5 23.5 0
+pia 3.5 23.4 0
+filtro_barro 4.5 23.4 0
+mesa 5 25.5 90
+cadeira 4.5 26.4 180
+cadeira 5.5 24.6 0
+oratorio 9.5 23.4 0
+radio_antigo 10.5 27.5 270
+rede 8 26.5 90
+calendario 1.1 26.5 90
+bau 1.5 29.5 90 item=chave_arruda
+criado_mudo 4.5 32.5 180
+estante 10.5 29.5 270
+engradado 7.5 32.5 0
+tumulo 7.5 14 0 item=osso_b
+anjo_estatua 6.5 13.5 0
+vela_chao 8.5 13.5 0
+anjo_estatua 51.5 3.5 0
+anjo_estatua 53.5 3.5 0
+tumulo 50.5 27 0 item=osso_c
+vela_chao 50.5 29.5 270
+poste 27.5 31.5 0
+poste 31.5 27.5 0
+poste 26.5 22.5 0
+poste 23.5 37.5 0
+poste 35.5 37.5 0
+poste 13.5 21.5 0
+poste 43.5 21.5 0
+vela_chao 27.5 43.5 0
+vela_chao 32.5 43.5 0
+tumulo 30 46.5 90
+ossario 25.4 44 90
+ossario 34.6 44 270
+vela_chao 56.5 47.5 270
+vela_chao 2.5 48.5 90
+[note]
+4 32 criado_mudo "Diário do coveiro: enterrei o Coronel Tibúrcio três vezes. A terra cuspiu ele de volta. Virou Corpo-seco."
+4 25 mesa "Pra ele descansar: os 3 ossos na vala aberta do adro e uma vela acesa no altar da capela."
+10 29 estante "Um osso ficou no ossário (desce pela sacristia), um no mausoléu dos Arruda, um no túmulo lacrado do leste."
+1 26 calendario "Troquei o segredo do cadeado do portão: é o ano em que o Coronel morreu. Tá na lápide dele, no adro."
+9 23 oratorio "Sal grosso na porta e ele não passa. Dona Benedita diz que com a cruz na mão ele nem encosta."
+29 3 lapide "Cel. Tibúrcio Arruda. Nasceu 1841, morreu 1897. Bateu na mãe. Nem a terra o quis."
+28 11 capela_altar "Vela no meio do altar, fósforo ao lado pra acender. Só a luz benta segura quem a terra não quis."
+39 15 oratorio "A chave do jazigo dos Arruda fica no baú do quarto do coveiro."
+47 26 parede "Túmulo lacrado com pregos. Só um pé de cabra abre. Deixei um na estante da sacristia."
+28 33 grade "Cadeado de 4 números na grade. O portão grande lá fora só abre quando o Corpo-seco for enterrado."
+9 40 ossario "Aqui jazem os que ninguém reclamou. Rezem por eles."
+8 18 parede "Jazigo perpétuo da família Arruda."
+[hide]
+21 2 tumulo 0
+4 3 tumulo 0
+12 3 tumulo 0
+47 3 tumulo 0
+58 3 tumulo 0
+8 6 tumulo 0
+56 6 tumulo 0
+21 7 tumulo 0
+37 7 tumulo 0
+24 8 tumulo 0
+35 8 tumulo 0
+2 9 tumulo 0
+12 9 tumulo 0
+47 9 tumulo 0
+55 9 tumulo 0
+22 12 tumulo 0
+3 13 tumulo 0
+18 13 tumulo 0
+47 13 tumulo 0
+55 13 tumulo 0
+11 16 tumulo 0
+49 16 tumulo 0
+57 16 tumulo 0
+1 19 tumulo 0
+22 19 tumulo 0
+45 19 tumulo 0
+53 19 tumulo 0
+18 20 tumulo 0
+36 20 tumulo 0
+7 21 tumulo 180
+16 25 tumulo 0
+24 25 tumulo 0
+35 25 tumulo 0
+43 25 tumulo 0
+55 25 tumulo 0
+18 28 tumulo 0
+22 28 tumulo 0
+37 28 tumulo 0
+57 28 tumulo 0
+16 31 tumulo 0
+24 31 tumulo 0
+33 31 tumulo 0
+41 31 tumulo 0
+48 31 tumulo 0
+56 31 tumulo 0
+24 20 confessionario 90
+34 20 confessionario 270
+37 11 armario 0
+1 24 armario 90
+2 32 cama 180
+5 30 guarda_roupa 270
+10 32 cesto 270
+7 40 tumulo 270
+2 45 tumulo 90
+51 40 tumulo 90
+56 41 tumulo 270
+25 46 tumulo 90
+34 46 tumulo 270
+13 44 tumulo 90
+45 45 tumulo 270
+20 41 tumulo 0
+38 48 tumulo 180
+[light]
+27.5 11.5 1.3 255,170,90 4 flicker
+31.5 11.5 1.3 255,170,90 4 flicker
+39.5 15.5 1.2 255,150,80 2.5 flicker
+27.5 5.5 0.4 255,150,70 3 flicker
+32.5 5.5 0.4 255,150,70 3 flicker
+5 25.5 1.6 255,190,110 5 flicker
+9.5 23.5 1.2 255,150,80 2 flicker
+8.5 13.5 0.4 255,150,70 2.5 flicker
+50.5 29.5 0.4 255,150,70 2.5 flicker
+27.5 31.5 3.2 200,210,255 6 flicker
+31.5 27.5 3.2 200,210,255 6 dead
+26.5 22.5 3.2 200,210,255 6 dead
+13.5 21.5 3.2 200,210,255 6 dead
+43.5 21.5 3.2 200,210,255 6 dead
+23.5 37.5 3.2 255,210,140 7 steady
+35.5 37.5 3.2 255,210,140 7 dead
+27.5 43.5 0.4 255,150,70 3 flicker
+32.5 43.5 0.4 255,150,70 3 flicker
+56.5 47.5 0.4 255,150,70 3 flicker
+2.5 48.5 0.4 255,150,70 2.5 flicker
+[cam]
+; casa do coveiro: you wake in the dim sala; the oil lamp on the mesa, the fogao in the dark corner
+1 28 5 32 5.6 2.3 32.6 2 0.6 29 64
+7 28 11 32 8 2.3 32.8 10 0.6 29 70
+1 23 5 27 9.5 2.3 27.6 1.5 0.8 23.5 62
+6 23 11 27 2 2.3 23.6 10.5 0.8 26.5 62
+; jazigos: from over the angel's head in the back corner, down at the door you came in by
+6 13 8 18 6.2 2.7 13.2 8 0.4 17.5 66
+51 3 53 7 51.2 2.7 3 53 0.4 7 66
+47 26 50 29 50.6 2.7 29.4 47.5 0.5 26.5 68
+; capela: low from the back of the aisle up at the altar and its saints; then high diagonals across the pews from the altar corners
+24 10 34 13 29.5 1 20.4 29.5 2.2 11 52
+24 14 29 21 33.6 4 12.2 25.5 0.5 19.5 60
+30 14 34 21 25.4 4 12.2 33.5 0.5 19.5 60
+35 11 39 15 39.8 2.9 11.2 35.8 0.4 15 66
+; adro: the climax. ground level behind you as you kneel at the open grave, the Coronel's stone between two angels against the moon
+27 1 32 6 30 0.5 9.4 30 1.7 3 56
+; reverse: over the stone, down at the grave and the capela's back wall
+27 7 32 9 30 3.4 1.6 30 0.2 6 56
+19 1 26 9 26.6 3.6 1.4 20.5 -0.6 8 62
+33 1 40 9 33.4 3.4 1.4 40 0.5 8.5 66
+; quadra noroeste: high diagonal, then low across the rows so the crosses cut the moonlit sky
+1 1 9 9 10.5 3.6 10.6 3 0.5 2.5 60
+10 1 18 9 18.4 1 10.8 11 1.6 2 58
+; quadra oeste around the Arruda jazigo
+1 10 4 21 3 3.6 7.4 3 0.5 18 58
+5 10 14 12 15.8 2.6 11.4 5.2 0.5 11.9 50
+5 13 14 21 14.6 3.4 21.6 8 0.5 14 66
+15 10 22 21 22 3.8 23.2 16.4 0.5 12.6 64
+; quadra nordeste: low silhouettes, then the Anjos mausoleum door from the ground
+50 1 54 1 49.4 2.2 1.5 55 0.8 1.5 50
+50 8 54 9 52.5 1 11.4 52.5 2 7 62
+41 1 49 9 41.4 1 9.8 48.5 1.6 2 60
+55 1 58 9 56.4 3.4 11 58.5 0.5 2.7 52
+; quadra leste
+40 10 43 16 44 3 18 41.7 0.5 10.2 56
+36 17 43 21 44.3 3 20.8 38.3 0.5 17.7 66
+44 10 51 21 44.4 1 9.4 51 1.6 19 62
+52 10 58 21 58.1 3.6 23.3 52.6 0.5 12.8 58
+; alameda central: low up the path to the capela facade, then over the shoulder down to the padlocked gate
+27 22 31 27 29.5 0.8 30.5 29.5 2.4 21 50
+27 28 31 33 29.5 3 23.2 29.5 0.6 33.5 52
+; the cross path in front of the capela, along its length
+12 22 26 24 28.6 2.8 23.2 12 0.6 23.5 52
+32 22 58 24 30.4 2.8 23.2 58 0.6 23.5 52
+; quadras sul: high crane shots from the cross path, the rows receding into the fog toward the south wall
+12 25 19 32 15.5 4 20.4 15.5 0 30 60
+20 25 26 32 21.3 4 19.8 23 0 30 60
+32 25 39 32 37.2 4 20.8 35.5 0 30 60
+40 25 46 32 43.5 4 20.4 43 0 30 60
+47 31 51 32 45.5 3 31.5 52 0.5 32 54
+52 25 58 32 55 4 20.6 55 0 30 60
+; portaria: under the arch, between the two gates
+27 34 31 34 27.3 2.8 34.5 31.5 0.6 34.5 64
+; estrada: the freedom shot, from the road back at the big portao and the cemetery wall
+29 35 29 35 29.5 2.6 37.6 29.5 1.4 33 60
+23 35 29 37 34.9 2.4 37.7 24 0.8 35.8 58
+30 35 35 37 24.1 2.4 37.7 35 0.8 35.8 58
+; ossario: near the low ceiling, short lenses, galleries cut in short segments, reverse shots in the stair chambers
+2 40 7 44 4.5 2 48.4 4.5 0.4 40 56
+2 45 7 48 4.5 2 40.6 4.5 0.4 48.5 56
+13 43 14 46 13.9 1.9 41.3 13.9 0.4 48 60
+44 43 45 46 44.9 1.9 47.8 44.9 0.5 41.5 60
+25 43 34 46 28.3 2 41 29.5 0.3 46 70
+8 41 16 42 17.2 1.8 42.1 8 0.6 41.5 54
+17 41 25 42 26.2 1.8 41.8 16.5 0.5 42.3 54
+26 41 34 42 35.5 1.8 41.6 26 0.6 42 54
+35 41 43 42 34.6 1.8 42.3 43.5 0.6 41.5 54
+44 41 50 42 43 1.8 41.6 50.5 0.5 42 54
+8 47 16 48 17.5 1.8 47.5 8 0.6 48 54
+17 47 25 48 26.2 1.8 48.1 17 0.6 47.5 54
+26 47 34 48 25 1.8 48.3 34.5 0.5 47.5 54
+35 47 43 48 44.2 1.8 47.8 35.4 0.6 48.4 54
+44 47 50 48 43.6 1.8 48.4 50.5 0.5 47.5 54
+51 40 56 44 53.5 2 48.4 53.5 0.4 40 56
+51 45 56 48 53.5 2 40.6 53.5 0.4 48.5 56
+[wake]
+0 7.5 24.5 270
+1 3.5 30.5 0
+2 6.5 26.5 90
+3 3.5 26.5 180
+[legend]
+; he rises from the open grave and walks the whole cemetery, the ossario and the capela
+spawn 29.5 6.5 0
+patrol 29 7
+patrol 21 5
+patrol 16 5
+patrol 16 11
+patrol 12 23
+patrol 20 27
+patrol 29 26
+patrol 29 32
+patrol 38 30
+patrol 45 27
+patrol 44 18
+patrol 42 11
+patrol 52 9
+patrol 52 5
+patrol 54 44
+patrol 29 42
+patrol 10 47
+patrol 5 42
+patrol 38 12
+patrol 29 15
+patrol 29 12
+patrol 25 9
+lair 36 4
+[exit]
+23 36 35 37 lock=saida

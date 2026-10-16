@@ -1,23 +1,120 @@
+agua procedural:tools/synth.py(agua) own-work CC0
+agua_rio procedural:tools/synth.py(agua) own-work CC0
+asfalto https://polyhaven.com/a/asphalt_02 CC0
+assoalho https://polyhaven.com/a/wood_planks CC0
 azulejo procedural:tools/synth.py(azulejo) own-work CC0
+azulejo_capela procedural:tools/synth.py(capela) own-work CC0
+bambu_a procedural:tools/synth.py(bambu) own-work CC0
+bananeira_a procedural:tools/synth.py(bananeira) own-work CC0
+barro https://polyhaven.com/a/brown_mud_03 CC0
+bilhete procedural:tools/textures.sh(t_bilhete)+https://polyhaven.com/a/blue_metal_plate CC0
+bronze procedural:tools/textures.sh(t_bronze) own-work CC0
+cal https://polyhaven.com/a/white_plaster_02 CC0
+calcada_portuguesa procedural:tools/synth.py(calcada) own-work CC0
+calendario procedural:tools/textures.sh(t_calendario)+https://commons.wikimedia.org/wiki/File:SacredHeartBatoni.jpg Pompeo-Batoni-1767 public-domain(CC0-tagged)
+cartaz_festa procedural:tools/textures.sh(t_cartaz_festa)+https://commons.wikimedia.org/wiki/File:SacredHeartBatoni.jpg Pompeo-Batoni-1767 public-domain(CC0-tagged)
+casca https://polyhaven.com/a/bark_brown_02 CC0
 ceramica https://polyhaven.com/a/floor_tiles_08 CC0
 ceramica_barro https://polyhaven.com/a/clay_plaster CC0
+ceu_noite procedural:tools/synth.py(ceu noite) own-work CC0
+ceu_nublado procedural:tools/synth.py(ceu nublado) own-work CC0
 colcha https://polyhaven.com/a/floral_jacquard CC0
 concreto https://polyhaven.com/a/concrete_floor_worn_001 CC0
 croche procedural:tools/synth.py(croche) own-work CC0
+cruz_ferro_a procedural:tools/synth.py(cruz_ferro) own-work CC0
+dourado procedural:tools/synth.py(dourado) own-work CC0
+fachada_amarela https://polyhaven.com/a/yellow_plaster CC0
+fachada_azul https://polyhaven.com/a/blue_plaster_weathered CC0
+fachada_rosa https://polyhaven.com/a/yellow_plaster CC0
+ferrugem https://polyhaven.com/a/rusty_metal_02 CC0
+folhas_a procedural:tools/synth.py(folhas) own-work CC0
+folhas_chao https://polyhaven.com/a/leaves_forest_ground CC0
 forro https://polyhaven.com/a/japanese_cedar_planks CC0
+forro_pintado procedural:tools/textures.sh(t_forro_pintado)+https://polyhaven.com/a/white_planks_clean CC0
+fusca_lataria procedural:tools/textures.sh(t_fusca_lataria)+https://polyhaven.com/a/blue_metal_plate CC0
+grade_a procedural:tools/synth.py(grade) own-work CC0
 grama https://polyhaven.com/a/grass_ground CC0
+item_alicate_a procedural:tools/textures.sh(t_item_alicate_a) own-work CC0
+item_balde_a procedural:tools/textures.sh(t_item_balde_a) own-work CC0
+item_bilhete_onibus_a procedural:tools/textures.sh(t_item_bilhete_onibus_a) own-work CC0
+item_chave_a procedural:tools/textures.sh(t_item_chave_a) own-work CC0
+item_chave_de_fenda_a procedural:tools/textures.sh(t_item_chave_de_fenda_a) own-work CC0
+item_cruz_a procedural:tools/textures.sh(t_item_cruz_a) own-work CC0
+item_fosforo_a procedural:tools/textures.sh(t_item_fosforo_a) own-work CC0
+item_foto_a procedural:tools/textures.sh(t_item_foto_a) own-work CC0
+item_freio_a procedural:tools/textures.sh(t_item_freio_a) own-work CC0
+item_fusivel_a procedural:tools/textures.sh(t_item_fusivel_a) own-work CC0
+item_lanterna_pilha_a procedural:tools/textures.sh(t_item_lanterna_pilha_a) own-work CC0
+item_manivela_a procedural:tools/textures.sh(t_item_manivela_a) own-work CC0
+item_martelo_a procedural:tools/textures.sh(t_item_martelo_a) own-work CC0
+item_ossos_a procedural:tools/textures.sh(t_item_ossos_a) own-work CC0
+item_pe_de_cabra_a procedural:tools/textures.sh(t_item_pe_de_cabra_a) own-work CC0
+item_remo_a procedural:tools/textures.sh(t_item_remo_a) own-work CC0
+item_sal_a procedural:tools/textures.sh(t_item_sal_a) own-work CC0
+item_tabaco_a procedural:tools/textures.sh(t_item_tabaco_a) own-work CC0
+item_vela_a procedural:tools/textures.sh(t_item_vela_a) own-work CC0
+kombi_lataria procedural:tools/textures.sh(t_kombi_lataria)+https://polyhaven.com/a/blue_metal_plate CC0
+ladrilho_hidraulico procedural:tools/synth.py(ladrilho) own-work CC0
 lajota https://polyhaven.com/a/terracotta_floor_tiles CC0
+lapide_granito https://polyhaven.com/a/granite_tile_03 CC0
+letreiro_bar procedural:tools/textures.sh(sign)+https://polyhaven.com/a/blue_metal_plate CC0
+letreiro_farmacia procedural:tools/textures.sh(sign)+https://polyhaven.com/a/blue_metal_plate CC0
+letreiro_padaria procedural:tools/textures.sh(sign)+https://polyhaven.com/a/blue_metal_plate CC0
+letreiro_rodoviaria procedural:tools/textures.sh(sign)+https://polyhaven.com/a/blue_metal_plate CC0
+lua_a procedural:tools/synth.py(lua) own-work CC0
+madeira_banco https://polyhaven.com/a/dark_wood CC0
+madeira_crua https://polyhaven.com/a/raw_plank_wall CC0
 madeira_escura https://polyhaven.com/a/wood_table_worn CC0
+madeira_ponte https://polyhaven.com/a/weathered_planks CC0
 madeira_porta procedural:tools/synth.py(porta)+https://polyhaven.com/a/wood_table_worn CC0
+marmore_sujo procedural:tools/synth.py(marmore) own-work CC0
+marmore_xadrez procedural:tools/synth.py(xadrez) own-work CC0
+meio_fio https://polyhaven.com/a/granite_tile_03 CC0
 metal https://polyhaven.com/a/blue_metal_plate CC0
+muro_chapiscado https://polyhaven.com/a/rough_plaster_03 CC0
+musgo https://polyhaven.com/a/moss_wood CC0
+onibus_janela procedural:tools/textures.sh(t_onibus_janela)+https://polyhaven.com/a/blue_metal_plate CC0
+onibus_lataria procedural:tools/textures.sh(t_onibus_lataria)+https://polyhaven.com/a/blue_metal_plate CC0
 papel_floral procedural:tools/synth.py(floral)+https://polyhaven.com/a/decrepit_wallpaper CC0
 papel_jornal procedural:tools/textures.sh(t_papel_jornal)+tools/synth.py(porta) own-work CC0
+papel_listrado procedural:tools/synth.py(listrado)+https://polyhaven.com/a/decrepit_wallpaper CC0
+paralelepipedo https://polyhaven.com/a/cobblestone_floor_08 CC0
+pau_a_pique procedural:tools/synth.py(pau_a_pique)+https://polyhaven.com/a/patterned_clay_wall+https://polyhaven.com/a/raw_plank_wall CC0
+pedra https://polyhaven.com/a/rustic_stone_wall CC0
+placa_rua procedural:tools/textures.sh(t_placa_rua) own-work CC0
+portao_a procedural:tools/synth.py(portao) own-work CC0
+quadro_fusivel procedural:tools/textures.sh(t_quadro_fusivel) own-work CC0
+quadro_negro procedural:tools/textures.sh(t_quadro_negro) own-work CC0
 quadro_santo https://commons.wikimedia.org/wiki/File:SacredHeartBatoni.jpg Pompeo-Batoni-1767 public-domain(CC0-tagged)
 reboco https://polyhaven.com/a/painted_plaster_wall CC0
 reboco_mofo https://polyhaven.com/a/painted_plaster_wall+https://polyhaven.com/a/worn_mossy_plasterwall CC0
 relogio procedural:tools/textures.sh(t_relogio) own-work CC0
+rocha https://polyhaven.com/a/mossy_rock CC0
+sape https://polyhaven.com/a/thatch_roof_angled CC0
 taco procedural:tools/synth.py(taco)+https://polyhaven.com/a/black_walnut_veneer_02 CC0
 tecido_sofa https://polyhaven.com/a/floral_jacquard CC0
+telha https://polyhaven.com/a/roof_tiles CC0
 terra https://polyhaven.com/a/red_dirt_mud_01 CC0
+terra_cova https://polyhaven.com/a/brown_mud_rocks_01 CC0
 tijolo https://polyhaven.com/a/red_brick CC0
 vidro_noite procedural:tools/synth.py(vidro) own-work CC0
+vitral procedural:tools/synth.py(vitral) own-work CC0
+vitrine procedural:tools/synth.py(vidro)+textures.sh(t_vitrine) own-work CC0
+cast_alva procedural:tools/cast_textures.sh(alva) own-work CC0
+cast_benedita https://commons.wikimedia.org/wiki/File:Portrait_of_an_elderly_woman_(I0027806).tiff public-domain+procedural:tools/cast_textures.sh(benedita)
+cast_bia https://commons.wikimedia.org/wiki/File:A_young_woman_in_the_1920s_to_1930s_-_DPLA_-_58890cae980aeef52defcd865ba423c4.jpg public-domain+procedural:tools/cast_textures.sh(bia)
+cast_cabra https://commons.wikimedia.org/wiki/File:Goat_Anatomy_Head.jpg CC0+procedural:tools/cast_textures.sh(cabra)
+cast_corpo https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain+procedural:tools/cast_textures.sh(corpo)
+cast_couro https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain
+cast_florido procedural:tools/cast_textures.sh(florido) own-work CC0
+cast_jairo https://commons.wikimedia.org/wiki/File:Unidentified_man_with_mustache,_Portland,_Oregon,_ca_1890_(PORTRAITS_546).jpg Eastman-ca1890 public-domain+procedural:tools/cast_textures.sh(jairo)
+cast_jeans procedural:tools/cast_textures.sh(jeans) own-work CC0
+cast_matinta https://commons.wikimedia.org/wiki/File:Unknown_(American)_-_Elderly_Woman_-_55.80_-_Detroit_Institute_of_Arts.jpg public-domain+procedural:tools/cast_textures.sh(matinta)
+cast_misc procedural:tools/cast_textures.sh(misc) own-work CC0
+cast_moletom procedural:tools/cast_textures.sh(moletom) own-work CC0
+cast_pelo procedural:tools/cast_textures.sh(pelo) own-work CC0
+cast_preto procedural:tools/cast_textures.sh(preto) own-work CC0
+cast_tonho https://commons.wikimedia.org/wiki/File:Unidentified_boy_photograph_-_DPLA_-_b33c835fd845cfa3b6f70b994a4edd3e.jpg public-domain+procedural:tools/cast_textures.sh(tonho)
+cast_trapo https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain
+cast_xadrez procedural:tools/cast_textures.sh(xadrez) own-work CC0
+cast_xale procedural:tools/cast_textures.sh(xale) own-work CC0

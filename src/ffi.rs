@@ -25,6 +25,7 @@ pub const ENV_SET_VARIABLES: c_uint = 16;
 pub const ENV_SET_SUPPORT_NO_GAME: c_uint = 18;
 pub const ENV_GET_LOG_INTERFACE: c_uint = 27;
 pub const ENV_GET_USERNAME: c_uint = 38;
+pub const ENV_GET_SAVE_DIRECTORY: c_uint = 31;
 pub const ENV_SET_NETPACKET_INTERFACE: c_uint = 78;
 
 pub const PIXEL_FORMAT_XRGB8888: c_int = 1;

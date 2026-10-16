@@ -1,0 +1,833 @@
+[map] name="Pedra Seca — a cidade" w=72 h=56 sky=moon fog=8,10,18 fog_near=6 fog_far=20 legend=cabra power=off
+
+[area]
+0 ruas de Pedra Seca
+
+[room]
+r rua do Rosário floor=paralelepipedo wall=muro_chapiscado ceil=- h=3 light=12 out=1
+d rua Direita floor=paralelepipedo wall=muro_chapiscado ceil=- h=3 light=12 out=1
+t travessa floor=paralelepipedo wall=muro_chapiscado ceil=- h=3 light=10 out=1
+v avenida floor=asfalto wall=muro_chapiscado ceil=- h=3 light=12 out=1
+p praça floor=calcada_portuguesa wall=muro_chapiscado ceil=- h=3 light=16 out=1
+c canteiros floor=grama wall=muro_chapiscado ceil=- h=1 light=16 out=1
+i adro da igreja floor=pedra wall=pedra ceil=- h=3 light=14 out=1
+b beco atrás da igreja floor=terra wall=muro_chapiscado ceil=- h=3.2 light=5 out=1
+g terreno baldio floor=grama wall=muro_chapiscado ceil=- h=2.4 light=8 out=1
+y quintal da padaria floor=terra wall=tijolo ceil=- h=2.4 light=7 out=1
+z beco do Zé floor=terra wall=tijolo ceil=- h=3.2 light=5 out=1
+x quintal do Zé floor=terra wall=tijolo ceil=- h=2.2 light=7 out=1
+u quintal da casa azul floor=grama wall=muro_chapiscado ceil=- h=2.2 light=7 out=1
+f beco da farmácia floor=terra wall=muro_chapiscado ceil=- h=3 light=5 out=1
+s quintal da Zefa floor=grama wall=muro_chapiscado ceil=- h=2.2 light=8 out=1
+o quintal da oficina floor=terra wall=tijolo ceil=- h=2.4 light=7 out=1
+I igreja matriz (fechada) floor=pedra wall=pedra ceil=- ext=pedra h=9 light=0
+R casa rosa: sala floor=taco wall=papel_floral ceil=forro ext=fachada_rosa h=3.2 light=10
+Q casa rosa: quarto da Cida floor=taco wall=papel_floral ceil=forro ext=fachada_rosa h=3.2 light=8
+K casa rosa: cozinha floor=ceramica wall=azulejo ceil=forro ext=fachada_rosa h=3.2 light=9
+F farmácia: loja floor=ladrilho_hidraulico wall=azulejo ceil=forro ext=cal h=3.6 light=14
+M farmácia: manipulação floor=ceramica wall=azulejo ceil=forro ext=cal h=3.2 light=12
+E farmácia: estoque floor=concreto wall=reboco_mofo ceil=concreto ext=cal h=3.2 light=4
+O farmácia: escritório floor=taco wall=reboco ceil=forro ext=cal h=3.2 light=8
+L casa do Lázaro: sala floor=lajota wall=reboco_mofo ceil=forro ext=tijolo h=2.9 light=8
+l casa do Lázaro: quarto floor=lajota wall=reboco_mofo ceil=forro ext=tijolo h=2.9 light=6
+P padaria: loja floor=ladrilho_hidraulico wall=azulejo ceil=forro ext=fachada_amarela h=3.6 light=12
+N padaria: forno floor=ceramica_barro wall=tijolo ceil=concreto ext=fachada_amarela h=3.2 light=9
+Z Bar do Zé floor=lajota wall=reboco ceil=madeira_escura ext=fachada_rosa h=3.4 light=12
+X Bar do Zé: depósito floor=concreto wall=tijolo ceil=concreto ext=fachada_rosa h=3 light=4
+A casa azul: sala floor=taco wall=papel_listrado ceil=forro_pintado ext=fachada_azul h=3.2 light=9
+U casa azul: quarto floor=assoalho wall=papel_listrado ceil=forro_pintado ext=fachada_azul h=3.2 light=7
+V casa azul: cozinha floor=ceramica wall=azulejo ceil=forro_pintado ext=fachada_azul h=3.2 light=8
+Y casa da Zefa: sala floor=taco wall=papel_floral ceil=forro ext=fachada_amarela h=3.2 light=9
+J casa da Zefa: quarto floor=taco wall=reboco ceil=forro ext=fachada_amarela h=3.2 light=7
+C casa da Zefa: cozinha floor=ceramica_barro wall=azulejo ceil=forro ext=fachada_amarela h=3.2 light=8
+S rodoviária: saguão floor=lajota wall=azulejo ceil=concreto ext=concreto h=4 light=10
+G rodoviária: guichê floor=taco wall=reboco ceil=concreto ext=concreto h=3.2 light=9
+h rodoviária: banheiro floor=ceramica wall=azulejo ceil=concreto ext=concreto h=3 light=5
+T rodoviária: plataforma floor=concreto wall=reboco_mofo ceil=concreto ext=concreto h=4.5 light=10
+w oficina do Tião floor=concreto wall=tijolo ceil=madeira_crua ext=tijolo h=4 light=7
+
+[solid]
+########################################################################
+########################################################################
+#############......#H...................BB.......H##############.......#
+#############....H.#..............................##############B.....H#
+###B..H#B.BB#.B....#..##########################..#.B.........H#.......#
+###H...#....D.B....#..#BBBBBBBBBBBBBBBBBBBBBBBB#..#........B...D.......#
+###....#...H#.B...B#..#BBBBBBBBBBBBBBBBBBBBBBBB#..#B...........#.......#
+#####D###D###.....B#.B#BBBBBBBBBBBBBBBBBBBBBBBB#..#######D######.......#
+###........B#...B..#..#BBBBBBBBBBBBBBBBBBBBBBBB#B.#BB.......BB.#.....B.#
+###.........#......#..##########################..#...BB..BB...#.......#
+###......B..#B.....#..B........................B..#............#.......#
+###BBB......#......#..............................#...........H#B......#
+###W##D###W##|||..|#..||||||||||........||||||||..###W##D###W######..###
+#.......B................B..................B...............B........B.#
+#......................................................................#
+#...........................BBBB.......................................#
+#...........................BBBB.......................................#
+#...###############...................................####D####..#######
+#...#BB...H#H....B#...B...............................W......B#..#....H#
+#...#......#..B...W....B..............BB........B.....#.B...B.#.B#.B...#
+#...W..B...D..B...#......................BBBBB........D.....B.#..#.....#
+#...#......#......D........BB.B..........BBBBB........#.......#........#
+#B..#......#......#........BB.B..........BBBBB........#.H....B#..#.....#
+#...####D###......#...................................W.......#..#.....#
+#...#BB....#......W..............B....B..............B####D####..#..B..#
+#...#......#.B..B.#B....B.............................#B......D..#.....#
+#...#......###D####.....B.........BBB.................#BB....H#..#B....#
+#...D..B..B#.....B#...............BBB..........B......#########..#######
+#...#..B..B#....B.W...............BBB..........B......#.BB...B#..#.....#
+#...#H.....#H.....#...................................#....B..WH.#..B..#
+#...###############..............B....................D.......#..#.....#
+#H..#.H...#B......#......BBBBB...........BBBB.........#.......#........#
+#...WB....#.......W......BBBBB...........BBBB.........###D##D##..#.....#
+#...#.....D....B..#......BBBBB...........BBBB.........#B...#.B#..#.....#
+#...#.....#.......D...................................#H...#..#.B#.B...#
+#...D.....#.......#B...........BB.............BB.....BW....#..D..#.....#
+#..B#....H#.BB...B#....B........................B.....#...H#BH#..#....H#
+#...###############...................................#########..#######
+#......................................................................#
+#......................................................................#
+#......................................................................#
+#......B...........B..............B...........B............B...........#
+#...###W##D##W###.....###W#W##D##W#W######W##W######W##D##W####........#
+#...#BB....B...B#.....#B.............B#..B.....H#....BB..B..B.#........#
+#...#.........B.#.B...#...............#..B......#BB.....B....B#...B....#
+#...W...........#.....#.BB........BB..D.........#BB..........B#...B....#
+#B..#.B.........#.....#...............#.........#BB...........#...B....#
+#...###D#####D###.....#........B......#........B#BB...........#........#
+#...#....H#H...B#.....########D##################.............D........#
+#...#.....#.....D.....#H..B#................BB..#.............#........#
+#...#H....#B....#.....#....#....................#............B#....B...#
+#...###W#########.....#....D....................#.............#........#
+#.....................#....#........BBBBBB......#B........BB.B#........#
+#.B................H..#B..H#........BBBBBB.....H#B............#B......H#
+#.....................#########################################........#
+########################################################################
+
+[rooms]
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+-------------gggggg-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb--------------yyyyyyy-
+-------------gggggg-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb--------------yyyyyyy-
+---QQQQ-KKKK-gggggg-bb--------------------------bb-NNNNNNNNNNNN-yyyyyyy-
+---QQQQ-KKKKKgggggg-bb-IIIIIIIIIIIIIIIIIIIIIIII-bb-NNNNNNNNNNNNNyyyyyyy-
+---QQQQ-KKKK-gggggg-bb-IIIIIIIIIIIIIIIIIIIIIIII-bb-NNNNNNNNNNNN-yyyyyyy-
+-----Q---K---gggggg-bb-IIIIIIIIIIIIIIIIIIIIIIII-bb-------N------yyyyyyy-
+---RRRRRRRRR-gggggg-bb-IIIIIIIIIIIIIIIIIIIIIIII-bb-PPPPPPPPPPPP-yyyyyyy-
+---RRRRRRRRR-gggggg-bb--------------------------bb-PPPPPPPPPPPP-yyyyyyy-
+---RRRRRRRRR-gggggg-bbiiiiiiiiiiiiiiiiiiiiiiiiiibb-PPPPPPPPPPPP-yyyyyyy-
+---RRRRRRRRR-gggggg-bbiiiiiiiiiiiiiiiiiiiiiiiiiibb-PPPPPPPPPPPP-yyyyyyy-
+------R------gggggg-bbiiiiiiiiiiiiiiiiiiiiiiiiiibb------P----------yy---
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-fff---------------tttppppppppppppppppppppppppppppvvvv----Z----zz-------
+-fff-MMMMMM-FFFFFF-tttppppppppppppppppppppppppppppvvvv-ZZZZZZZ-zz-xxxxx-
+-fff-MMMMMM-FFFFFF-tttppppppppppppppppppppppppppppvvvv-ZZZZZZZ-zz-xxxxx-
+-fff-MMMMMMMFFFFFF-tttpppppppppppppppppppcccccppppvvvvZZZZZZZZ-zz-xxxxx-
+-fff-MMMMMM-FFFFFFFtttpppppppppppppppppppcccccppppvvvv-ZZZZZZZ-zzxxxxxx-
+-fff-MMMMMM-FFFFFF-tttpppppppppppppppppppcccccppppvvvv-ZZZZZZZ-zz-xxxxx-
+-fff----M---FFFFFF-tttppppppppppppppppppppppppppppvvvv-ZZZZZZZ-zz-xxxxx-
+-fff-EEEEEE-FFFFFF-tttppppppppppppppppppppppppppppvvvv----Z----zz-xxxxx-
+-fff-EEEEEE-FFFFFF-tttppppppppppppppppppppppppppppvvvv-XXXXXXXXzz-xxxxx-
+-fff-EEEEEE---F----tttppppppppppppppppppppppppppppvvvv-XXXXXXX-zz-xxxxx-
+-fffEEEEEEE-OOOOOO-tttppppppppppppppppppppppppppppvvvv---------zz-------
+-fff-EEEEEE-OOOOOO-tttppppppppppppppppppppppppppppvvvv-AAAAAAA-zz-uuuuu-
+-fff-EEEEEE-OOOOOO-tttppppppppppppppppppppppppppppvvvv-AAAAAAA-zz-uuuuu-
+-fff---------------tttppppppppppppppppppppppppppppvvvvAAAAAAAA-zz-uuuuu-
+-fff-lllll-LLLLLLL-tttpppcccccpppppppppppccccpppppvvvv-AAAAAAA-zzuuuuuu-
+-fff-lllll-LLLLLLL-tttpppcccccpppppppppppccccpppppvvvv---A--A--zz-uuuuu-
+-fff-lllllLLLLLLLL-tttpppcccccpppppppppppccccpppppvvvv-UUUU-VV-zz-uuuuu-
+-fff-lllll-LLLLLLLLtttppppppppppppppppppppppppppppvvvv-UUUU-VV-zz-uuuuu-
+-fffllllll-LLLLLLL-tttppppppppppppppppppppppppppppvvvv-UUUU-VVVzz-uuuuu-
+-fff-lllll-LLLLLLL-tttppppppppppppppppppppppppppppvvvv-UUUU-VV-zz-uuuuu-
+-fff---------------tttppppppppppppppppppppppppppppvvvv---------zz-------
+-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd-
+-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd-
+-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd-
+-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd-
+-sss------Y------sssss--------S------------------------d-------oooooooo-
+-sss-YYYYYYYYYYY-sssss-SSSSSSSSSSSSSSS-GGGGGGGGG-wwwwwwwwwwwww-oooooooo-
+-sss-YYYYYYYYYYY-sssss-SSSSSSSSSSSSSSS-GGGGGGGGG-wwwwwwwwwwwww-oooooooo-
+-sss-YYYYYYYYYYY-sssss-SSSSSSSSSSSSSSSSGGGGGGGGG-wwwwwwwwwwwww-oooooooo-
+-sss-YYYYYYYYYYY-sssss-SSSSSSSSSSSSSSS-GGGGGGGGG-wwwwwwwwwwwww-oooooooo-
+-sss---Y-----Y---sssss-SSSSSSSSSSSSSSS-GGGGGGGGG-wwwwwwwwwwwww-oooooooo-
+-sss-JJJJJ-CCCCC-sssss--------S------------------wwwwwwwwwwwwwwoooooooo-
+-sss-JJJJJ-CCCCCCsssss-hhhh-TTTTTTTTTTTTTTTTTTTT-wwwwwwwwwwwww-oooooooo-
+-sss-JJJJJ-CCCCC-sssss-hhhh-TTTTTTTTTTTTTTTTTTTT-wwwwwwwwwwwww-oooooooo-
+-sss-------------sssss-hhhhTTTTTTTTTTTTTTTTTTTTT-wwwwwwwwwwwww-oooooooo-
+-sssssssssssssssssssss-hhhh-TTTTTTTTTTTTTTTTTTTT-wwwwwwwwwwwww-oooooooo-
+-sssssssssssssssssssss-hhhh-TTTTTTTTTTTTTTTTTTTT-wwwwwwwwwwwww-oooooooo-
+-sssssssssssssssssssss-----------------------------------------oooooooo-
+------------------------------------------------------------------------
+
+[door]
+12 5 v closed
+63 5 v closed
+5 7 h open
+9 7 h open
+57 7 h open
+6 12 h closed
+56 12 h open
+58 17 h closed
+11 20 v open
+54 20 v open
+18 21 v open
+8 23 h stuck
+58 24 h open
+62 25 v closed
+14 26 h open
+4 27 v closed
+54 30 v closed
+57 32 h open
+60 32 h open
+10 33 v open
+18 34 v closed
+4 35 v closed
+62 35 v closed
+10 42 h closed
+30 42 h locked:portao
+55 42 h open
+38 45 v open
+7 47 h open
+13 47 h open
+30 48 h locked:catraca
+62 48 v closed
+16 49 v closed
+27 51 v open
+
+[lock]
+energia place fusivel 47 10
+gaveta code 1907
+portao key manivela
+bilhete_catraca place bilhete 31 47
+catraca all energia bilhete_catraca
+cabine key chave_cabine
+
+[item]
+fusivel fusivel 9.5 25.5
+pilha_farmacia lanterna_pilha 13.5 27.5
+pilha_lazaro lanterna_pilha 12.5 33.5
+balde_chafariz balde 29.5 23.5
+pilha_bar lanterna_pilha 59.5 25.5
+foto_azul foto 56.5 35.5
+balde_azul balde 60.5 34.5
+foto_zefa foto 6.5 48.5
+balde_zefa balde 13.5 49.5
+balde_guiche balde 45.5 46.5
+foto_guiche foto 43.5 44.5
+manivela manivela 57.5 51.5
+bilhete bilhete_onibus 3.5 4.5
+chave_cabine chave 60.5 20
+
+[prop]
+; casa rosa: quarto da Cida
+criado_mudo 3.5 4.5 90 item=bilhete
+quadro_santo 4.5 4.1 0
+; casa rosa: sala
+mesa 9.5 10.5 0
+cadeira 8.6 10.5 90
+cadeira 10.4 10.5 270
+oratorio 11.5 8.5 270
+radio_antigo 3.5 11.5 90
+; casa rosa: cozinha
+fogao_lenha 8.5 4.5 0
+pia 11.5 4.5 270
+filtro_barro 10.5 4.4 0
+; terreno baldio
+carroca 14.5 5.5 0
+arvore 16.5 8.5 0
+bananeira 13.5 10.5 0
+engradado 18.5 6.5 0
+engradado 18.5 7.5 0
+; beco atrás da igreja
+lixeira 21.5 7.5 0
+engradado 40.5 2.5 0
+engradado 41.5 2.5 0
+lixeira 48.5 8.5 0
+; adro da igreja
+santo_estatua 22.5 10.5 90
+quadro_fusivel 47.5 10.5 270
+cartaz 30.5 10.1 0
+cartaz 41.5 10.1 0
+vela_chao 33.5 10.3 0
+vela_chao 34.2 10.3 0
+vela_chao 36.8 10.3 0
+vela_chao 37.5 10.3 0
+vela_castical 35.5 10.3 0
+; padaria: loja
+balcao 55 9.5 0
+caixa_registradora 55 9.5 0
+balcao 59 9.5 0
+prateleira_padaria 52 8.5 0
+prateleira_padaria 61 8.5 0
+; rua do Rosário
+letreiro_padaria 57 13.1 0
+; padaria: forno
+fogao_lenha 52.5 4.5 0
+mesa 59.5 5.5 0
+engradado 51.5 6.5 0
+; quintal da padaria
+bicicleta 64.5 11.5 90
+arvore 69.5 8.5 0
+engradado 64.5 3.5 0
+; farmácia: loja
+balcao 14.5 20 90
+caixa_registradora 14.5 20 90
+estante 13.5 25.5 180
+estante 16.5 25.5 180
+estante 17.5 18.5 0
+; travessa
+letreiro_farmacia 19.1 21.5 90
+; farmácia: manipulação
+mesa 7.5 20.5 0
+cadeira 7.5 21.4 180
+estante 5.5 18.5 0
+estante 6.5 18.5 0
+; farmácia: estoque
+estante 5.5 24.5 0
+estante 6.5 24.5 0
+estante 10.5 27.5 270
+estante 10.5 28.5 270
+estante 7.5 27.5 90
+estante 7.5 28.5 90
+; farmácia: escritório
+mesa 16.5 28.5 270
+cadeira 15.6 28.5 90
+cofre 17.5 27.5 270
+; beco da farmácia
+lixeira 1.5 22.5 90
+engradado 3.5 36.5 0
+; casa do Lázaro: sala
+sofa 13 36.5 180
+mesa 15.5 33.5 0
+maquina_costura 11.5 31.5 0
+radio_antigo 17.5 36.5 270
+calendario 14.5 31.1 0
+; casa do Lázaro: quarto
+criado_mudo 5.5 32.5 90
+; praça
+coreto 35.5 27.5 0
+chafariz 28 22 0
+orelhao 22.5 18.5 270
+banca_jornal 47 35.5 0
+; canteiros
+arvore 42.5 21.5 0
+arvore 44.5 21.5 0
+arvore 26.5 32.5 0
+arvore 28.5 32.5 0
+arvore 42.5 32.5 0
+; praça
+banco_praca 39 19.5 0
+banco_praca 32 35.5 180
+banco_praca 24.5 26 90
+banco_praca 47.5 28 270
+banco_praca 30.5 22 270
+lixeira 33.5 24.5 0
+poste 23.5 19.5 90
+poste 48.5 19.5 270
+poste 23.5 36.5 90
+poste 48.5 36.5 270
+poste 33.5 30.5 0
+poste 38.5 24.5 180
+; travessa
+placa 21.5 17.4 0
+; rua do Rosário
+fusca 30 16 90
+poste 8.5 13.5 0
+poste 25.5 13.5 0
+poste 44.5 13.5 0
+poste 60.5 13.5 0
+poste 69.5 13.5 0
+; rua Direita
+poste 7.5 41.5 180
+poste 19.5 41.5 180
+poste 34.5 41.5 180
+poste 46.5 41.5 180
+poste 59.5 41.5 180
+; travessa
+poste 19.5 25.5 90
+poste 19.5 35.5 90
+; avenida
+poste 53.5 24.5 270
+poste 53.5 35.5 270
+placa 53.5 37.6 270
+; Bar do Zé
+balcao 60.5 20 270 lock=gaveta item=chave_cabine
+caixa_registradora 60.5 19.5 270
+geladeira_bar 61.5 22.5 270
+mesa_bar 56.5 19.5 0
+cadeira 57.4 19.5 270
+cadeira 56.5 18.6 0
+engradado 61.5 18.5 0
+; avenida
+letreiro_bar 53.9 21.5 270
+; Bar do Zé
+relogio_parede 61.9 21 270
+; Bar do Zé: depósito
+engradado 55.5 25.5 0
+engradado 55.5 26.5 0
+engradado 56.5 26.5 0
+; beco do Zé
+lixeira 64.5 19.5 0
+engradado 64.5 34.5 0
+; quintal do Zé
+arvore 68.5 24.5 0
+mesa_bar 67.5 19.5 0
+engradado 66.5 26.5 0
+; quintal da casa azul
+bananeira 68.5 29.5 0
+arvore 67.5 34.5 0
+; casa azul: sala
+sofa 56.5 28.5 0
+oratorio 61.5 28.5 270
+mesa 59.5 29.5 0
+; casa azul: quarto
+criado_mudo 55.5 33.5 90
+; casa azul: cozinha
+fogao 61.5 33.5 270
+pia 60.5 36.5 180
+; casa da Zefa: sala
+sofa 6 43.5 0
+tv_tubo 6.5 46.5 180
+mesa 14.5 44.5 0
+oratorio 15.5 43.5 270
+maquina_costura 11.5 43.5 0
+; casa da Zefa: cozinha
+fogao_lenha 15.5 48.5 270
+pia 11.5 50.5 0
+; quintal da Zefa
+arvore 18.5 44.5 0
+bananeira 2.5 53.5 0
+rede 10.5 53 90
+engradado 1.5 46.5 0
+; rua Direita
+letreiro_rodoviaria 30.5 41.9 180
+; rodoviária: saguão
+banco_praca 25 45.5 0
+banco_praca 35 45.5 0
+caixa_correio 31.5 47.5 180
+lixeira 23.5 43.5 0
+placa 37.5 43.5 270
+; rodoviária: guichê
+balcao 41.5 44 270
+cofre 47.5 47.5 270
+calendario 44.5 43.1 0
+; rodoviária: banheiro
+vaso 23.5 53.5 90
+pia 26.5 49.5 180
+espelho 26.5 49.1 0
+; rodoviária: plataforma
+onibus 39 53 90
+placa 34.5 49.4 0
+; oficina do Tião
+mesa 59 52.5 180
+estante 61.5 44.5 270
+estante 61.5 45.5 270
+engradado 49.5 52.5 0
+engradado 49.5 53.5 0
+bicicleta 60.5 43.5 0
+; quintal da oficina
+arvore 67.5 50.5 0
+carroca 66.5 45.5 0
+engradado 63.5 53.5 0
+; rodoviária: plataforma
+banco_praca 45 49.5 0
+; casa rosa: sala
+sofa 5 11.5 180
+; farmácia: manipulação
+vela_castical 7.5 20.5 0
+; oficina do Tião
+vela_castical 58.5 52.5 0
+; Bar do Zé
+vela_castical 56.5 19.5 0
+; casa do Lázaro: sala
+vela_castical 15.5 33.5 0
+; oficina do Tião
+kombi 50 46 0
+oratorio 61.5 50.5 270
+estante 53.5 43.5 0
+estante 54.5 43.5 0
+bau 61.5 52.5 270
+engradado 57.5 43.5 0
+engradado 56.5 44.5 0
+cadeira 58.6 51.4 0
+
+[hide]
+3 5 cama 90
+6 4 guarda_roupa 0
+9 10 mesa 0
+11 6 armario 270
+17 3 caixa_dagua 180
+20 2 cesto 90
+49 2 caixa_dagua 270
+62 11 cesto 270
+62 4 armario 270
+70 3 caixa_dagua 270
+12 18 armario 90
+10 18 armario 0
+5 29 armario 90
+12 29 armario 90
+1 31 cesto 90
+15 33 mesa 0
+6 31 cama 0
+9 36 guarda_roupa 180
+29 15 carro 180
+30 16 carro 0
+56 22 mesa 0
+61 26 armario 270
+63 29 cesto 90
+70 18 caixa_dagua 270
+70 36 caixa_dagua 270
+55 34 cama 90
+58 36 guarda_roupa 180
+61 36 armario 180
+14 44 mesa 0
+5 50 cama 90
+9 48 guarda_roupa 270
+11 48 armario 90
+19 53 caixa_dagua 270
+47 43 armario 270
+23 49 armario 90
+26 53 cesto 180
+47 53 armario 270
+70 53 caixa_dagua 270
+50 45 carro 90
+50 46 carro 90
+
+[note]
+7 20 mesa "A luz da rua caiu. Tem fusível novo no estoque, mas a porta emperra: só com muita força. Ou dá a volta pelo beco."
+6 18 estante "Quadro de força da rua: no adro da igreja, do lado do beco. Fusível de 30 ampères."
+16 28 mesa "Dona Benedita diz que a Cabra Cabriola cospe fogo e berra de longe. Quando o berro para, ela tá perto."
+59 9 balcao "Zé: a chave da cabine do ônibus ficou na gaveta do teu caixa. O segredo é 1907, o ano da igreja. — Expedito"
+61 22 geladeira_bar "Gaveta do caixa com segredo. O Expedito sempre deixa recado pro Zé no balcão da padaria."
+56 19 mesa_bar "Quem bebe na Sexta da Paixão chama a Cabra. Ela entra pela porta aberta e sai com um a menos."
+46 35 banca_jornal "Passagens esgotadas. A última pra capital ficou com a Dona Cida, da casa rosa da Rua do Rosário."
+4 4 quadro_santo "Comprei a passagem e não tive coragem de ir sozinha. Guardei no criado-mudo. — Cida"
+30 9 parede "Procissão do Senhor Morto. Sexta-feira, meia-noite. Depois do sino, ninguém na rua."
+30 22 banco_praca "Minha vó dizia: bicho que cospe fogo tem medo d'água. Um balde na cara e a Cabra empaca."
+22 18 orelhao "O telefone está mudo. No vidro, alguém riscou: NÃO CORRA, ELA ESCUTA."
+29 48 parede "Catraca elétrica: insira o bilhete no validador. Sem luz na rua ela não gira."
+27 42 parede "Portão de enrolar emperrado. A manivela tá na oficina do Tião, aqui do lado."
+41 44 balcao "Último ônibus pra capital: 23h40. Plataforma 1. A chave da cabine fica com o motorista."
+58 52 mesa "Tião, devolve a manivela do portão da rodoviária! O ônibus das 23h40 não espera. — Lurdes"
+61 28 oratorio "A Cabra Cabriola entra pela janela atrás de menino. Fica quieto debaixo da cama até ela ir embora."
+15 43 oratorio "Se ouvir o berro, não corre: se esconde. Ela é ligeira, mas não acha quem fica quieto."
+
+[light]
+; casa rosa: sala
+7.5 9.5 2.8 255,170,90 4 steady
+; casa rosa: quarto da Cida
+5 5 2.8 255,170,90 3 flicker
+; casa rosa: cozinha
+9.5 5.5 2.8 255,170,90 3 steady
+; beco atrás da igreja
+34.5 3.3 2.6 255,170,90 3 flicker
+; adro da igreja
+35.5 10.6 0.6 255,150,60 4 flicker
+; padaria: loja
+56.5 9.8 2.9 255,210,150 5 steady
+; padaria: forno
+55.5 5 2.8 255,170,90 4 flicker
+; farmácia: loja
+15 21.5 2.9 200,230,255 5 steady
+; farmácia: estoque
+8 26.5 2.6 255,170,90 3 dead
+; farmácia: escritório
+14.5 28 2.6 255,170,90 3 steady
+; beco da farmácia
+2.5 26.6 2.8 255,170,90 3 flicker
+; casa do Lázaro: sala
+14.5 33.5 2.7 255,170,90 4 steady
+; casa do Lázaro: quarto
+7.5 33.5 2.7 255,170,90 3 dead
+; praça
+24.3 19.5 4.1 255,190,110 7 dead
+47.7 19.5 4.1 255,190,110 7 steady
+24.3 36.5 4.1 255,190,110 7 flicker
+47.7 36.5 4.1 255,190,110 7 steady
+33.5 31.3 4.1 255,190,110 7 steady
+38.5 23.7 4.1 255,190,110 7 flicker
+; rua do Rosário
+8.5 14.3 4.1 255,196,120 7 dead
+25.5 14.3 4.1 255,196,120 7 flicker
+44.5 14.3 4.1 255,196,120 7 steady
+60.5 14.3 4.1 255,196,120 7 steady
+69.5 14.3 4.1 255,196,120 7 dead
+; rua Direita
+7.5 40.7 4.1 255,196,120 7 steady
+19.5 40.7 4.1 255,196,120 7 dead
+34.5 40.7 4.1 255,196,120 7 steady
+46.5 40.7 4.1 255,196,120 7 flicker
+59.5 40.7 4.1 255,196,120 7 steady
+; travessa
+20.3 25.5 4.1 255,196,120 7 steady
+20.3 35.5 4.1 255,196,120 7 dead
+; avenida
+52.7 24.5 4.1 255,196,120 7 flicker
+52.7 35.5 4.1 255,196,120 7 steady
+; Bar do Zé
+58 20.5 2.9 255,180,90 5 flicker
+; Bar do Zé: depósito
+58.5 25.5 2.6 255,170,90 2.5 dead
+; beco do Zé
+63.5 23.5 2.8 255,170,90 3 flicker
+; casa azul: sala
+58 30 2.7 255,170,90 4 steady
+; casa azul: quarto
+57 34.5 2.7 255,170,90 3 flicker
+; casa da Zefa: sala
+10 44.5 2.7 255,170,90 4 steady
+; casa da Zefa: cozinha
+13 49 2.6 255,170,90 3 flicker
+; rodoviária: saguão
+30.5 45 3.6 170,200,255 6 flicker
+; rodoviária: guichê
+44 45 2.7 170,200,255 4 steady
+; rodoviária: banheiro
+24.5 51 2.6 170,200,255 3 flicker
+; rodoviária: plataforma
+32.5 51 4.2 170,200,255 6 steady
+43.5 51 4.2 170,200,255 6 flicker
+; oficina do Tião
+55.5 48 3.4 255,170,90 5 flicker
+; farmácia: manipulação
+8.5 19.8 2.8 200,230,255 4 flicker
+; casa rosa: sala
+11.5 8.5 1.2 255,150,60 3 flicker
+; casa azul: sala
+61.5 28.5 1.2 255,150,60 3 flicker
+; casa da Zefa: sala
+15.5 43.5 1.2 255,150,60 3 flicker
+; casa rosa: cozinha
+8.5 4.5 0.8 255,120,40 3.5 flicker
+; padaria: forno
+52.5 4.5 0.8 255,120,40 3.5 flicker
+; casa da Zefa: cozinha
+15.5 48.5 0.8 255,120,40 3.5 flicker
+; farmácia: manipulação
+7.5 20.5 1.1 255,150,60 5 flicker
+; oficina do Tião
+58.5 52.5 1.1 255,150,60 6 flicker
+; Bar do Zé
+56.5 19.5 1 255,150,60 4 flicker
+; casa do Lázaro: sala
+15.5 33.5 1 255,150,60 4 flicker
+; oficina do Tião
+61.5 50.5 1.3 255,150,60 6 flicker
+
+[cam]
+; doorway casa rosa quarto: seen from the side you walk into
+5 7 5 7 5.5 2.3 10.1 5.5 0.9 6 62
+; doorway casa rosa cozinha: seen from the side you walk into
+9 7 9 7 9.5 2.3 9.5 9.5 0.9 6 62
+; doorway padaria forno: seen from the side you walk into
+57 7 57 7 57.5 2.3 10.1 57.5 0.9 6 62
+; doorway padaria front: seen from the side you walk into
+56 12 56 12 56.5 2.3 9.9 56.5 0.9 14 62
+; doorway farmacia manipulacao/loja: seen from the side you walk into
+11 20 11 20 8.9 2.3 20.5 13 0.9 20.5 62
+; doorway lazaro quarto: seen from the side you walk into
+10 33 10 33 7.9 2.3 33.5 12 0.9 33.5 62
+; doorway casa azul quarto: seen from the side you walk into
+57 32 57 32 57.5 2.3 35.1 57.5 0.9 31 62
+; doorway casa azul back door: seen from the side you walk into
+62 35 62 35 61.1 2.3 35.5 64.1 0.9 35.5 62
+; doorway zefa quarto: seen from the side you walk into
+7 47 7 47 7.5 2.3 49.1 7.5 0.9 46 62
+; doorway zefa cozinha: seen from the side you walk into
+13 47 13 47 13.5 2.3 49.1 13.5 0.9 46 62
+; doorway catraca: seen from the side you walk into
+30 48 30 48 30.5 2.3 45.3 30.5 0.9 50 62
+; doorway bar back door: seen from the side you walk into
+62 25 62 25 60.5 2.3 25.5 64 0.9 25.5 62
+; doorway zefa back door: seen from the side you walk into
+16 49 16 49 14.9 2.3 49.5 18 0.9 49.5 62
+; doorway oficina front: seen from the side you walk into
+55 42 55 42 55.5 2.3 45.1 55.5 0.9 41 62
+; casa rosa: quarto da Cida from the door, cama and criado-mudo in the corner
+3 4 6 7 6.6 2.5 6.6 3.6 0.6 3.7 64
+; casa rosa: cozinha, fogao a lenha under the bulb, back door to the terreno
+8 4 12 7 8.3 2.5 6.7 11.2 0.8 4 64
+; casa rosa: sala west half, high from the quarto door down to the street door
+3 8 6 12 6.8 2.4 8.2 2.5 0.6 12.6 64
+; casa rosa: sala east half back toward the oratorio
+7 8 11 12 3.4 2.4 8.4 11.2 0.8 11.1 62
+; terreno baldio: high over the fence by the street, carroca and caixa dagua in the weeds
+13 2 18 12 18.9 2.6 12.8 10.6 0.6 3.7 64
+; beco da igreja west leg: low from the street mouth up the dark alley
+20 4 21 12 21.4 0.5 12.8 16.7 1.8 3.3 66
+; beco behind the church, west third: low, long, church wall on the right
+20 2 30 3 35.5 0.6 3.4 20.5 1.4 2.2 44
+; beco behind the church, middle: from the east end, the lair in the fog
+31 2 40 3 47.5 2 2.6 30 0.8 3.6 46
+; beco behind the church, east third: low from the middle toward the corner
+41 2 49 3 33.5 0.6 2.6 49.2 1.2 3.4 46
+; beco da igreja east leg: high in the corner looking back to the street
+48 4 49 12 48.6 2.7 2.3 50.3 0.4 12.3 50
+; adro west: low from the gate along the facade, candles at its foot
+22 10 34 12 39.5 0.5 12.5 22.2 2 9.2 52
+; adro east: low from the gate toward the quadro de forca and the beco
+35 10 47 12 32.5 0.5 12.5 47.1 1.6 8.1 52
+; padaria forno: from the back door corner over the masseira
+51 4 56 7 62.6 2.5 6.6 51.1 0.6 4.6 58
+; padaria forno: from the fogao toward the back door
+57 4 63 7 51.4 2.5 4.4 62.7 0.8 6.3 58
+; padaria loja west: from the cesto corner, balcao with the code note
+51 8 56 12 62.5 2.6 11.5 50.9 0.8 8.8 58
+; padaria loja east: from the door side toward the prateleiras
+57 8 62 12 51.4 2.6 11.5 62.7 0.8 8.9 58
+; quintal da padaria: high from the back corner toward the gate and the bicicleta
+64 2 70 12 64.2 2.8 2.1 73.2 0.6 11.3 64
+; rua do Rosario west: low toward the dead-end corner, Casa Rosa on the right
+1 13 11 16 14.5 0.6 13.6 1.8 1.4 18.5 48
+; rua do Rosario: low from the beco mouth west, dead poste overhead
+12 13 23 16 26.5 0.5 13.5 12 1.2 19.5 50
+; rua do Rosario: low by the orelhao, fusca in the foreground, church fence beyond
+24 13 35 16 22.6 0.5 16.6 34.6 1 9.8 50
+; rua do Rosario: high from the praca corner back over the fusca roof
+36 13 47 16 49.5 2.8 16.5 36.4 0.4 9.5 50
+; rua do Rosario: low under the steady poste toward the padaria sign
+48 13 59 16 46.5 0.5 13.5 58.6 1.6 20 50
+; rua do Rosario east end: high from the corner back toward the beco do Ze
+60 13 70 16 70.5 2.6 16.6 61.4 0.6 7.4 66
+; travessa north: from the rua do Rosario corner down the street, orelhao and farmacia sign on the flanks
+19 17 21 27 19.6 2.2 13.6 22.6 0.6 27.2 50
+; travessa south: high down the street to the rua Direita
+19 28 21 37 20.5 2.6 17.5 20.5 0.4 38.5 46
+; avenida north: low from the middle, Bar do Ze door open on the right
+50 17 53 27 51.5 0.5 29.5 53.9 1.6 14.7 51
+; avenida south: high long shot down the asfalto, fog swallowing the rua Direita
+50 28 53 37 52.5 2.6 17.4 51.5 0.4 39 46
+; praca: coreto silhouette from the travessa side
+31 26 33 28 22.6 1.2 27.5 35.5 1.6 27.5 50
+; praca: coreto silhouette from the avenida side
+37 26 40 28 48.5 1.2 27.5 35.5 1.6 27.5 50
+; praca NW: high from the bench by the coreto over the chafariz toward the farmacia
+22 17 30 27 30.9 3 27.9 21 0.6 17.9 64
+; praca N: low at the coreto corner, looking up across the street at the church
+31 17 40 25 31.1 0.5 25.9 40.5 3.4 16.5 64
+; praca NE: high from the coreto corner over the canteiro and the bar
+41 17 49 27 41.1 3 27.9 51 0.6 17.9 64
+; praca SW: high from the coreto corner over the trees toward the travessa
+22 28 30 37 30.9 3 28.1 21.5 0.6 37.5 64
+; praca S: low at the coreto corner toward the banca and the rodoviaria sign
+31 29 40 37 31.1 0.5 29.1 40.5 2.2 38.5 64
+; praca SE: high from the coreto over the banca de jornal
+41 28 49 37 38.5 3 29.5 50.1 0.5 35 64
+; farmacia manipulacao (wake): from the loja door corner, the stuck estoque door below
+5 18 11 22 10.6 2.5 22.6 5.7 0.6 17.8 64
+; farmacia estoque north: from the shelves, the stuck door and the fusivel
+4 23 10 26 6.4 2.4 29.6 8.5 0.6 23.2 62
+; farmacia estoque south: from the stuck door toward the beco door
+4 27 10 29 9.6 2.4 24.3 6.8 0.6 30.6 60
+; farmacia loja north: from the back toward the open front door and the vitrine
+12 18 18 21 12.5 2.6 25.6 16.5 0.8 18 60
+; farmacia loja south: from the vitrine over the balcao
+12 22 18 26 17.6 2.6 19.4 13.6 0.6 26.3 60
+; farmacia escritorio: corner over the mesa and the cofre
+12 27 17 29 12.4 2.5 27.2 16.5 0.6 31.2 64
+; casa do Lazaro sala: high from the sofa corner to the street door
+11 31 18 36 11.2 2.5 36.9 18.1 0.6 30 64
+; casa do Lazaro quarto: from the door, cama and guarda-roupa
+4 31 10 36 9.5 2.5 31.5 4.7 0.5 36.3 66
+; beco da farmacia north: low from the middle toward the rua
+1 17 3 27 2 0.5 29.5 4.9 1.8 15.3 48
+; beco da farmacia south: high, flickering bulb behind, toward the rua Direita
+1 28 3 37 2.5 2.6 26 2.5 0.4 38.5 46
+; bar do Ze north: from behind the geladeira toward the open door and the mesa
+54 17 61 20 60.5 2.6 23.5 57.5 0.8 16.3 60
+; bar do Ze south: from the street window corner over the balcao with the gaveta
+54 21 61 24 55.5 2.6 18.4 59.4 0.6 24.8 60
+; bar deposito: low between the engradados toward the back door
+55 25 62 26 61.6 2.3 25.3 56 0.6 28.9 60
+; beco do Ze north: low from the middle toward the rua do Rosario
+63 17 64 26 63.5 0.5 28.5 66.6 1.8 15.4 46
+; beco do Ze south: high under the flickering bulb down to the rua Direita
+63 27 64 37 64.5 2.6 18 63.4 0.4 38.5 46
+; quintal do Ze: high from the opening over the caixa dagua
+65 18 70 26 70.6 2.6 26.6 64.1 0.5 20 64
+; quintal da casa azul: high from the opening, bananeira and caixa dagua
+65 28 70 36 70.6 2.6 28.4 64.4 0.5 34.7 64
+; casa azul sala: high above the oratorio, back toward the street door
+54 28 61 32 61.9 2.5 28.1 55.2 0.6 34.5 64
+; casa azul quarto: from the door over the cama
+55 33 58 36 58.5 2.4 33.4 55.3 0.4 36.7 64
+; casa azul cozinha: narrow, down toward the armario and the back door
+60 33 62 36 60.5 2.4 33.3 61.6 0.6 36.4 64
+; rua Direita west: high toward the dead-end corner and the Zefa lane
+1 38 11 41 14.5 2.6 38.4 1.9 0.4 43.8 50
+; rua Direita: low from the corner toward the travessa mouth
+12 38 23 41 9.5 0.5 40.6 24 1.4 38.3 50
+; rua Direita: low, the rodoviaria facade and its rolling gate
+24 38 35 41 23.5 0.5 38.5 31 1.8 43.9 52
+; rua Direita: high from the rodoviaria sign toward the oficina
+36 38 47 41 33.5 2.8 38.4 46.6 0.4 44 52
+; rua Direita: low from the beco do Ze mouth back west
+48 38 59 41 61.5 0.5 38.4 48 1.2 44.3 50
+; rua Direita east end: high toward the oficina quintal
+60 38 70 41 57.5 2.6 41.6 69.8 0.6 36.3 50
+; Zefa lane: high from the quintal back to the rua
+1 42 3 51 2 2.6 52.6 4.9 0.4 41.4 56
+; Zefa quintal south: low under the rede toward the bananeira
+1 52 16 54 18.5 1 53.5 1 0.8 53.5 50
+; Zefa quintal east strip: high from the back corner up the strip to the rua
+17 42 21 54 17.1 2.8 54.9 26.6 0.6 44.9 64
+; casa da Zefa sala west: from the oratorio corner
+5 42 9 46 15.5 2.5 46.5 4.7 0.6 44 60
+; casa da Zefa sala east: from the quarto door corner toward the oratorio
+10 42 15 46 10.2 2.5 46.9 15.6 0.6 41.5 64
+; casa da Zefa quarto: from the door corner over the cama
+5 47 9 50 9.6 2.5 50.6 5.8 0.4 47 64
+; casa da Zefa cozinha: from the armario corner toward the back door
+11 47 16 50 15.6 2.5 50.6 11.8 0.5 47 64
+; rodoviaria saguao west: high above the catraca, back toward the rolling gate
+23 42 30 48 30.9 3.4 47.9 23.9 0.6 41 64
+; rodoviaria saguao east: high from the gate corner toward the guiche
+31 43 38 47 23.5 3.4 44.4 37.8 0.6 46 60
+; rodoviaria guiche: from the door over the balcao toward the armario
+39 43 47 47 39.4 2.6 47.5 45.9 0.6 41.2 65
+; rodoviaria banheiro: corner by the vaso, the door and the pia
+23 49 27 53 23.1 2.5 53.9 27.9 0.6 48.9 64
+; plataforma west: from the far end beside the bus, back toward the catraca
+28 49 35 53 47.5 1.5 51.6 27.9 1 51.4 50
+; plataforma east: high from the catraca over the last bus, the exit
+36 49 47 53 28.5 2.8 49.4 44.1 0.6 51.7 54
+; oficina west: high from the back door corner, the kombi against the far wall
+48 42 55 53 61.4 3.2 47.9 49 0.5 48.6 60
+; oficina east: high over the kombi roof toward the bancada and the manivela by the candle
+56 42 62 53 51.6 3.2 43.4 62.7 0.5 50.4 60
+; quintal da oficina north: high from the corner over the carroca to the rua
+63 42 70 47 70.8 2.6 47.9 63.9 0.6 41 64
+; quintal da oficina south: high from the back door toward the caixa dagua
+63 48 70 54 63.1 2.8 48.1 70.5 0.6 55.5 64
+
+[wake]
+0 6.5 21.5 90
+1 9.5 19.5 270
+2 8.5 22.5 0
+3 6.5 19.5 45
+
+[legend]
+spawn 34.5 2.5 270
+patrol 35 20
+patrol 10 14
+patrol 2 27
+patrol 12 39
+patrol 20 30
+patrol 40 34
+patrol 35 40
+patrol 60 39
+patrol 63 30
+patrol 58 21
+patrol 52 25
+patrol 46 30
+patrol 60 14
+patrol 48 6
+patrol 30 2
+patrol 21 8
+lair 34 2
+
+[exit]
+35 50 42 51 lock=cabine

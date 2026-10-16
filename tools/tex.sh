@@ -2,7 +2,7 @@
 set -eu
 
 usage() {
-    echo "usage: tex.sh <src-image> <name> <size 32|64|128|WxH> [crop WxH+X+Y] [noseam] [band=0.5] [seed=N] [colors=16] [dither=75] [grime=0..1] [streaks=0..1] [pre magick ops...] [-- post magick ops...]" >&2
+    echo "usage: tex.sh <src-image> <name> <size 32|64|128|WxH> [crop WxH+X+Y] [noseam] [alpha] [band=0.5] [seed=N] [colors=16] [dither=75] [grime=0..1] [streaks=0..1] [pre magick ops...] [-- post magick ops...]" >&2
     exit 2
 }
 
@@ -34,12 +34,14 @@ colors=16
 dither=75
 grime=0
 streaks=0
+alpha=0
 case ${1:-} in
     *x*+*+*) crop=$1; shift ;;
 esac
 while [ $# -gt 0 ]; do
     case $1 in
         noseam) seam=0 ;;
+        alpha) alpha=1 seam=0 ;;
         band=*) band=${1#band=} ;;
         seed=*) seed=${1#seed=} ;;
         colors=*) colors=${1#colors=} ;;
@@ -70,7 +72,9 @@ done
 
 cropop=""
 [ -z "$crop" ] || cropop="-crop $crop +repage"
-eval magick "$(quote "$src")" -colorspace sRGB -alpha off $cropop $pre -resize "${ww}x${wh}!" "$work/a.png"
+alphaop="-alpha off"
+[ $alpha = 0 ] || alphaop="-alpha set"
+eval magick "$(quote "$src")" -colorspace sRGB $alphaop $cropop $pre -resize "${ww}x${wh}!" "$work/a.png"
 
 noise() {
     magick -size "${ww}x${wh}" xc: -seed "$1" +noise Random -channel G -separate +channel \
@@ -92,7 +96,7 @@ if [ "$grime" != 0 ]; then
     noise $((seed + 11)) $((ww / 10 + 1)) "$work/g1.png"
     noise $((seed + 12)) $((ww / 40 + 1)) "$work/g2.png"
     magick "$work/s.png" "$work/g1.png" "$work/g2.png" \
-        -fx "qg=u[1]*0.65+u[2]*0.35; u*(1-$grime*pow(clamp((0.62-qg)*2.2),1.5))" "$work/s2.png"
+        -channel RGB -fx "qg=u[1]*0.65+u[2]*0.35; u*(1-$grime*pow(clamp((0.62-qg)*2.2),1.5))" +channel "$work/s2.png"
     mv "$work/s2.png" "$work/s.png"
 fi
 
@@ -101,18 +105,26 @@ if [ "$streaks" != 0 ]; then
         -virtual-pixel tile -blur 0x1.2 -auto-level -filter point -resize "${ww}x${wh}!" "$work/c.png"
     noise $((seed + 22)) $((wh / 8 + 1)) "$work/c2.png"
     magick "$work/s.png" "$work/c.png" "$work/c2.png" \
-        -fx "u*(1-$streaks*clamp((0.55-u[1])*3)*(0.5+0.5*u[2]))" "$work/s2.png"
+        -channel RGB -fx "u*(1-$streaks*clamp((0.55-u[1])*3)*(0.5+0.5*u[2]))" +channel "$work/s2.png"
     mv "$work/s2.png" "$work/s.png"
 fi
 
 eval magick "'$work/s.png'" -filter Lanczos -resize "${w}x${h}!" $post -depth 8 "'$work/r.png'"
-magick "$work/r.png" -dither None -colors "$colors" -unique-colors -depth 8 rgb:- \
-    | python3 "$here/texpack.py" pal565 > "$work/pal.ppm"
-magick "$work/r.png" -dither FloydSteinberg -define "dither:diffusion-amount=$dither%" -remap "$work/pal.ppm" -depth 8 rgb:- \
-    | python3 "$here/texpack.py" pack "$w" "$h" > "$work/t.tex"
+if [ $alpha = 1 ]; then
+    magick "$work/r.png" -alpha extract -threshold 50% -depth 8 gray:"$work/m.gray"
+    magick "$work/r.png" -alpha off -depth 8 rgb:"$work/c.rgb"
+    python3 "$here/texpack.py" opaque "$work/m.gray" < "$work/c.rgb" \
+        | magick ppm:- -dither None -colors "$((colors > 15 ? 15 : colors))" -unique-colors -depth 8 rgb:- \
+        | python3 "$here/texpack.py" pal565 > "$work/pal.ppm"
+else
+    magick "$work/r.png" -dither None -colors "$colors" -unique-colors -depth 8 rgb:- \
+        | python3 "$here/texpack.py" pal565 > "$work/pal.ppm"
+fi
+magick "$work/r.png" -alpha off -dither FloydSteinberg -define "dither:diffusion-amount=$dither%" -remap "$work/pal.ppm" -depth 8 rgb:- \
+    | python3 "$here/texpack.py" pack "$w" "$h" $([ $alpha = 0 ] || echo "$work/m.gray") > "$work/t.tex"
 mv "$work/t.tex" "$out/$name.tex"
 
-python3 "$here/texpack.py" unpack "$out/$name.tex" > "$work/u.ppm"
+python3 "$here/texpack.py" unpack "$out/$name.tex" | magick ppm:- -fill '#28303a' -opaque '#ff00ff' "$work/u.ppm"
 magick "$work/u.ppm" -filter point -resize 400% "$preview/$name.png"
 magick "$work/u.ppm" -write mpr:t +delete -size "$((w * 3))x$((h * 3))" tile:mpr:t -filter point -resize 200% "$preview/${name}_tiled.png"
 echo "$name ${w}x${h} $(wc -c < "$out/$name.tex") bytes"

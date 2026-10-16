@@ -1,0 +1,161 @@
+; renderer test map: street with lamps, trees, praça, river, fence, bridge
+[map] name="Rua de teste" w=36 h=26 sky=moon fog=10,12,24 fog_near=7 fog_far=24 legend=cabra power=on
+
+[solid]
+####################################
+#..........#.........#.............#
+#..B.......#..B..B...#..........B..#
+#..........#.........#.............#
+#..........D.........#......B......#
+#..B....B..#.........#.............#
+#..........#..B..B...#.............#
+#........H.#.........#.............#
+##W##D##W######D###W##.............#
+#..................................#
+#..B..........B..........B.........#
+#...................P..............#
+#..................................#
+#...................H......BBBBBB..#
+#..........................BBBBBB..#
+#..................................#
+#.B............BBB.......B.........#
+#..............BBB.......B....BB...#
+#.B............BBB.................#
+#..................................#
+#..B.......B.......B.....B.........#
+#|||||||||||||||...||||||||||||||||#
+#~~~~~~~~~~~~~~~...~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~...~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~...~~~~~~~~~~~~~~~~#
+####################################
+
+[rooms]
+------------------------------------
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccccbbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-cccccccccc-bbbbbbbbb-qqqqqqqqqqqqq-
+-----c---------b------rrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-
+-pppppppppppppppppppppppppppppppppp-
+-pppppppppppppppppppppppppppppppppp-
+-pppppppppppppppppppppppppppppppppp-
+-pppppppppppppppppppppppppppppppppp-
+-pppppppppppppppppppppppppppppppppp-
+----------------mmm-----------------
+----------------mmm-----------------
+----------------mmm-----------------
+----------------mmm-----------------
+------------------------------------
+
+[area]
+0 rua
+
+[room]
+c casa amarela area=0 floor=taco wall=papel_floral ceil=forro ext=fachada_amarela h=3.0 light=30 out=0
+b bar do ze area=0 floor=ladrilho_hidraulico wall=cal ceil=forro ext=fachada_rosa h=3.4 light=0 out=0
+q quintal area=0 floor=grama wall=muro_chapiscado ceil=- ext=- h=2.2 light=20 out=1
+r rua area=0 floor=asfalto wall=muro_chapiscado ceil=- ext=- h=2.2 light=20 out=1
+p praca area=0 floor=calcada_portuguesa wall=muro_chapiscado ceil=- ext=- h=2.2 light=20 out=1
+m ponte area=0 floor=madeira_ponte wall=muro_chapiscado ceil=- ext=- h=2.2 light=20 out=1
+
+[door]
+5 8 h closed
+15 8 h open
+11 4 v open
+
+[portal]
+20 11 -> 33 9 0 bueiro
+
+[lock]
+saida code 123
+
+[item]
+chave1 chave 10.5 11.5
+balde1 balde 20.5 12.5
+foto1 foto 18.5 19.5
+pilha1 lanterna_pilha 3.5 4.5
+
+[note]
+10 8 parede "Cadeado da ponte: 1-2-3."
+
+[hide]
+9 7 cama 90
+20 13 carro 90
+
+[prop]
+mesa 3.5 2.5 0
+cadeira 3.5 5.5 0
+fogao_lenha 8.5 5.5 180
+mesa_bar 14.5 2.5 0
+mesa_bar 17.5 2.5 0
+vela_castical 17.5 2.5 0
+engradado 14.5 6.5 0
+geladeira_bar 17.5 6.5 180
+caixa_dagua 32.5 2.5 0
+poco 28.5 4.5 0
+poste 3.5 10.5 90
+poste 14.5 10.5 90
+poste 25.5 10.5 90
+onibus 30 14 90
+arvore 2.5 16.5 0
+arvore 2.5 18.5 40
+arvore 3.5 20.5 80
+coreto 16.5 17.5 0
+bananeira 25.5 16.5 0
+bambu 25.5 17.5 0
+bambu 30.5 17.5 0
+bambu 31.5 17.5 60
+banco_praca 11.5 20.5 0
+lixeira 19.5 20.5 0
+orelhao 25.5 20.5 180
+
+[light]
+4.3 10.5 4.0 255,196,120 7 steady
+15.3 10.5 4.0 255,196,120 7 flicker
+26.3 10.5 4.0 255,196,120 7 dead
+5.5 4.5 2.8 255,220,170 5 steady
+17.5 2.5 1.1 255,160,70 4 flicker
+
+[cam]
+11 4 11 4 20.3 2.8 7.6 12.5 0.6 1.5 70
+1 1 5 7 10.4 2.7 7.6 2.5 0.4 1.8 70
+6 1 10 7 1.2 2.7 7.6 9.5 0.4 1.8 70
+12 1 15 7 20.4 3 7.6 13 0.4 1.8 70
+16 1 20 7 12.2 3 7.6 19.5 0.4 1.8 70
+22 1 34 7 28.5 5 12 28.5 0 3.5 75
+1 8 11 15 6 4 20.5 6 0 9 76
+12 8 22 15 17 4 20.5 17 0 9 76
+23 8 34 15 28.5 4 20.5 28.5 0 9 76
+1 16 11 20 6 4.5 10.5 6 0 19.5 76
+12 16 22 20 17 4.5 10.5 17 0 19.5 76
+23 16 34 20 28.5 4.5 10.5 28.5 0 19.5 76
+16 21 18 24 14 2.8 19 18 0 24 70
+
+[wake]
+0 2 9 0
+1 3 9 0
+2 4 9 0
+3 6 9 0
+
+[legend]
+spawn 30 3 180
+lair 34 6
+patrol 30 3
+patrol 30 10
+patrol 10 10
+patrol 10 18
+patrol 30 18
+patrol 17 22
+
+[exit]
+16 23 18 24 lock=saida

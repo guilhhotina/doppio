@@ -53,6 +53,14 @@ impl Frontend {
             .then(|| unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned())
     }
 
+    pub fn save_dir(&self) -> Option<std::path::PathBuf> {
+        let mut dir: *const c_char = null();
+        (self.env(ENV_GET_SAVE_DIRECTORY, &mut dir) && !dir.is_null())
+            .then(|| unsafe { CStr::from_ptr(dir) }.to_string_lossy().into_owned())
+            .filter(|d| !d.is_empty())
+            .map(std::path::PathBuf::from)
+    }
+
     pub fn buttons(&self, port: c_uint) -> u16 {
         self.input_state.map_or(0, |f| {
             (0..JOYPAD_BUTTONS)
@@ -131,11 +139,6 @@ pub extern "C" fn retro_set_environment(cb: Option<EnvironmentFn>) {
     }
     let mut no_game = true;
     fe.env(ENV_SET_SUPPORT_NO_GAME, &mut no_game);
-    let mut vars = [
-        Variable { key: c"doppio_night_seconds".as_ptr(), value: c"Night length; 360|120|180|240|480|600".as_ptr() },
-        Variable { key: null(), value: null() },
-    ];
-    fe.env(ENV_SET_VARIABLES, &mut vars);
 }
 
 #[unsafe(no_mangle)]

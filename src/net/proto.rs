@@ -1,4 +1,4 @@
-pub const VERSION: [u8; 16] = *b"doppio 2\0\0\0\0\0\0\0\0";
+pub const VERSION: [u8; 16] = *b"doppio 3\0\0\0\0\0\0\0\0";
 pub const MAX_PACKET: usize = 96;
 pub const NICK: usize = 16;
 pub const SLOTS: usize = 4;
@@ -14,6 +14,7 @@ pub struct RosterSeat {
     pub owner: Owner,
     pub ready: bool,
     pub nick: [u8; NICK],
+    pub character: u8,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -26,10 +27,10 @@ pub enum Reason {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Msg {
-    Hello { version: [u8; 16], nick: [u8; NICK], local_count: u8, ready: bool },
-    Roster { count: u8, seats: [RosterSeat; SLOTS] },
+    Hello { version: [u8; 16], nick: [u8; NICK], local_count: u8, ready: bool, chars: [u8; SLOTS] },
+    Roster { count: u8, phase: u8, seats: [RosterSeat; SLOTS] },
     Ready { ready: bool },
-    Start { seed: u32, players: u8, night_secs: u32, slots: [Owner; SLOTS] },
+    Start { seed: u32, phase: u8, players: u8, characters: [u8; SLOTS], slots: [Owner; SLOTS] },
     Input { tic: u32, slot: u8, bits: u16 },
     Tic { tic: u32, inputs: [u16; SLOTS] },
     Hash { tic: u32, hash: u32 },
@@ -37,7 +38,7 @@ pub enum Msg {
 }
 
 pub const NO_OWNER: Owner = Owner { client: u16::MAX, index: 0 };
-pub const EMPTY_SEAT: RosterSeat = RosterSeat { owner: NO_OWNER, ready: false, nick: [0; NICK] };
+pub const EMPTY_SEAT: RosterSeat = RosterSeat { owner: NO_OWNER, ready: false, nick: [0; NICK], character: 0 };
 
 const HELLO: u8 = 1;
 const ROSTER: u8 = 2;
@@ -93,11 +94,14 @@ impl R<'_> {
     fn bool(&mut self) -> Option<bool> {
         self.u8().filter(|&b| b < 2).map(|b| b == 1)
     }
+    fn character(&mut self) -> Option<u8> {
+        self.u8().filter(|&c| (c as usize) < SLOTS)
+    }
     fn owner(&mut self) -> Option<Owner> {
         Some(Owner { client: self.u16()?, index: self.u8()? })
     }
     fn seat(&mut self) -> Option<RosterSeat> {
-        Some(RosterSeat { owner: self.owner()?, ready: self.bool()?, nick: self.take()? })
+        Some(RosterSeat { owner: self.owner()?, ready: self.bool()?, nick: self.take()?, character: self.character()? })
     }
     fn array<T: Copy, const N: usize>(&mut self, mut f: impl FnMut(&mut Self) -> Option<T>) -> Option<[T; N]> {
         let items: [Option<T>; N] = std::array::from_fn(|_| f(self));
@@ -125,13 +129,15 @@ impl Msg {
     pub fn encode(&self, buf: &mut [u8; MAX_PACKET]) -> usize {
         let w = W { buf, n: 0 };
         match self {
-            Msg::Hello { version, nick, local_count, ready } => w.u8(HELLO).bytes(version).bytes(nick).u8(*local_count).u8(*ready as u8),
-            Msg::Roster { count, seats } => seats
+            Msg::Hello { version, nick, local_count, ready, chars } => {
+                w.u8(HELLO).bytes(version).bytes(nick).u8(*local_count).u8(*ready as u8).bytes(chars)
+            }
+            Msg::Roster { count, phase, seats } => seats
                 .iter()
-                .fold(w.u8(ROSTER).u8(*count), |w, s| w.owner(&s.owner).u8(s.ready as u8).bytes(&s.nick)),
+                .fold(w.u8(ROSTER).u8(*count).u8(*phase), |w, s| w.owner(&s.owner).u8(s.ready as u8).bytes(&s.nick).u8(s.character)),
             Msg::Ready { ready } => w.u8(READY).u8(*ready as u8),
-            Msg::Start { seed, players, night_secs, slots } => {
-                slots.iter().fold(w.u8(START).u32(*seed).u8(*players).u32(*night_secs), |w, o| w.owner(o))
+            Msg::Start { seed, phase, players, characters, slots } => {
+                slots.iter().fold(w.u8(START).u32(*seed).u8(*phase).u8(*players).bytes(characters), |w, o| w.owner(o))
             }
             Msg::Input { tic, slot, bits } => w.u8(INPUT).u32(*tic).u8(*slot).u16(*bits),
             Msg::Tic { tic, inputs } => inputs.iter().fold(w.u8(TIC).u32(*tic), |w, &b| w.u16(b)),
@@ -144,13 +150,14 @@ impl Msg {
     pub fn decode(b: &[u8]) -> Option<Msg> {
         let mut r = R(b);
         let msg = match r.u8()? {
-            HELLO => Msg::Hello { version: r.take()?, nick: r.take()?, local_count: r.u8()?, ready: r.bool()? },
-            ROSTER => Msg::Roster { count: r.u8().filter(|&c| c as usize <= SLOTS)?, seats: r.array(R::seat)? },
+            HELLO => Msg::Hello { version: r.take()?, nick: r.take()?, local_count: r.u8()?, ready: r.bool()?, chars: r.array(R::character)? },
+            ROSTER => Msg::Roster { count: r.u8().filter(|&c| c as usize <= SLOTS)?, phase: r.u8()?, seats: r.array(R::seat)? },
             READY => Msg::Ready { ready: r.bool()? },
             START => Msg::Start {
                 seed: r.u32()?,
+                phase: r.u8()?,
                 players: r.u8().filter(|&p| (1..=SLOTS as u8).contains(&p))?,
-                night_secs: r.u32()?,
+                characters: r.array(R::character)?,
                 slots: r.array(R::owner)?,
             },
             INPUT => Msg::Input { tic: r.u32()?, slot: r.u8().filter(|&s| (s as usize) < SLOTS)?, bits: r.u16()? },
@@ -173,17 +180,18 @@ mod tests {
 
     #[test]
     fn roundtrip() {
-        let seat = |c, i, r, n| RosterSeat { owner: Owner { client: c, index: i }, ready: r, nick: nick(n) };
+        let seat = |c, i, r, n, ch| RosterSeat { owner: Owner { client: c, index: i }, ready: r, nick: nick(n), character: ch };
         let msgs = [
-            Msg::Hello { version: VERSION, nick: nick("João"), local_count: 2, ready: true },
-            Msg::Hello { version: VERSION, nick: nick("x"), local_count: 1, ready: false },
-            Msg::Roster { count: 3, seats: [seat(0, 0, true, "a"), seat(0, 1, true, "a"), seat(7, 0, false, "b"), EMPTY_SEAT] },
+            Msg::Hello { version: VERSION, nick: nick("João"), local_count: 2, ready: true, chars: [3, 1, 0, 0] },
+            Msg::Hello { version: VERSION, nick: nick("x"), local_count: 1, ready: false, chars: [0; SLOTS] },
+            Msg::Roster { count: 3, phase: 2, seats: [seat(0, 0, true, "a", 3), seat(0, 1, true, "a", 1), seat(7, 0, false, "b", 0), EMPTY_SEAT] },
             Msg::Ready { ready: true },
             Msg::Ready { ready: false },
             Msg::Start {
                 seed: 0xDEAD_BEEF,
+                phase: 4,
                 players: 3,
-                night_secs: 360,
+                characters: [2, 0, 3, 1],
                 slots: [Owner { client: 0, index: 0 }, Owner { client: 0, index: 1 }, Owner { client: 7, index: 0 }, NO_OWNER],
             },
             Msg::Input { tic: 123_456, slot: 3, bits: 0x3FF },
@@ -195,6 +203,7 @@ mod tests {
         let mut buf = [0; MAX_PACKET];
         msgs.iter().for_each(|m| {
             let n = m.encode(&mut buf);
+            assert!(n <= MAX_PACKET);
             assert_eq!(Msg::decode(&buf[..n]), Some(*m));
             assert_eq!(Msg::decode(&buf[..n - 1]), None);
             assert!((0..n).all(|k| Msg::decode(&buf[..k]).is_none()));
@@ -209,5 +218,10 @@ mod tests {
         assert_eq!(Msg::decode(&[LEAVE, 9]), None);
         assert_eq!(Msg::decode(&[INPUT, 0, 0, 0, 0, 4, 0, 0]), None);
         assert_eq!(Msg::decode(&[READY, 1, 0]), None);
+        let mut buf = [0; MAX_PACKET];
+        let start = Msg::Start { seed: 1, phase: 0, players: 1, characters: [0, 1, 2, 3], slots: [NO_OWNER; SLOTS] };
+        let n = start.encode(&mut buf);
+        buf[8] = SLOTS as u8;
+        assert_eq!(Msg::decode(&buf[..n]), None);
     }
 }

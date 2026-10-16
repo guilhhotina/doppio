@@ -1,0 +1,670 @@
+[map] name="Pedra Seca — a igreja matriz" w=56 h=48 sky=moon fog=8,8,14 fog_near=6 fog_far=22 legend=mula
+; fase 3: igreja matriz, escola paroquial, pátio e casa paroquial. Lenda: Mula sem cabeça.
+; acordam na sala 2 da escola. Freio no altar -> sino no alto da torre (coro -> corrente -> escada) -> janela da torre -> rua.
+[area]
+0 térreo
+1 coro e torre
+2 sala do sino
+3 lado de fora da torre
+[solid]
+########################################################
+#######B.B.B#B.B.B#B.B.B#HBB.H####H....BBB....H# |.....#
+#######.....#.....#.....#.....####.............# |....B#
+#######.....#.....#.....#.....####....BB.BB....# |.....#
+########...###...###...###...#####.............# |....B#
+#######..........................D.............# |.....#
+#B...B#..........................#.............# |.....#
+#.....#..#...#...#...#...#...#...####D######D### |.....#
+#.....#...........................B......B#...B# |...B.#
+#........B.B.B.B.B.B.B.B.B.B.B...........B#....# |....H#
+#........B.B.B.B.B.B.B.B.B.B.B............#B...# |P....#
+#........................................B#....####D####
+#........................................B#...H###B..B##
+#H.......B.B.B.B.B.B.B.B.B.B.B............#....###...B##
+#........B.B.B.B.B.B.B.B.B.B.B...........B#....###...P##
+#....B#..................................B#B...###....##
+###D###..#...#...#...#...#...#...####D######D#####....##
+#....B#..........................#......B.....H########
+#B....#..........................D.............##.....#
+#B....##...###...###...###...#####......BB.....##.....W
+#P....#.....#.....#.....#.....####............B##..B.PW
+#.....D....B#.....#.....#.....####.............##.....W
+#.....#B....#H.B.H#B....#HBB.H####H....B.......##P....#
+#########D###########D##############D#######D##########
+#.....H#..#B.....H#H..................#.BB....H#B......#
+#H.B.B.#..#.......#...................#........#...BB..#
+#......#..#..BBB..#.#..#..#..#..#..#..#.....B..#.......#
+#..B.B.D..D.......D...................D........D.......#
+#......#..#.......#...................#........#......B#
+#..B.B.#..#..BBB..#...................#........#......B#
+#......#..#.......#...B...........B...#B......B#H......#
+########..#B......#...................#####D#######D####
+#H.....#..#########...................D................#
+#..B.B.#..#H......#.........B.........#................#
+#......#..#.B.B...#...................#####D#######D####
+#..B.B.D..#.......#...................#.B.....B#B.B...B#
+#......#..D.B.B...D......BB...BB......#H.......#......B#
+#..B.B.#..#.......#...................#........#...BB..#
+#.....H#..#.B.B...#...B...........B...#........D.......#
+########..#......H#...................#........#.......#
+#.....H#..#########...................#H....B..#B.....H#
+#.BB...#..#......B#.........B........H#####D#######D####
+#......#..#.......#####################.......B#....B.B#
+#......D..D.......####B............####H.......#.......#
+#......#..#.......####.............####........#.......#
+#......#..#.......####.............####........#.......#
+#B....B#H.#.B.B.B.####B..B.........####B......H#BB.....#
+########################################################
+[rooms]
+--------------------------------------------------------
+-------aaaaa-bbbbb-ccccc-ddddd----kkkkkkkkkkkkk---OOOOO-
+-------aaaaa-bbbbb-ccccc-ddddd----kkkkkkkkkkkkk---OOOOO-
+-------aaaaa-bbbbb-ccccc-ddddd----kkkkkkkkkkkkk---OOOOO-
+--------aaa---bbb---ccc---ddd-----kkkkkkkkkkkkk---OOOOO-
+-------vvvvvvvvvvvvvvvvvvvvvvvvvv-kkkkkkkkkkkkk---OOOOO-
+-nnnnn-vvvvvvvvvvvvvvvvvvvvvvvvvv-kkkkkkkkkkkkk---OOOOO-
+-nnnnn-vv-vvv-vvv-vvv-vvv-vvv-vvv-----------------OOOOO-
+-nnnnn-vvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---OOOOO-
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---OOOOO-
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---OOOOO-
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---------
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---hhhh--
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---hhhh--
+-nnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---hhhh--
+-nnnnn-vvvvvvvvvvvvvvvvvvvvvvvvvvppppppppp-rrrr---hhhh--
+-------vv-vvv-vvv-vvv-vvv-vvv-vvv-----------------hhhh--
+-eeeee-vvvvvvvvvvvvvvvvvvvvvvvvvv-sssssssssssss---------
+-eeeee-vvvvvvvvvvvvvvvvvvvvvvvvvv-sssssssssssss--jjjjj--
+-eeeee--ttt---fff---ggg---iii-----sssssssssssss--jjjjj--
+-eeeee-ttttt-fffff-ggggg-iiiii----sssssssssssss--jjjjj--
+-eeeee-ttttt-fffff-ggggg-iiiii----sssssssssssss--jjjjj--
+-eeeee-ttttt-fffff-ggggg-iiiii----sssssssssssss--jjjjj--
+--------------------------------------------------------
+-SSSSSS-EE-RRRRRRR-GGGGGGGGGGGGGGGGGGG-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-GGGGGGGGGGGGGGGGGGG-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-o-oo-oo-oo-oo-oo-oo-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-ooooooooooooooooooo-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-ooooooooooooooooooo-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-ooooooooooooooooooo-LLLLLLLL-MMMMMMM-
+-SSSSSS-EE-RRRRRRR-ooooooooooooooooooo-LLLLLLLL-MMMMMMM-
+--------EE-RRRRRRR-ooooooooooooooooooo------------------
+-TTTTTT-EE---------ooooooooooooooooooo-NNNNNNNNNNNNNNNN-
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo-NNNNNNNNNNNNNNNN-
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo------------------
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+-TTTTTT-EE-ZZZZZZZ-ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+--------EE-ZZZZZZZ-ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+-UUUUUU-EE---------ooooooooooooooooooo-QQQQQQQQ-KKKKKKK-
+-UUUUUU-EE-XXXXXXX-ooooooooooooooooooo------------------
+-UUUUUU-EE-XXXXXXX---------------------VVVVVVVV-YYYYYYY-
+-UUUUUU-EE-XXXXXXX----xxxxxxxxxxxxx----VVVVVVVV-YYYYYYY-
+-UUUUUU-EE-XXXXXXX----xxxxxxxxxxxxx----VVVVVVVV-YYYYYYY-
+-UUUUUU-EE-XXXXXXX----xxxxxxxxxxxxx----VVVVVVVV-YYYYYYY-
+-UUUUUU-EE-XXXXXXX----xxxxxxxxxxxxx----VVVVVVVV-YYYYYYY-
+--------------------------------------------------------
+[room]
+n nártex area=0 floor=lajota wall=pedra ceil=madeira_escura ext=pedra h=5 light=6
+e escada do coro area=0 floor=madeira_escura wall=reboco_mofo ceil=madeira_escura ext=pedra h=4 light=3
+v nave area=0 floor=marmore_xadrez wall=cal ceil=madeira_escura ext=pedra h=8 light=10
+a capela das Dores area=0 floor=marmore_xadrez wall=azulejo_capela ceil=cal ext=pedra h=4 light=3
+b capela de São Benedito area=0 floor=marmore_xadrez wall=cal ceil=cal ext=pedra h=4 light=3
+c capela de Santo Antônio area=0 floor=marmore_xadrez wall=azulejo_capela ceil=cal ext=pedra h=4 light=3
+d capela das Almas area=0 floor=marmore_xadrez wall=cal ceil=cal ext=pedra h=4 light=2
+t batistério area=0 floor=lajota wall=azulejo_capela ceil=cal ext=pedra h=4 light=4
+f confessionários area=0 floor=marmore_xadrez wall=cal ceil=cal ext=pedra h=4 light=3
+g porta lateral area=0 floor=lajota wall=cal ceil=cal ext=pedra h=4 light=6
+i capela do Senhor Morto area=0 floor=marmore_xadrez wall=cal ceil=cal ext=pedra h=4 light=2
+p presbitério area=0 floor=marmore_xadrez wall=dourado ceil=madeira_escura ext=pedra h=8 light=16
+k capela do Santíssimo area=0 floor=marmore_xadrez wall=azulejo_capela ceil=cal ext=pedra h=5 light=6
+s sacristia area=0 floor=ladrilho_hidraulico wall=cal ceil=madeira_escura ext=pedra h=4 light=14
+r camarim area=0 floor=madeira_escura wall=reboco_mofo ceil=madeira_escura ext=pedra h=4 light=2
+E corredor da escola area=0 floor=ladrilho_hidraulico wall=reboco ceil=forro ext=fachada_amarela h=3.2 light=10
+S sala 1 area=0 floor=taco wall=reboco ceil=forro ext=fachada_amarela h=3.2 light=14
+T sala 2 area=0 floor=taco wall=reboco ceil=forro ext=fachada_amarela h=3.2 light=16
+U secretaria area=0 floor=taco wall=papel_listrado ceil=forro ext=fachada_amarela h=3.2 light=8
+R refeitório area=0 floor=ladrilho_hidraulico wall=azulejo ceil=forro ext=fachada_amarela h=3.2 light=12
+Z sala 3 area=0 floor=taco wall=reboco ceil=forro ext=fachada_amarela h=3.2 light=12
+X banheiros da escola area=0 floor=ceramica wall=azulejo ceil=reboco ext=fachada_amarela h=3.2 light=6
+G galeria area=0 floor=lajota wall=reboco ceil=madeira_crua ext=fachada_amarela h=3.4 light=18
+o pátio area=0 floor=terra wall=muro_chapiscado ceil=- ext=muro_chapiscado h=6 light=30 out=1
+L sala da casa paroquial area=0 floor=taco wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=16
+M escritório do padre area=0 floor=assoalho wall=papel_listrado ceil=forro_pintado ext=fachada_azul h=3 light=10
+N corredor da casa area=0 floor=assoalho wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=6
+Q quarto do padre area=0 floor=assoalho wall=reboco ceil=forro_pintado ext=fachada_azul h=3 light=8
+K cozinha da casa area=0 floor=ceramica_barro wall=reboco_mofo ceil=forro ext=fachada_azul h=3 light=12
+V quarto de Rosa area=0 floor=assoalho wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=4
+Y banheiro da casa area=0 floor=ceramica wall=azulejo ceil=reboco ext=fachada_azul h=3 light=8
+O coro area=1 floor=assoalho wall=cal ceil=madeira_escura ext=pedra h=4 light=5
+h escada da torre area=1 floor=madeira_crua wall=pedra ceil=madeira_crua ext=pedra h=6 light=3
+j sala do sino area=2 floor=madeira_crua wall=pedra ceil=telha ext=pedra h=4 light=22
+x lado de fora da torre area=3 floor=paralelepipedo wall=pedra ceil=- ext=pedra h=6 light=32 out=1
+[door]
+3 16 h locked:coro
+6 21 v stuck
+9 23 h closed
+21 23 h closed
+33 5 v open
+33 18 v closed
+37 7 h open
+37 16 h open
+44 7 h closed
+44 16 h closed
+36 23 h closed
+44 23 h closed
+7 27 v closed
+7 35 v closed
+7 43 v closed
+10 27 v open
+10 36 v closed
+10 43 v closed
+18 27 v closed
+18 36 v closed
+38 27 v closed
+38 32 v closed
+47 27 v open
+43 31 h open
+51 31 h closed
+43 34 h closed
+51 34 h open
+47 38 v closed
+43 41 h closed
+51 41 h closed
+51 11 h locked:corrente
+[portal]
+; escada do coro <-> coro; torre <-> sala do sino; janela da torre -> rua (só depois do freio no sino)
+50 10 -> 2 20 90 escada
+1 20 -> 51 9 180 escada
+49 22 -> 52 15 0 escada
+53 14 -> 50 20 90 escada
+53 20 -> 33 44 270 janela_alta lock=maldicao
+[lock]
+hinos code 2714
+coro key chave_coro
+corrente tool alicate
+maldicao place freio 51 20
+[item]
+freio freio 41.3 12
+alicate alicate 46.5 20.5
+chave_coro chave 46.5 35.5
+pilha_escola lanterna_pilha 4.5 45.5
+pilha_coro lanterna_pilha 53.5 6.5
+pilha_camarim lanterna_pilha 43.5 15.5
+foto_turma foto 2.5 29.5
+foto_rosa foto 42.5 44.5
+foto_coro foto 51.5 2.5
+[note]
+31 4 parede "Quadro de hinos — Sexta-feira da Paixão. Entrada: 27. Ofertório: 14."
+47 19 parede "Pe. Anselmo: o segredo do cofre são os hinos desta Sexta, na ordem do quadro da nave."
+16 36 quadro_negro "Lição: a Mula sem cabeça corre em linha reta e não sabe virar. Se ela vier, pule pro lado!"
+1 35 quadro_negro "Dever: o freio de ferro da Mula fica no altar. Posto no sino da torre, quebra a maldição."
+1 27 quadro_negro "Turma de 1958. É proibido subir na torre do sino. A torre só abre pelo coro."
+0 14 parede "Aviso: a porta do coro está trancada. A chave fica com o Pe. Anselmo, na casa paroquial."
+10 23 parede "A porta da escada do coro, no batistério, emperrou. Só um homem bem forte consegue abrir."
+53 11 parede "Corrente grossa na porta da torre. Só um alicate corta. O do padre fica no cofre da sacristia."
+48 20 parede "Ponha o freio de ferro no sino: a sina se quebra e a janela da torre se abre para a rua."
+51 25 mesa "Diário do Pe. Anselmo: amei Rosa em segredo. A cidade soube. Na Sexta da Paixão, ela virou a Mula."
+39 46 criado_mudo "Rosa: se um dia eu virar bicho, tirem o meu freio e ponham no sino. Só assim eu descanso."
+44 40 oratorio "Guardei a chave do coro no baú do quarto. Que ninguém suba à torre enquanto ela corre."
+8 28 cartaz "Aviso da escola: ouviu galope? Entre numa sala e se esconda no armário até passar."
+[hide]
+1 13 confessionario 90
+25 1 confessionario 0
+29 1 confessionario 0
+13 22 confessionario 180
+17 22 confessionario 180
+25 22 confessionario 180
+29 22 confessionario 180
+46 1 armario 270
+34 1 armario 90
+46 12 armario 270
+34 22 armario 90
+46 17 armario 270
+54 9 armario 270
+1 25 mesa 90
+6 24 armario 0
+6 38 armario 180
+1 32 armario 0
+11 33 armario 0
+17 39 mesa 270
+6 40 armario 270
+17 24 armario 270
+8 46 armario 180
+19 24 cesto 90
+37 41 caixa_dagua 270
+46 24 guarda_roupa 270
+48 30 armario 90
+39 36 cama 90
+39 40 guarda_roupa 90
+54 40 armario 270
+39 43 cama 90
+46 46 guarda_roupa 270
+14 26 mesa 0
+[prop]
+banco_igreja 9.5 10 90
+banco_igreja 9.5 14 90
+banco_igreja 11.5 10 90
+banco_igreja 11.5 14 90
+banco_igreja 13.5 10 90
+banco_igreja 13.5 14 90
+banco_igreja 15.5 10 90
+banco_igreja 15.5 14 90
+banco_igreja 17.5 10 90
+banco_igreja 17.5 14 90
+banco_igreja 19.5 10 90
+banco_igreja 19.5 14 90
+banco_igreja 21.5 10 90
+banco_igreja 21.5 14 90
+banco_igreja 23.5 10 90
+banco_igreja 23.5 14 90
+banco_igreja 25.5 10 90
+banco_igreja 25.5 14 90
+banco_igreja 27.5 10 90
+banco_igreja 27.5 14 90
+banco_igreja 29.5 10 90
+banco_igreja 29.5 14 90
+santo_estatua 1.5 6.5 45
+pia_batismal 5.5 6.5 315
+vela_castical 5.5 15.5 0
+santo_estatua 9.5 1.5 0
+vela_castical 7.5 1.5 0
+vela_castical 11.5 1.5 0
+santo_estatua 15.5 1.5 0
+vela_castical 13.5 1.5 0
+vela_castical 17.5 1.5 0
+oratorio 21.5 1.5 0
+vela_castical 19.5 1.5 0
+vela_castical 23.5 1.5 0
+santo_estatua 27.5 1.5 0
+pia_batismal 11.5 21.5 270
+vela_castical 7.5 22.5 0
+vela_castical 15.5 22.5 180
+santo_estatua 19.5 22.5 135
+quadro_santo 23.9 21 270
+santo_estatua 27.5 22.5 180
+altar 41.5 12 270
+vela_castical 41.5 9.5 270
+vela_castical 41.5 14.5 270
+santo_estatua 41.5 8.5 270
+santo_estatua 41.5 15.5 270
+pulpito 34.5 8.5 270
+oratorio 40.5 1.5 0
+vela_castical 39.5 1.5 0
+vela_castical 41.5 1.5 0
+banco_igreja 39 3.5 180
+banco_igreja 42 3.5 180
+santo_estatua 46.5 8.5 270
+bau 43.5 15.5 90 item=pilha_camarim
+estante 43.5 10.5 90
+cofre 46.5 20.5 270 lock=hinos item=alicate
+mesa 41 19.5 0
+cadeira 41 20.4 180
+estante 39.5 22.5 180
+pia 40.5 17.5 0
+espelho 40.5 17.1 0
+engradado 5.5 17.5 0
+estante 54.5 2.5 270
+estante 54.5 4.5 270
+cadeira 51.5 3.5 270
+cadeira 51.5 5.5 270
+cadeira 51.5 7.5 270
+quadro_santo 52.5 1.1 0
+engradado 50.5 12.5 0
+sino 51.5 20.5 0
+quadro_negro 1.1 27 90
+carteira_escolar 3.5 25.5 270
+carteira_escolar 3.5 27.5 270
+carteira_escolar 3.5 29.5 270
+carteira_escolar 5.5 25.5 270
+carteira_escolar 5.5 27.5 270
+carteira_escolar 5.5 29.5 270
+quadro_negro 1.1 35 90
+carteira_escolar 3.5 33.5 270
+carteira_escolar 3.5 35.5 270
+carteira_escolar 3.5 37.5 270
+carteira_escolar 5.5 33.5 270
+carteira_escolar 5.5 35.5 270
+carteira_escolar 5.5 37.5 270
+quadro_negro 16.9 36 270
+carteira_escolar 12.5 34.5 90
+carteira_escolar 12.5 36.5 90
+carteira_escolar 12.5 38.5 90
+carteira_escolar 14.5 34.5 90
+carteira_escolar 14.5 36.5 90
+carteira_escolar 14.5 38.5 90
+mesa 3 41.5 0
+cadeira 3 42.4 180
+estante 6.5 46.5 270
+estante 1.5 46.5 90
+calendario 1.1 43 90
+mesa 14.5 26.5 90
+mesa 14.5 29.5 90
+filtro_barro 11.5 24.5 90
+moringa 11.5 31.5 90
+pia 12.5 46.5 180
+pia 14.5 46.5 180
+pia 16.5 46.5 180
+vaso 17.5 41.5 270
+quadro_santo 8.1 30 90
+relogio_parede 9.9 40 270
+poco 28.5 33.5 0
+arvore 22.5 30.5 0
+arvore 34.5 30.5 0
+arvore 22.5 38.5 0
+arvore 34.5 38.5 0
+santo_estatua 28.5 41.5 180
+banco_praca 26 36.5 0
+banco_praca 31 36.5 0
+sofa 41 24.5 0
+poltrona 44.5 26.5 315
+radio_antigo 39.5 30.5 135
+oratorio 46.5 30.5 225
+quadro_santo 42.5 24.1 0
+mesa 52 25.5 0
+cadeira 52 26.4 180
+estante 54.5 28.5 270
+estante 54.5 29.5 270
+maquina_costura 48.5 24.5 90
+relogio_parede 47 32.1 0
+quadro_santo 41 33.9 180
+criado_mudo 40.5 35.5 0
+bau 46.5 35.5 270 item=chave_coro
+oratorio 44.5 40.5 180
+fogao_lenha 54.5 36 270
+mesa 52 37.5 0
+pilao 48.5 35.5 0
+filtro_barro 48.5 40.5 90
+moringa 50.5 35.5 0
+maquina_costura 46.5 42.5 270
+espelho 41 46.9 180
+criado_mudo 39.5 46.5 90
+banheira 49 46.5 180
+vaso 54.5 42.5 270
+pia 52.5 42.5 0
+espelho 52.5 42.1 0
+portao_ferro 22.5 43.5 90
+portao_ferro 22.5 46.5 90
+cartaz 8.1 28 90
+vitral 12.5 5.1 0
+vitral 12.5 18.9 180
+vitral 18.5 5.1 0
+vitral 18.5 18.9 180
+vitral 24.5 5.1 0
+vitral 24.5 18.9 180
+vitral 39.5 8.1 0
+vitral 39.5 15.9 180
+vela_castical 53.5 8.5 270
+poste 25.5 46.5 0
+escada 1.5 19.5 180
+escada 53.5 13.5 180
+vela_castical 26.5 1.5 0
+vela_castical 26.5 22.5 180
+[light]
+5.5 15.5 1.3 255,160,70 4 flicker
+7.5 1.5 1.3 255,160,70 4 flicker
+11.5 1.5 1.3 255,160,70 4 flicker
+13.5 1.5 1.3 255,160,70 4 flicker
+17.5 1.5 1.3 255,160,70 4 flicker
+19.5 1.5 1.3 255,160,70 4 flicker
+23.5 1.5 1.3 255,160,70 4 flicker
+7.5 22.5 1.3 255,160,70 4 flicker
+15.5 22.5 1.3 255,160,70 4 flicker
+41.5 9.5 1.3 255,160,70 4 flicker
+41.5 14.5 1.3 255,160,70 4 flicker
+39.5 1.5 1.3 255,160,70 4 flicker
+41.5 1.5 1.3 255,160,70 4 flicker
+53.5 8.5 1.3 255,160,70 4 flicker
+40.5 1.5 1.6 255,50,30 4 flicker
+41.5 12 1.4 255,180,90 5 flicker
+46.5 30.5 1.4 255,150,70 3 flicker
+44.5 40.5 1.4 255,150,70 3 flicker
+54.5 36 0.8 255,110,40 4 flicker
+9 26 2.9 200,210,190 5 flicker
+9 35 2.9 200,210,190 5 dead
+9 44 2.9 200,210,190 5 steady
+4 35 3 210,215,200 6 steady
+14 28 3 210,215,200 5 dead
+3.5 43.5 2.6 230,200,140 3 flicker
+28.5 24.8 3.1 230,190,120 6 steady
+25.5 46.5 4.5 255,200,120 8 steady
+42.5 27.5 2.7 240,200,140 4 steady
+51.5 25.5 2 240,190,120 3 steady
+51.5 20.5 3 150,170,220 4 dead
+26.5 1.5 1.3 255,160,70 4 flicker
+26.5 22.5 1.3 255,160,70 4 flicker
+[cam]
+; corredor central: rente ao chao na entrada, o corredor ate o altar (a carga da Mula)
+11 8 22 14 7.4 1.3 11.9 40 1.6 12 52
+10 9 22 14 7.4 1.3 11.9 40 1.6 12 52
+8 11 22 12 7.4 1.3 11.9 40 1.6 12 52
+12 15 22 15 7.4 1.3 11.9 40 1.6 12 52
+; do altar: o olhar dela descendo a nave
+23 7 23 15 37.6 3.2 12.3 10 1 11.9 54
+26 7 27 16 37.6 3.2 12.3 10 1 11.9 54
+30 7 31 16 37.6 3.2 12.3 10 1 11.9 54
+24 8 33 15 37.6 3.2 12.3 10 1 11.9 54
+; nave lateral norte: colunata vista do fundo, para a entrada
+7 5 22 6 32.6 3.6 5.3 6 1 6.3 46
+22 7 22 7 32.6 3.6 5.3 6 1 6.3 46
+; nave lateral norte: para a porta do Santissimo
+23 5 33 6 15.5 3.6 6.6 34 1 5.4 50
+; nave lateral sul: colunata vista do fundo, para o batisterio
+22 16 22 18 32.6 3.6 18.7 6 1 17.6 46
+7 17 22 18 32.6 3.6 18.7 6 1 17.6 46
+; nave lateral sul: para a porta da sacristia
+23 17 32 18 15.5 3.6 17.4 34 1 18.6 50
+33 18 33 18 15.5 3.6 17.4 34 1 18.6 50
+; fundo da nave: do meio dos bancos para o nartex e a escuridao
+7 7 7 16 17.6 5.2 11.5 5 1.4 11.5 58
+10 7 11 7 17.6 5.2 11.5 5 1.4 11.5 58
+8 8 10 8 17.6 5.2 11.5 5 1.4 11.5 58
+6 9 8 10 17.6 5.2 11.5 5 1.4 11.5 58
+6 11 7 16 17.6 5.2 11.5 5 1.4 11.5 58
+8 13 8 15 17.6 5.2 11.5 5 1.4 11.5 58
+9 15 11 16 17.6 5.2 11.5 5 1.4 11.5 58
+12 16 12 16 17.6 5.2 11.5 5 1.4 11.5 58
+; travessia: do meio dos bancos, alto, para as capelas do norte entre as colunas
+8 7 8 7 13.5 6 13.6 13.5 1.2 4 64
+12 7 19 7 13.5 6 13.6 13.5 1.2 4 64
+; travessia: idem, metade leste
+20 7 20 7 26.5 6 13.6 26.5 1.2 4 64
+24 7 24 7 26.5 6 13.6 26.5 1.2 4 64
+28 7 28 7 26.5 6 13.6 26.5 1.2 4 64
+32 7 32 7 26.5 6 13.6 26.5 1.2 4 64
+; travessia: do meio dos bancos, alto, para os confessionarios entre as colunas
+8 16 8 16 13.5 6 10.4 13.5 1.2 20 64
+14 16 19 16 13.5 6 10.4 13.5 1.2 20 64
+; travessia: idem, metade leste
+20 16 20 16 26.5 6 10.4 26.5 1.2 20 64
+23 16 24 16 26.5 6 10.4 26.5 1.2 20 64
+28 16 28 16 26.5 6 10.4 26.5 1.2 20 64
+32 16 32 16 26.5 6 10.4 26.5 1.2 20 64
+; capela das Dores: de dentro, a santa e as velas
+8 1 10 4 9.5 4.5 5.5 9.5 1.2 1 64
+7 2 11 4 9.5 4.5 5.5 9.5 1.2 1 64
+; capela de Sao Benedito: o santo entre as velas
+14 1 16 4 15.5 4.5 5.5 15.5 1.2 1 64
+13 2 17 4 15.5 4.5 5.5 15.5 1.2 1 64
+; capela de Santo Antonio: o oratorio no escuro
+20 1 22 4 21.5 4.5 5.5 21.5 1.2 1 64
+19 2 23 4 21.5 4.5 5.5 21.5 1.2 1 64
+; capela das Almas: os dois confessionarios
+28 1 28 4 27.5 4.5 5.5 27.5 1.2 1 64
+25 2 29 4 27.5 4.5 5.5 27.5 1.2 1 64
+; batisterio: a pia, a porta emperrada e a porta da escola
+8 19 10 23 9.5 4.5 18.5 9.5 0.8 21.5 64
+7 20 11 23 9.5 4.5 18.5 9.5 0.8 21.5 64
+6 21 10 23 9.5 4.5 18.5 9.5 0.8 21.5 64
+; confessionarios: as cortinas
+14 19 16 22 15.5 4.5 18.5 15.5 1 22.5 64
+13 20 17 22 15.5 4.5 18.5 15.5 1 22.5 64
+; porta lateral: a saida para o patio
+20 19 22 23 21.5 4.5 18.5 21.5 1.2 23 64
+19 20 23 23 21.5 4.5 18.5 21.5 1.2 23 64
+; Senhor Morto: confessionarios e a imagem
+26 19 28 22 27.5 4.5 18.5 27.5 1 22.5 64
+25 20 29 22 27.5 4.5 18.5 27.5 1 22.5 64
+; nartex: do canto da escada, a santa no fundo escuro
+2 6 4 11 4.6 3.6 15.3 1.5 1.2 6.5 60
+1 7 5 11 4.6 3.6 15.3 1.5 1.2 6.5 60
+; nartex: da santa, a porta trancada do coro
+1 12 5 16 2.5 3.8 6.7 3.5 1 16.5 60
+; presbiterio: de tras do altar, o pulpito e a nave escura
+35 8 35 15 40.6 5 10.4 33 1.5 12 60
+34 9 35 15 40.6 5 10.4 33 1.5 12 60
+; corredor da escola: do fundo, o corredor ate a porta da igreja
+8 24 9 36 9.7 2.8 46.6 8.5 1 24 40
+; corredor da escola: da porta da igreja, o corredor ate o armario do fundo
+8 37 9 46 8.3 2.8 24.4 9.5 1 46 40
+; escada do coro: o pe da escada e a porta emperrada
+1 17 4 22 5.9 3.6 22.9 1.5 1.2 19.5 64
+5 18 5 22 5.9 3.6 22.9 1.5 1.2 19.5 64
+; presbiterio: da entrada do arco, o altar dourado e o freio sobre ele
+36 8 40 15 32.3 4.5 8.3 41.5 1.1 12 52
+41 10 41 13 32.3 4.5 8.3 41.5 1.1 12 52
+; capela do Santissimo: o sacrario, a lampada vermelha, as portas
+35 1 38 7 43.7 4.5 1.3 37.4 0.6 4.3 52
+34 2 40 7 43.7 4.5 1.3 37.4 0.6 4.3 52
+; capela do Santissimo: o sacrario, a lampada vermelha, as portas
+42 1 45 7 38.3 4.5 1.3 44.1 0.6 4.3 52
+41 2 46 7 38.3 4.5 1.3 44.1 0.6 4.3 52
+; camarim atras do retabulo: corredor estreito, imagens velhas
+43 8 45 12 46.7 3.6 15.7 44.9 0.6 10.5 52
+46 9 46 11 46.7 3.6 15.7 44.9 0.6 10.5 52
+; camarim atras do retabulo: corredor estreito, imagens velhas
+43 13 46 16 43.3 3.6 9.3 45.1 0.6 14.6 52
+; sacristia: a mesa, o lavabo, o cofre na parede do fundo
+37 16 37 19 43.7 3.6 22.7 37.2 0.6 18.4 52
+34 17 39 19 43.7 3.6 22.7 37.2 0.6 18.4 52
+40 18 40 22 43.7 3.6 22.7 37.2 0.6 18.4 52
+38 20 40 22 43.7 3.6 22.7 37.2 0.6 18.4 52
+; sacristia: a mesa, o lavabo, o cofre na parede do fundo
+41 17 45 23 38.3 3.6 17.3 46.5 1 20.5 52
+46 18 46 22 38.3 3.6 17.3 46.5 1 20.5 52
+; sala 1: as carteiras vazias viradas para o quadro
+1 24 5 30 1.3 2.8 24.3 4 0.6 27.6 64
+6 25 6 30 1.3 2.8 24.3 4 0.6 27.6 64
+7 27 7 27 1.3 2.8 24.3 4 0.6 27.6 64
+; sala 2 (onde acordam): as carteiras e a porta
+2 32 4 38 6.7 2.8 32.3 3 0.6 35.6 52
+1 33 4 38 6.7 2.8 32.3 3 0.6 35.6 52
+; sala 2 (onde acordam): as carteiras e a porta
+5 32 6 38 1.3 2.8 38.7 7 1 35.5 52
+7 35 7 35 1.3 2.8 38.7 7 1 35.5 52
+; secretaria: a mesa, o calendario parado
+1 40 5 46 1.1 2.8 40.1 4.1 0.6 43.5 58
+6 41 6 45 1.1 2.8 40.1 4.1 0.6 43.5 58
+7 43 7 43 1.1 2.8 40.1 4.1 0.6 43.5 58
+; refeitorio: as mesas compridas, as duas portas
+12 24 14 31 17.7 2.8 31.7 12.9 0.6 28 52
+11 25 14 31 17.7 2.8 31.7 12.9 0.6 28 52
+10 27 14 31 17.7 2.8 31.7 12.9 0.6 28 52
+; refeitorio: as mesas compridas, as duas portas
+15 24 16 31 11.3 2.8 24.3 16.6 0.6 28.1 52
+17 25 17 31 11.3 2.8 24.3 16.6 0.6 28.1 52
+18 27 18 27 11.3 2.8 24.3 16.6 0.6 28.1 52
+; sala 3: a licao da Mula no quadro
+12 33 14 39 17.7 2.8 33.3 12.8 0.6 36.6 52
+11 34 13 39 17.7 2.8 33.3 12.8 0.6 36.6 52
+10 36 13 39 17.7 2.8 33.3 12.8 0.6 36.6 52
+; sala 3: a licao da Mula no quadro
+15 33 17 39 11.3 2.8 39.7 16.9 1.4 36 52
+18 36 18 36 11.3 2.8 39.7 16.9 1.4 36 52
+; banheiros: as pias em fila
+11 41 16 46 17.7 2.8 46.7 14.3 0.6 43.9 64
+17 42 17 46 17.7 2.8 46.7 14.3 0.6 43.9 64
+10 43 17 46 17.7 2.8 46.7 14.3 0.6 43.9 64
+; sacristia: a porta dos fundos para o patio
+34 20 37 23 43 3.6 17 35.8 0.6 21.6 52
+; galeria: da porta da sacristia, as arcadas ate a escola
+20 24 30 25 37.6 3 24.4 19 1 25.2 46
+19 25 30 25 37.6 3 24.4 19 1 25.2 46
+; galeria: do cesto de roupa, as arcadas ate a sacristia
+31 24 37 25 19.4 3 25.6 37 1 24.4 46
+; patio: do canto do fundo, o poco e as arcadas da igreja escura
+19 26 37 33 22.5 5 41.6 28.5 0.8 28 58
+; patio: da porta da casa paroquial, o poco e o muro do fundo
+19 34 37 41 37.5 5 27.4 28.5 0.8 38 58
+; casa paroquial, sala: o radio, o oratorio, as tres portas
+39 24 45 30 46.9 2.6 30.9 42.9 0.6 27.6 64
+46 25 46 29 46.9 2.6 30.9 42.9 0.6 27.6 64
+38 27 46 30 46.9 2.6 30.9 42.9 0.6 27.6 64
+; escritorio do padre: a mesa e as estantes
+49 24 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
+48 25 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
+47 27 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
+; corredor da casa: o relogio, as portas dos quartos
+38 32 42 33 50.7 2.6 33.7 40.7 0.6 32.9 52
+; corredor da casa: o relogio, as portas dos quartos
+43 31 43 34 42.1 2.6 32.9 44.7 0.6 33 64
+44 32 50 33 42.1 2.6 32.9 44.7 0.6 33 64
+; corredor da casa: o relogio, as portas dos quartos
+51 31 51 34 50.1 2.6 32.9 52.7 0.6 33 64
+52 32 54 33 50.1 2.6 32.9 52.7 0.6 33 64
+; quarto do padre: a cama, o bau aos pes, o oratorio
+39 35 45 41 39.1 2.6 35.1 43.2 0.6 38.1 70
+46 36 46 40 39.1 2.6 35.1 43.2 0.6 38.1 70
+47 38 47 38 39.1 2.6 35.1 43.2 0.6 38.1 70
+; cozinha: o fogao a lenha, o pilao
+49 35 53 41 54.9 2.6 35.1 51.4 0.6 38.2 58
+48 36 53 41 54.9 2.6 35.1 51.4 0.6 38.2 58
+54 37 54 39 54.9 2.6 35.1 51.4 0.6 38.2 58
+; quarto de Rosa: a maquina de costura, o espelho
+39 42 42 46 46.7 2.6 42.3 41.2 0.6 44.4 52
+; quarto de Rosa: a maquina de costura, o espelho
+43 42 45 46 39.3 2.6 42.3 44.8 0.6 44.5 52
+46 43 46 45 39.3 2.6 42.3 44.8 0.6 44.5 52
+; banheiro da casa: a banheira
+48 42 53 46 48.1 2.6 46.9 51.5 0.6 44.5 70
+54 43 54 46 48.1 2.6 46.9 51.5 0.6 44.5 70
+; coro: do parapeito, as cadeiras e a porta da torre
+50 1 54 6 54.7 3.6 10.7 52.4 0.6 4 52
+; coro: do parapeito, as cadeiras e a porta da torre
+50 7 54 11 54.7 3.6 1.3 51.5 1 11 52
+; escada da torre: a escada de madeira subindo no escuro
+51 12 52 16 50.1 4.5 16.9 53.5 1.5 13 58
+50 13 52 16 50.1 4.5 16.9 53.5 1.5 13 58
+53 14 53 16 50.1 4.5 16.9 53.5 1.5 13 58
+; sala do sino: o sino de bronze, os arcos para a noite
+49 18 53 22 49.1 3.6 18.1 51.5 0.6 20.5 52
+; lado de fora: o portao e a rua
+23 43 28 46 34.7 4.5 43.3 22.5 1.2 44.5 52
+22 44 28 46 34.7 4.5 43.3 22.5 1.2 44.5 52
+; lado de fora: o portao e a rua
+29 43 34 46 22.3 4.5 43.3 32 0.6 45 52
+[wake]
+0 2.5 34.5 90
+1 4.5 34.5 90
+2 4.5 36.5 90
+3 2.5 36.5 90
+[legend]
+; nasce diante do altar; o giro passa pela sacristia e pátio e demora na escola -> é a janela para pegar o freio
+spawn 38.5 12.5 270
+patrol 39 12
+patrol 40 21
+patrol 36 26
+patrol 28 31
+patrol 15 28
+patrol 9 26
+patrol 4 27
+patrol 9 44
+patrol 3 43
+patrol 14 37
+patrol 4 35
+patrol 25 39
+patrol 42 27
+patrol 51 27
+patrol 50 38
+patrol 42 37
+patrol 36 33
+patrol 21 21
+patrol 3 10
+patrol 8 12
+patrol 31 11
+patrol 20 5
+patrol 27 2
+patrol 40 4
+lair 28 35
+[exit]
+22 43 24 46 lock=maldicao

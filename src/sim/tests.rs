@@ -1,633 +1,879 @@
-use super::capture::{FADE_TICS, GRACE_TICS, SWAP_AT};
-use super::echo::Echo;
-use super::finale::{HOLD_TICS, OPENS_AFTER_HOURS};
-use super::night::at_hour;
-use super::tank::{A, B, DOWN, LEFT, RIGHT, UP, X};
-use super::tape::tape_id;
+use super::player::{BENEDITA, BIA, GRAB_TICS, JAIRO, TONHO};
+use super::tank::{A, B, DOWN, LEFT, RIGHT, UP, X, Y};
 use super::*;
-use crate::fx::Fx;
+use crate::fx::{Fx, Rng};
+use crate::map;
 use std::sync::LazyLock;
 
-const TINY: &str = "[solid]
-###########
-#....D...##
-#....#...D#
-#B...#...##
-###########
-[rooms]
------------
--aaaa-bbb--
--aaaa-bbb--
--aaaa-bbb--
------------
-[room]
-a sala floor=taco wall=reboco ceil=forro light=50
-b despensa floor=concreto wall=reboco ceil=forro light=20
-[door]
-5 1 v open
-9 2 v locked
-[cam]
-0 0 10 4 5 2.4 2 5 0.5 2 60
-[spot]
-spawn 1.5 1.5 0
-spawn 3.5 1.5 90
-spawn 2.5 2.5 180
-spawn 3.5 3.5 270
-task breaker 7 1
-task window 2 1
-task key 7 3
-task tv 4 3
-final 6 1 8 3
-exit 9 2
-";
-
-static TINY_MAP: LazyLock<Map<'static>> = LazyLock::new(|| map::parse(TINY).unwrap_or_else(|e| panic!("{e}")));
-
-const GOLDEN: (u32, u32) = (0x2947_fee8, 0x4cb4_82e6);
-
-pub fn tiny_world(players: u8, night_secs: u32) -> World {
-    World::new(&TINY_MAP, Setup { seed: 7, players, night_secs })
-}
-
-pub fn sobrado_world(players: u8, night_secs: u32) -> World {
-    World::new(map::sobrado(), Setup { seed: 0xD099_105E, players, night_secs })
-}
-
-struct Script {
-    rng: Rng,
-    held: [u16; MAX_PLAYERS],
-    left: [u32; MAX_PLAYERS],
-}
-
-impl Script {
-    fn new(seed: u32) -> Script {
-        Script { rng: Rng::new(seed), held: [0; MAX_PLAYERS], left: [0; MAX_PLAYERS] }
-    }
-
-    fn next(&mut self) -> [u16; MAX_PLAYERS] {
-        (0..MAX_PLAYERS).for_each(|p| {
-            if self.left[p] == 0 {
-                let r = self.rng.below(100);
-                let base = match r {
-                    0..=44 => UP,
-                    45..=54 => UP | B,
-                    55..=64 => LEFT,
-                    65..=74 => RIGHT,
-                    75..=79 => DOWN,
-                    80..=87 => A,
-                    88..=91 => X,
-                    92..=94 => super::tank::Y,
-                    _ => 0,
-                };
-                self.held[p] = base | if self.rng.below(4) == 0 { LEFT } else { 0 };
-                self.left[p] = 5 + self.rng.below(40);
-            }
-            self.left[p] -= 1;
-        });
-        self.held
-    }
-}
-
-fn night_of(p: Phase) -> u8 {
-    match p {
-        Phase::Dusk { night } | Phase::Night { night } | Phase::Dawn { night } => night,
-        Phase::Won | Phase::Lost => 0,
-    }
-}
-
-fn deep_step(w: &mut World, script: &mut Script, deepest: &mut u8) {
-    let inputs = script.next();
-    w.step(&inputs);
-    *deepest = (*deepest).max(night_of(w.phase()));
-    if matches!(w.phase(), Phase::Dawn { .. }) {
-        w.extra = 0;
-    }
-    if w.phase() == Phase::Lost && *deepest < NIGHTS {
-        (0..w.players_n as usize).for_each(|p| {
-            w.players[p].role = Role::Living;
-            w.players[p].fade = 0;
-            w.capture[p] = 0;
-        });
-        w.begin_dusk(*deepest + 1);
-    }
-}
-
-#[test]
-fn deterministic_with_golden_hash() {
-    let mut a = sobrado_world(4, 30);
-    let mut b = sobrado_world(4, 30);
-    let (mut sa, mut sb) = (Script::new(99), Script::new(99));
-    let (mut da, mut db) = (0, 0);
-    let digest = (0..7000).fold(0u32, |d, _| {
-        deep_step(&mut a, &mut sa, &mut da);
-        deep_step(&mut b, &mut sb, &mut db);
-        assert_eq!(a.hash(), b.hash());
-        (d ^ a.hash()).wrapping_mul(0x0100_0193)
-    });
-    assert_eq!(da, NIGHTS);
-    assert_eq!((digest, a.hash()), GOLDEN, "golden changed: ({digest:#x}, {:#x})", a.hash());
-}
-
-#[test]
-fn bodies_never_overlap_walls() {
-    let mut w = sobrado_world(4, 30);
-    let mut s = Script::new(5);
-    let mut deepest = 0;
-    (0..7000).for_each(|_| {
-        deep_step(&mut w, &mut s, &mut deepest);
-        w.bodies().iter().enumerate().filter(|(_, b)| b.visible).for_each(|(i, b)| {
-            let solid = |x, y| w.solid(x, y);
-            assert!(!collide::overlaps(b.pos, &solid), "body {i} in wall at {:?} phase {:?}", b.pos, w.phase());
-            assert!(w.map.tile(b.pos.x.floor(), b.pos.y.floor()).walkable());
-        });
-    });
-    assert_eq!(deepest, NIGHTS);
-}
-
-#[test]
-fn copy_replays_original_trajectory_and_mirror_recalls_last_night() {
-    let mut w = tiny_world(1, 60);
-    let script = |t: u32| match (t / 20) % 5 {
-        0 => UP,
-        1 => LEFT,
-        2 => UP | B,
-        3 => RIGHT | DOWN,
-        _ => X | LEFT,
+macro_rules! test_map {
+    ($header:literal, $solid:literal, $tail:literal) => {
+        concat!(
+            "[map] name=\"t\" ",
+            $header,
+            " sky=none fog=0,0,0 fog_near=5 fog_far=30 legend=corposeco\n[solid]\n",
+            $solid,
+            "[area]\n0 baixo\n1 cima\n[room]\na sala area=0 floor=taco wall=reboco ceil=forro light=40\nf cima area=1 floor=taco wall=reboco ceil=forro light=40\n[cam]\n0 0 199 199 1 2 1 2 0 2 60\n",
+            $tail
+        )
     };
-    let mut original = Vec::new();
-    let mut copy = Vec::new();
-    let mut mirror = Vec::new();
-    let mut first = None;
-    (0..4300).for_each(|_| {
-        let night = w.phase();
-        let t = w.phase_tic;
-        let input = match night {
-            Phase::Night { night: 1 } => script(t),
-            _ => 0,
-        };
-        w.step(&[input, 0, 0, 0]);
-        match night {
-            Phase::Night { night: 1 } => {
-                assert_eq!(w.echo_pose(0), None);
-                original.push((w.bodies[0].pos, w.bodies[0].heading, w.bodies[0].lantern));
-            }
-            Phase::Night { night: 2 } => {
-                mirror.push(w.echo_pose(0).map(|(p, h, _, _)| (p, h)));
-                if w.bodies[1].visible {
-                    first = first.or(Some(t));
-                    copy.push((w.bodies[1].pos, w.bodies[1].heading, w.bodies[1].lantern));
-                }
-            }
-            Phase::Dawn { night: 1 } => w.extra = 0,
-            _ => {}
-        }
-    });
-    assert_eq!(original.len(), w.night_tics as usize);
-    let first = first.unwrap_or(u32::MAX);
-    assert!((scare::stage_tics(2) as u32..w.night_tics - 300).contains(&first), "{first}");
-    let moved = original.iter().filter(|(p, _, _)| *p != original[0].0).count();
-    assert!(moved > 100);
-    assert!(original[..copy.len()] == copy[..]);
-    let near = |a: Vec2, b: Vec2| (a - b).len_sq() < 1 << 12;
-    let recalled = mirror[..mirror.len() - 1].iter().zip(&original).all(|(m, o)| m.is_some_and(|(p, h)| near(p, o.0) && h == o.1));
-    assert!(mirror.len() == original.len() && recalled && mirror[mirror.len() - 1].is_none());
 }
 
-fn to_night(w: &mut World, night: u8, quiet: bool) {
-    while w.phase() != (Phase::Night { night }) {
-        assert!(!matches!(w.phase(), Phase::Won | Phase::Lost), "ended at {:?}", w.phase());
-        w.extra = 0;
-        if quiet {
-            clear_echoes(w);
+const KINDS: [LegendKind; 4] = [LegendKind::CorpoSeco, LegendKind::Cabra, LegendKind::Mula, LegendKind::Matinta];
+
+fn parsed(text: &'static str) -> [Map<'static>; 4] {
+    KINDS.map(|legend| Map { legend, ..map::parse(text).unwrap_or_else(|e| panic!("{e}")) })
+}
+
+macro_rules! maps {
+    ($($name:ident = $text:expr;)*) => {
+        $(static $name: LazyLock<[Map<'static>; 4]> = LazyLock::new(|| parsed($text));)*
+    };
+}
+
+maps! {
+    CORRIDOR = test_map!(
+        "w=42 h=4",
+        "##########################################\n#........................................#\n#........................................#\n##########################################\n[rooms]\n------------------------------------------\n-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-\n-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-\n------------------------------------------\n",
+        "[wake]\n0 2.5 1.5 90\n1 2.5 2.5 90\n2 3.5 1.5 90\n3 3.5 2.5 90\n[legend]\nspawn 3.5 1.5 90\npatrol 5 1\npatrol 10 1\npatrol 15 1\npatrol 20 1\npatrol 25 1\npatrol 30 2\nlair 39 2\n[lock]\nsaida code 999\n[exit]\n40 1 40 2 lock=saida\n"
+    );
+    LAB = test_map!(
+        "w=25 h=9 power=off",
+        "#########################\n#....#.....#.......#....#\n#....D.....D.......#....#\n#H...#..B..#.......#..P.#\n##D###.....#.......#....#\n#....#######..B....######\n#..P.#######.......######\n#....#######.......######\n#########################\n[rooms]\n-------------------------\n-aaaa-aaaaa-aaaaaaa-ffff-\n-aaaaaaaaaaaaaaaaaa-ffff-\n-aaaa-aaaaa-aaaaaaa-ffff-\n--a---aaaaa-aaaaaaa-ffff-\n-aaaa-------aaaaaaa------\n-aaaa-------aaaaaaa------\n-aaaa-------aaaaaaa------\n-------------------------\n",
+        "[item]\nchave1 chave 20.5 1.5\nalicate alicate 1.5 6.5\nfus fusivel 14.5 5.5\nsal sal 1.5 1.5\npilha lanterna_pilha 4.5 7.5\nfoto foto 4.5 5.5\ncruz cruz 17.5 3.5\n[lock]\nporta key chave1\ncadeado code 317\ncorrente tool alicate\nluz place fus 8 3\nsaida all porta luz corrente cadeado\n[door]\n5 2 v closed\n2 4 h stuck\n11 2 v locked:porta\n[portal]\n3 6 -> 21 2 0 escada lock=corrente\n22 3 -> 2 6 90 escada\n[prop]\nquadro_fusivel 8.5 3.5 0\ncofre 14.5 5.5 270 lock=cadeado item=fus\n[note]\n10 4 calendario \"3-1-7\"\n[hide]\n1 3 cama 0\n[wake]\n0 1.5 1.5 90\n1 2.5 1.5 90\n2 3.5 1.5 90\n3 4.5 1.5 90\n[legend]\nspawn 16.5 3.5 270\npatrol 13 1\npatrol 18 1\npatrol 18 4\npatrol 13 4\npatrol 16 7\npatrol 13 7\nlair 18 2\n[exit]\n17 6 18 7 lock=saida\n"
+    );
+    HEAR = test_map!(
+        "w=13 h=3",
+        "#############\n#.....D.....#\n#############\n[rooms]\n-------------\n-aaaaaaaaaaa-\n-------------\n",
+        "[door]\n6 1 v open\n[wake]\n0 10.5 1.5 90\n1 10.5 1.5 90\n2 10.5 1.5 90\n3 10.5 1.5 90\n[legend]\nspawn 2.5 1.5 270\npatrol 1 1\npatrol 2 1\npatrol 3 1\npatrol 4 1\npatrol 5 1\npatrol 3 1\nlair 1 1\n[lock]\nsaida code 999\n[exit]\n11 1 11 1 lock=saida\n"
+    );
+    HIDE = test_map!(
+        "w=15 h=5",
+        "###############\n#.............#\n#.............#\n#H............#\n###############\n[rooms]\n---------------\n-aaaaaaaaaaaaa-\n-aaaaaaaaaaaaa-\n-aaaaaaaaaaaaa-\n---------------\n",
+        "[hide]\n1 3 guarda_roupa 0\n[wake]\n0 1.5 2.5 0\n1 2.5 2.5 0\n2 3.5 2.5 0\n3 4.5 2.5 0\n[legend]\nspawn 13.5 1.5 90\npatrol 13 1\npatrol 2 1\npatrol 1 2\npatrol 2 2\npatrol 7 2\npatrol 13 2\nlair 13 3\n[lock]\nsaida code 999\n[exit]\n13 3 13 3 lock=saida\n"
+    );
+    BALDE = test_map!(
+        "w=9 h=3",
+        "#########\n#.......#\n#########\n[rooms]\n---------\n-aaaaaaa-\n---------\n",
+        "[item]\nbalde balde 1.5 1.5\n[wake]\n0 1.5 1.5 90\n1 1.5 1.5 90\n2 1.5 1.5 90\n3 1.5 1.5 90\n[legend]\nspawn 3.5 1.5 270\npatrol 1 1\npatrol 2 1\npatrol 3 1\npatrol 4 1\npatrol 5 1\npatrol 6 1\nlair 7 1\n[lock]\nsaida code 999\n[exit]\n7 1 7 1 lock=saida\n"
+    );
+    ARENA = test_map!(
+        "w=9 h=9",
+        "#########\n#.......#\n#.......#\n#.......#\n#.......#\n#.......#\n#.......#\n#.......#\n#########\n[rooms]\n---------\n-aaaaaaa-\n-aaaaaaa-\n-aaaaaaa-\n-aaaaaaa-\n-aaaaaaa-\n-aaaaaaa-\n-aaaaaaa-\n---------\n",
+        "[wake]\n0 4.5 1.5 90\n1 4.5 1.5 90\n2 4.5 1.5 90\n3 4.5 1.5 90\n[legend]\nspawn 4.5 6.5 180\npatrol 1 1\npatrol 7 1\npatrol 7 7\npatrol 1 7\npatrol 4 4\npatrol 2 2\nlair 1 7\n[lock]\nsaida code 999\n[exit]\n7 7 7 7 lock=saida\n"
+    );
+}
+
+fn pick(maps: &'static LazyLock<[Map<'static>; 4]>, kind: LegendKind) -> &'static Map<'static> {
+    &maps[kind as usize]
+}
+
+fn setup(players: u8, characters: [u8; 4]) -> Setup {
+    Setup { seed: 7, phase: 0, players, characters }
+}
+
+fn deg(d: i32) -> Ang {
+    Ang::deg(Fx::int(d))
+}
+
+fn put(w: &mut World, p: usize, x: Fx, y: Fx, d: i32) {
+    w.place_player(p, Vec2::new(x, y), deg(d));
+}
+
+fn mid(t: i32) -> Fx {
+    Fx::int(t) + Fx::HALF
+}
+
+fn calm(w: &mut World) {
+    w.send_legend_home(u16::MAX);
+}
+
+fn tic(w: &mut World, inputs: [u16; 4]) -> Vec<Event> {
+    w.step(&inputs);
+    w.events().iter().copied().collect()
+}
+
+fn press(w: &mut World, p: usize, bits: u16) -> Vec<Event> {
+    let mut inputs = [0; 4];
+    inputs[p] = bits;
+    let e = tic(w, inputs);
+    tic(w, [0; 4]);
+    e
+}
+
+fn hand(w: &mut World, p: usize, item: &str) -> u8 {
+    let i = w.map.item_index(item).unwrap();
+    let slot = w.players[p].hands.iter().position(Option::is_none).unwrap();
+    w.players[p].hands[slot] = Some(i);
+    w.items[i as usize].place = ItemPlace::Held { player: p as u8 };
+    i
+}
+
+fn lock(w: &World, id: &str) -> u8 {
+    w.map.lock_index(id).unwrap()
+}
+
+#[test]
+fn chase_never_catches_a_running_player() {
+    KINDS.into_iter().for_each(|kind| {
+        let mut w = World::new(pick(&CORRIDOR, kind), setup(1, [BIA, 1, 2, 3]));
+        put(&mut w, 0, mid(8), mid(1), 90);
+        w.legend.pos = Vec2::new(mid(3), mid(1));
+        w.legend.heading = deg(90);
+        let start = (w.players[0].pos - w.legend.pos).len();
+        let mut chased = false;
+        (0..300).for_each(|_| {
+            w.step(&[UP | B, 0, 0, 0]);
+            chased |= w.legend.mode == LegendMode::Chase;
+            assert_eq!(w.players[0].state, PlayerState::Free, "{kind:?} caught the runner at tic {}", w.tic);
+        });
+        let end = (w.players[0].pos - w.legend.pos).len();
+        let kept = match kind {
+            LegendKind::Mula => end > Fx::int(3),
+            _ => end > start,
+        };
+        assert!(chased && kept, "{kind:?}: chased={chased} start={start:?} end={end:?}");
+    });
+}
+
+#[test]
+fn walking_player_is_caught_by_a_chase() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(1, [BIA, 1, 2, 3]));
+    put(&mut w, 0, mid(8), mid(1), 90);
+    w.legend.pos = Vec2::new(mid(3), mid(1));
+    w.legend.heading = deg(90);
+    let caught = (0..900).any(|_| {
+        w.step(&[UP, 0, 0, 0]);
+        w.players[0].state == PlayerState::Grabbed
+    });
+    assert!(caught);
+    (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+    assert!(matches!(w.players[0].state, PlayerState::Fainted { .. }));
+    assert_eq!((w.legend.mode, w.desmaios_left()), (LegendMode::Leaving, DESMAIOS - 1));
+    let leaving = (0..legend::LEAVE_TICS * 2).take_while(|_| {
+        w.step(&[0; 4]);
+        w.legend.mode == LegendMode::Leaving
+    });
+    assert_eq!(leaving.count(), legend::LEAVE_TICS as usize - 1);
+}
+
+#[test]
+fn hearing_is_muffled_by_closed_doors() {
+    let m = pick(&HEAR, LegendKind::CorpoSeco);
+    let heard = |open: bool, loud: u8, at: i32| {
+        let mut w = World::new(m, setup(1, [0, 1, 2, 3]));
+        w.door_dir[0] = open;
+        w.doors[0].open = if open { u16::MAX } else { 0 };
+        w.events.clear();
+        w.noise(Vec2::new(mid(at), mid(1)), 0, loud);
+        w.listen();
+        w.legend.mode == LegendMode::Investigate
+    };
+    assert!(heard(true, player::RUN_NOISE, 9));
+    assert!(!heard(false, player::RUN_NOISE, 9));
+    assert!(heard(false, player::RUN_NOISE, 5));
+    assert!(heard(false, act::RATTLE_NOISE, 6));
+    assert!(!heard(false, act::RATTLE_NOISE, 8));
+    assert!(!heard(true, player::WALK_NOISE, 9));
+    assert!(heard(true, player::WALK_NOISE, 4));
+    let mut w = World::new(m, setup(1, [0, 1, 2, 3]));
+    put(&mut w, 0, mid(9), mid(1), 90);
+    let investigated = (0..60).any(|_| {
+        w.step(&[UP | B, 0, 0, 0]);
+        w.legend.mode == LegendMode::Investigate
+    });
+    assert!(investigated);
+}
+
+#[test]
+fn tonho_steps_are_silent_and_his_run_is_half() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(2, [TONHO, JAIRO, 0, 0]));
+    calm(&mut w);
+    let noise = |w: &mut World, bits: [u16; 4]| {
+        (0..60)
+            .flat_map(|_| tic(w, bits))
+            .filter_map(|e| match e {
+                Event::Noise { loud, .. } => Some(loud),
+                _ => None,
+            })
+            .max()
+    };
+    assert_eq!(noise(&mut w, [UP, 0, 0, 0]), None);
+    assert_eq!(noise(&mut w, [UP | B, 0, 0, 0]), Some(player::RUN_NOISE / 2));
+    assert_eq!(noise(&mut w, [0, UP, 0, 0]), Some(player::WALK_NOISE));
+}
+
+fn hide_room() -> &'static Map<'static> {
+    pick(&HIDE, LegendKind::CorpoSeco)
+}
+
+#[test]
+fn unseen_hidden_player_is_never_found() {
+    let mut w = World::new(hide_room(), setup(1, [BENEDITA, 1, 2, 3]));
+    put(&mut w, 0, mid(1), mid(2), 0);
+    assert_eq!(w.focus(0), Some(Focus::Hide { spot: 0 }));
+    press(&mut w, 0, A);
+    (0..player::HIDE_TICS).for_each(|_| w.step(&[0; 4]));
+    assert_eq!(w.players[0].state, PlayerState::Hidden { spot: 0 });
+    let mut passed = false;
+    (0..90 * TICS_PER_SEC).for_each(|_| {
+        w.step(&[0; 4]);
+        passed |= (w.legend.pos - w.players[0].pos).len_sq() < Fx::ONE.0 as i64 * Fx::ONE.0 as i64;
+        assert_eq!(w.players[0].state, PlayerState::Hidden { spot: 0 });
+    });
+    assert!(passed);
+    press(&mut w, 0, A);
+    (0..player::HIDE_TICS).for_each(|_| w.step(&[0; 4]));
+    assert_eq!(w.players[0].state, PlayerState::Free);
+}
+
+#[test]
+fn hiding_in_sight_gets_you_pulled_out() {
+    let mut w = World::new(hide_room(), setup(1, [BENEDITA, 1, 2, 3]));
+    put(&mut w, 0, mid(1), mid(2), 0);
+    w.legend.pos = Vec2::new(mid(8), mid(2));
+    w.legend.heading = deg(270);
+    press(&mut w, 0, A);
+    assert_eq!(w.legend.mode, LegendMode::Chase);
+    let pulled = (0..10 * TICS_PER_SEC).any(|_| {
+        w.step(&[0; 4]);
+        w.players[0].state == PlayerState::Grabbed
+    });
+    assert!(pulled);
+}
+
+#[test]
+fn tonho_hides_instantly() {
+    let mut w = World::new(hide_room(), setup(1, [TONHO, 1, 2, 3]));
+    put(&mut w, 0, mid(1), mid(2), 0);
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Hide { player: 0 }));
+    assert_eq!(w.players[0].state, PlayerState::Hidden { spot: 0 });
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Unhide { player: 0 }));
+}
+
+#[test]
+fn key_tool_code_place_and_all_locks() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [JAIRO, 1, 2, 3]));
+    calm(&mut w);
+    assert!(!w.power());
+    let (porta, cadeado, corrente, luz, saida) = (lock(&w, "porta"), lock(&w, "cadeado"), lock(&w, "corrente"), lock(&w, "luz"), lock(&w, "saida"));
+    put(&mut w, 0, mid(10), mid(2), 90);
+    assert_eq!(w.focus(0), Some(Focus::Lock { lock: porta, needs: Some(ItemKind::Chave), code: false }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::DoorRattle { door: 2 }) && e.iter().any(|e| matches!(e, Event::Noise { loud: 80, .. })));
+    let key = hand(&mut w, 0, "chave1");
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Unlock { lock: porta }) && e.contains(&Event::DoorMove { door: 2, opening: true }));
+    assert_eq!((w.items[key as usize].place, w.doors[2].locked, w.players[0].hands), (ItemPlace::Used, false, [None, None]));
+
+    put(&mut w, 0, mid(3), mid(6), 0);
+    assert_eq!(w.focus(0), Some(Focus::Lock { lock: corrente, needs: Some(ItemKind::Alicate), code: false }));
+    let tool = hand(&mut w, 0, "alicate");
+    press(&mut w, 0, A);
+    assert!(w.locks[corrente as usize].open);
+    assert_eq!(w.players[0].hands[0], Some(tool));
+    assert_eq!(w.focus(0), Some(Focus::Portal { portal: 0, locked: false }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Portal { player: 0 }) && e.contains(&Event::PortalUse { player: 0, portal: 0 }));
+    assert_eq!((w.players[0].pos, w.players[0].area), (Vec2::new(mid(21), mid(2)), 1));
+
+    put(&mut w, 0, mid(13), mid(5), 90);
+    assert_eq!(w.focus(0), Some(Focus::Lock { lock: cadeado, needs: None, code: true }));
+    press(&mut w, 0, A);
+    [UP, UP, UP, RIGHT, UP, RIGHT, DOWN, DOWN, DOWN].into_iter().for_each(|b| {
+        press(&mut w, 0, b);
+    });
+    assert_eq!(w.dial(0).map(|d| (d.digits, d.len, d.cursor)), Some(([3, 1, 7, 0], 3, 2)));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Unlock { lock: cadeado }) && w.dial(0).is_none());
+    assert_eq!(w.focus(0), Some(Focus::Container { prop: 1, locked: false }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Container { player: 0, prop: 1 }));
+    let fus = w.map.item_index("fus").unwrap();
+    assert_eq!(w.focus(0), Some(Focus::Item { item: fus }));
+    press(&mut w, 0, A);
+    assert_eq!(w.players[0].hands, [Some(tool), Some(fus)]);
+    (0..20).for_each(|_| w.step(&[0; 4]));
+    assert!(w.props[1].open > u16::MAX / 2);
+
+    put(&mut w, 0, mid(8), mid(2), 0);
+    assert_eq!(w.focus(0), Some(Focus::Place { lock: luz, needs: ItemKind::Fusivel }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::PowerOn) && e.contains(&Event::Unlock { lock: luz }) && e.contains(&Event::Unlock { lock: saida }));
+    assert!(w.power() && w.locks.iter().all(|l| l.open));
+    assert_eq!(w.outcome(), Outcome::Playing);
+    put(&mut w, 0, mid(17), mid(5), 0);
+    let won = (0..60).flat_map(|_| tic(&mut w, [UP, 0, 0, 0])).collect::<Vec<_>>();
+    assert!(won.contains(&Event::Escaped { player: 0 }) && won.contains(&Event::PhaseWon));
+    assert_eq!(w.outcome(), Outcome::Escaped);
+}
+
+#[test]
+fn dial_input_wraps_and_wrong_code_makes_noise() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [0, 1, 2, 3]));
+    calm(&mut w);
+    put(&mut w, 0, mid(13), mid(5), 90);
+    press(&mut w, 0, A);
+    assert_eq!(w.dial(0), Some(Dial { lock: lock(&w, "cadeado"), digits: [0; 4], len: 3, cursor: 0, wrong: 0 }));
+    let e = press(&mut w, 0, LEFT);
+    assert!(e.contains(&Event::DialTick { player: 0 }));
+    press(&mut w, 0, DOWN);
+    assert_eq!(w.dial(0).map(|d| (d.digits, d.cursor)), Some(([0, 0, 9, 0], 2)));
+    press(&mut w, 0, RIGHT);
+    press(&mut w, 0, UP | RIGHT);
+    assert_eq!(w.dial(0).map(|d| (d.digits, d.cursor)), Some(([1, 0, 9, 0], 1)));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::DialWrong { player: 0 }) && e.iter().any(|e| matches!(e, Event::Noise { loud: act::WRONG_NOISE, .. })));
+    assert_eq!(w.dial(0).map(|d| d.wrong), Some(1));
+    assert!(!w.locks[lock(&w, "cadeado") as usize].open);
+    press(&mut w, 0, UP);
+    assert_eq!(w.players[0].pos, Vec2::new(mid(13), mid(5)));
+    press(&mut w, 0, Y);
+    assert_eq!(w.dial(0), None);
+}
+
+#[test]
+fn stuck_door_only_for_jairo_and_hands() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(2, [BIA, JAIRO, 2, 3]));
+    calm(&mut w);
+    put(&mut w, 0, mid(2), mid(3), 0);
+    put(&mut w, 1, mid(3), mid(1), 270);
+    assert_eq!(w.focus(0), Some(Focus::Door { door: 1, locked: false, stuck: true, open: false }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::DoorRattle { door: 1 }));
+    put(&mut w, 1, mid(2), mid(3), 0);
+    put(&mut w, 0, mid(1), mid(1), 0);
+    let e = press(&mut w, 1, A);
+    assert!(e.contains(&Event::DoorMove { door: 1, opening: true }) && !w.doors[1].stuck);
+    let pick = |w: &mut World, p: usize, item: &str, x: i32, y: i32| {
+        let i = w.map.item_index(item).unwrap();
+        w.items[i as usize].place = ItemPlace::Floor { pos: Vec2::new(mid(x), mid(y)), area: 0 };
+        put(w, p, mid(x), mid(y), 0);
+        assert_eq!(w.focus(p), Some(Focus::Item { item: i }));
+        press(w, p, A);
+        i
+    };
+    let s = pick(&mut w, 1, "sal", 7, 1);
+    let c = pick(&mut w, 1, "cruz", 7, 3);
+    assert_eq!(w.players[1].hands, [Some(s), Some(c)]);
+    let a = pick(&mut w, 1, "alicate", 9, 1);
+    assert_eq!(w.players[1].hands, [Some(c), Some(a)]);
+    assert_eq!(w.items[s as usize].place, ItemPlace::Floor { pos: Vec2::new(mid(9), mid(1)), area: 0 });
+    let s2 = pick(&mut w, 0, "sal", 9, 1);
+    let c2 = pick(&mut w, 0, "foto", 9, 2);
+    assert_eq!((w.players[0].hands, w.items[c2 as usize].place), ([Some(s2), None], ItemPlace::Used));
+    w.players[0].battery = 10;
+    pick(&mut w, 0, "pilha", 8, 2);
+    assert_eq!(w.players[0].battery, BATTERY_FULL);
+    let e = press(&mut w, 0, DROP);
+    assert!(e.contains(&Event::Drop { player: 0, item: s2 }) && e.iter().any(|e| matches!(e, Event::Noise { loud: player::DROP_NOISE, .. })));
+    assert_eq!(w.players[0].hands, [None, None]);
+}
+
+#[test]
+fn friend_wakes_a_fainted_player_and_desmaios_run_out() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(2, [0, BIA, 2, 3]));
+    calm(&mut w);
+    put(&mut w, 0, mid(7), mid(2), 90);
+    put(&mut w, 1, mid(8), mid(2), 270);
+    w.grab_player(1);
+    (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+    assert!(matches!(w.players[1].state, PlayerState::Fainted { .. }));
+    assert_eq!(w.players[1].fade, 255);
+    assert_eq!(w.focus(0), Some(Focus::Friend { player: 1 }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Woke { player: 1 }));
+    assert_eq!((w.players[1].state, w.players[1].pos), (PlayerState::Free, Vec2::new(mid(8), mid(2))));
+    let wake = |w: &mut World, p: usize| (0..400).take_while(|_| tic(w, [0; 4]).iter().all(|e| *e != Event::Woke { player: p as u8 })).count();
+    w.grab_player(0);
+    (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+    assert_eq!(wake(&mut w, 0), 3 * TICS_PER_SEC as usize - 1);
+    assert_eq!(w.players[0].pos, w.map.wakes[0].pos);
+    w.grab_player(1);
+    (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+    assert_eq!(wake(&mut w, 1), 6 * TICS_PER_SEC as usize - 1);
+    assert_eq!(w.desmaios_left(), DESMAIOS - 3);
+    (0..2).for_each(|_| {
+        w.grab_player(0);
+        (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+        wake(&mut w, 0);
+    });
+    assert_eq!((w.desmaios_left(), w.outcome()), (0, Outcome::Playing));
+    w.grab_player(1);
+    let e = (0..GRAB_TICS).flat_map(|_| tic(&mut w, [0; 4])).collect::<Vec<_>>();
+    assert!(e.contains(&Event::PhaseRestart));
+    assert_eq!(w.outcome(), Outcome::Restart);
+}
+
+#[test]
+fn faint_drops_held_items_at_the_grab_point() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [JAIRO, 1, 2, 3]));
+    calm(&mut w);
+    put(&mut w, 0, mid(7), mid(3), 90);
+    let (a, b) = (hand(&mut w, 0, "sal"), hand(&mut w, 0, "cruz"));
+    w.grab_player(0);
+    (0..GRAB_TICS).for_each(|_| w.step(&[0; 4]));
+    let floor = ItemPlace::Floor { pos: Vec2::new(mid(7), mid(3)), area: 0 };
+    assert_eq!((w.items[a as usize].place, w.items[b as usize].place, w.players[0].hands), (floor, floor, [None, None]));
+}
+
+#[test]
+fn salt_closes_a_doorway_to_corpo_seco() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [0, 1, 2, 3]));
+    calm(&mut w);
+    w.door_dir[0] = true;
+    w.doors[0].open = u16::MAX;
+    put(&mut w, 0, mid(4), mid(2), 90);
+    assert_eq!(w.focus(0), Some(Focus::Door { door: 0, locked: false, stuck: false, open: true }));
+    let s = hand(&mut w, 0, "sal");
+    assert_eq!(w.focus(0), Some(Focus::Use { item: s }));
+    let door_cell = w.grid.cell(5, 2).unwrap();
+    assert!(w.legend_cost(door_cell).is_some());
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Used { player: 0, item: s }));
+    assert!(w.legend_cost(door_cell).is_none() && w.legend_solid(5, 2) && !w.player_solid(5, 2));
+    (0..act::SALT_TICS).for_each(|_| w.step(&[0; 4]));
+    assert!(w.legend_cost(door_cell).is_some());
+    let mut c = World::new(pick(&LAB, LegendKind::Cabra), setup(1, [0, 1, 2, 3]));
+    c.salt[0] = act::SALT_TICS;
+    assert!(c.legend_cost(door_cell).is_some());
+}
+
+#[test]
+fn legend_avoids_salted_doorway() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [0, 1, 2, 3]));
+    w.door_dir[0] = true;
+    w.doors[0].open = u16::MAX;
+    w.legend.pos = Vec2::new(mid(8), mid(2));
+    w.salt[0] = act::SALT_TICS;
+    w.brain.dirty = true;
+    let goal = Vec2::new(mid(2), mid(2));
+    let crossed = (0..20 * TICS_PER_SEC).any(|_| {
+        w.go(goal, legend::speeds(LegendKind::CorpoSeco).chase);
+        w.legend.pos.x < Fx::int(6)
+    });
+    assert!(!crossed);
+    w.salt[0] = 0;
+    w.brain.dirty = true;
+    let crossed = (0..20 * TICS_PER_SEC).any(|_| {
+        w.go(goal, legend::speeds(LegendKind::CorpoSeco).chase);
+        w.legend.pos.x < Fx::int(5)
+    });
+    assert!(crossed);
+}
+
+#[test]
+fn balde_stuns_cabra() {
+    let mut w = World::new(pick(&BALDE, LegendKind::Cabra), setup(1, [0, 1, 2, 3]));
+    assert_eq!(w.focus(0), Some(Focus::Item { item: 0 }));
+    press(&mut w, 0, A);
+    assert_eq!(w.focus(0), Some(Focus::Use { item: 0 }));
+    let e = press(&mut w, 0, A);
+    assert!(e.contains(&Event::Stunned) && e.contains(&Event::Used { player: 0, item: 0 }));
+    assert_eq!((w.legend.mode, w.players[0].state), (LegendMode::Stunned, PlayerState::Free));
+    let stunned = (0..act::BALDE_STUN - 3).all(|_| {
+        w.step(&[0; 4]);
+        w.legend.mode == LegendMode::Stunned
+    });
+    assert!(stunned);
+}
+
+#[test]
+fn mula_charges_straight_and_stuns_on_the_wall() {
+    let mut w = World::new(pick(&ARENA, LegendKind::Mula), setup(1, [BIA, 1, 2, 3]));
+    let first = tic(&mut w, [UP | B, 0, 0, 0]);
+    assert!(first.contains(&Event::LegendSpecial) && first.contains(&Event::LegendSaw { player: 0 }));
+    let heading = w.legend.heading;
+    let mut stunned = false;
+    (0..60).for_each(|_| {
+        let e = tic(&mut w, [UP | B, 0, 0, 0]);
+        stunned |= e.contains(&Event::Stunned);
+        assert!(stunned || w.legend.heading == heading);
+        assert_eq!(w.players[0].state, PlayerState::Free);
+    });
+    assert!(stunned && w.legend.mode == LegendMode::Stunned && w.legend.pos.y < Fx::int(2));
+}
+
+#[test]
+fn tabaco_at_the_lair_sends_matinta_away() {
+    let mut w = World::new(pick(&LAB, LegendKind::Matinta), setup(1, [0, 1, 2, 3]));
+    let t = w.map.items.len();
+    assert!(t > 0);
+    put(&mut w, 0, mid(17), mid(2), 90);
+    assert_eq!(w.focus(0), None);
+    let i = hand(&mut w, 0, "sal");
+    w.items[i as usize].kind = ItemKind::Tabaco;
+    assert_eq!(w.focus(0), Some(Focus::Use { item: i }));
+    press(&mut w, 0, A);
+    assert_eq!((w.legend.mode, w.brain.timer), (LegendMode::Leaving, act::TABACO_LEAVE - 2));
+    let cries = (0..act::TABACO_LEAVE - 3)
+        .filter(|_| {
+            w.step(&[0; 4]);
+            assert_eq!(w.legend.mode, LegendMode::Leaving);
+            w.events().iter().any(|e| *e == Event::LegendCry)
+        })
+        .count();
+    assert!((4..=6).contains(&cries));
+}
+
+#[test]
+fn cruz_in_benedita_hands_wards_off_corpo_seco() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(2, [BENEDITA, BIA, 2, 3]));
+    put(&mut w, 0, mid(5), mid(1), 90);
+    put(&mut w, 1, mid(20), mid(2), 90);
+    let cruz = w.items.len() as u8;
+    w.items.push(ItemState { kind: ItemKind::Cruz, place: ItemPlace::Held { player: 0 } });
+    w.players[0].hands[0] = Some(cruz);
+    let e = (0..90).flat_map(|_| tic(&mut w, [0; 4])).collect::<Vec<_>>();
+    assert!(e.contains(&Event::Stunned) && e.contains(&Event::LegendSpecial));
+    assert_eq!((w.players[0].state, w.legend.mode), (PlayerState::Free, LegendMode::Stunned));
+    w.legend.pos = Vec2::new(mid(18), mid(2));
+    w.legend.mode = LegendMode::Patrol;
+    w.legend.heading = deg(90);
+    let grabbed = (0..90).any(|_| tic(&mut w, [0; 4]).contains(&Event::Grabbed { player: 1 }));
+    assert!(grabbed);
+}
+
+#[test]
+fn cabra_bleats_and_breathes_fire_when_chasing() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::Cabra), setup(1, [BIA, 1, 2, 3]));
+    put(&mut w, 0, mid(7), mid(1), 90);
+    w.legend.pos = Vec2::new(mid(3), mid(1));
+    w.legend.heading = deg(90);
+    let e = tic(&mut w, [UP | B, 0, 0, 0]);
+    assert!(e.contains(&Event::LegendSpecial) && w.legend.anim == LegendAnim::Special);
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::Cabra), setup(1, [BIA, 1, 2, 3]));
+    calm(&mut w);
+    let cries = (0..60 * TICS_PER_SEC).filter(|_| tic(&mut w, [0; 4]).contains(&Event::LegendCry)).count();
+    assert!((3..=4).contains(&cries), "{cries}");
+}
+
+#[test]
+fn lantern_tap_battery_and_bia() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(2, [BIA, JAIRO, 2, 3]));
+    calm(&mut w);
+    let e = press(&mut w, 0, A);
+    assert!(e.is_empty() || !e.iter().any(|e| matches!(e, Event::Lantern { .. })));
+    assert!(w.players[0].lantern);
+    press(&mut w, 1, X);
+    assert!(w.players[1].lantern);
+    let before = (w.players[0].battery, w.players[1].battery);
+    (0..300).for_each(|_| w.step(&[0; 4]));
+    let (bia, jairo) = (before.0 - w.players[0].battery, before.1 - w.players[1].battery);
+    assert!(jairo == 3 * bia && bia > 0);
+    (0..31).for_each(|_| w.step(&[A, 0, 0, 0]));
+    w.step(&[0; 4]);
+    assert!(w.players[0].lantern);
+}
+
+#[test]
+fn notes_open_and_close() {
+    let mut w = World::new(pick(&LAB, LegendKind::CorpoSeco), setup(1, [0, 1, 2, 3]));
+    calm(&mut w);
+    put(&mut w, 0, mid(10), mid(3), 0);
+    assert_eq!(w.focus(0), Some(Focus::Note { note: 0 }));
+    press(&mut w, 0, A);
+    assert_eq!(w.reading(0), Some(0));
+    tic(&mut w, [UP, 0, 0, 0]);
+    assert_eq!(w.players[0].pos, Vec2::new(mid(10), mid(3)));
+    press(&mut w, 0, A);
+    assert_eq!(w.reading(0), None);
+}
+
+#[test]
+fn bodies_never_enter_walls() {
+    let mut w = World::new(pick(&LAB, LegendKind::Cabra), setup(4, [0, 1, 2, 3]));
+    let mut rng = Rng::new(11);
+    let solid = |w: &World, p: Vec2, legend: bool| match legend {
+        true => collide::overlaps(p, &|x, y| w.legend_solid(x, y) && w.map.tile(x, y) != map::Tile::Door),
+        false => collide::overlaps(p, &|x, y| w.player_solid(x, y) && w.map.tile(x, y) != map::Tile::Door),
+    };
+    (0..6000).for_each(|_| {
+        let inputs = std::array::from_fn(|_| rng.next_u32() as u16 & (UP | DOWN | LEFT | RIGHT | B | A | X | Y));
+        w.step(&inputs);
+        assert!(w.players().iter().all(|p| !solid(&w, p.pos, false)));
+        assert!(!solid(&w, w.legend.pos, true));
+    });
+}
+
+fn scripted(w: &mut World, rng: &mut Rng, held: &mut [u16; 4]) {
+    let inputs = std::array::from_fn(|p| {
+        if rng.below(12) == 0 {
+            held[p] = rng.next_u32() as u16 & (UP | DOWN | LEFT | RIGHT | B | A | X | Y | DROP);
         }
-        w.step(&[0; MAX_PLAYERS]);
+        held[p]
+    });
+    w.step(&inputs);
+    if w.outcome() == Outcome::Restart {
+        *w = World::new(w.map, w.setup);
     }
 }
 
-fn clear_echoes(w: &mut World) {
-    (w.players_n as usize..MAX_BODIES).for_each(|i| {
-        w.bodies[i] = HIDDEN;
-        w.ctl[i] = Ctl::FREE;
-        w.echo[i] = Echo::NONE;
-    });
-}
+const GOLDEN: u32 = 0x04a1_8b9d;
 
-fn put(w: &mut World, i: usize, x: Fx, y: Fx, heading: Ang, lantern: bool) {
-    w.bodies[i].pos = Vec2::new(x, y);
-    w.bodies[i].heading = heading;
-    w.bodies[i].lantern = lantern;
-}
-
-fn captured(e: &Events) -> Option<u8> {
-    e.iter().find_map(|e| match e {
-        Event::Captured { player } => Some(*player),
-        _ => None,
+fn replay(map: &'static Map<'static>) -> u32 {
+    let mut w = World::new(map, Setup { seed: 0xC0FFEE, phase: 1, players: 4, characters: [3, 1, 0, 2] });
+    let (mut rng, mut held) = (Rng::new(99), [0; 4]);
+    (0..6000).fold(0u32, |a, _| {
+        scripted(&mut w, &mut rng, &mut held);
+        a.rotate_left(5) ^ w.hash()
     })
 }
 
 #[test]
-fn capture_turns_living_into_duplo() {
-    let mut w = tiny_world(2, 30);
-    to_night(&mut w, 2, true);
-    clear_echoes(&mut w);
-    (0..GRACE_TICS).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert_eq!(captured(w.events()), None);
-    let (x, y) = (Fx::int(2) + Fx::HALF, Fx::int(2) + Fx::HALF);
-    put(&mut w, 0, x, y, Ang::ZERO, true);
-    put(&mut w, 1, Fx::int(7) + Fx::HALF, y, Ang::ZERO, false);
-    w.place(2, (Vec2::new(x, y + Fx::ratio(4, 10)), Ang::HALF), Agent::Echo);
-    w.echo[2] = Echo::new(tape_id(1, 0), 2, true);
-    w.segs.iter_mut().for_each(|s| *s = tape::Seg::ZERO);
-    assert_eq!(captured(w.step(&[0; MAX_PLAYERS])), None);
-    w.bodies[0].heading = Ang::HALF;
-    assert_eq!(captured(w.step(&[0; MAX_PLAYERS])), Some(0));
-    assert!(w.events().iter().any(|e| *e == Event::CaughtBy { player: 0, body: 2 }) && w.captor(0) == Some((2, 0)));
-    assert_eq!(w.player(0).role, Role::Living);
-    (2..SWAP_AT).for_each(|_| assert_eq!(captured(w.step(&[UP; MAX_PLAYERS])), None));
-    let duplo = w.player(0).body as usize;
-    assert_eq!((w.player(0).role, w.player(0).fade), (Role::Duplo, 255));
-    assert!(duplo != 0 && w.bodies[duplo].visible && w.ctl[0].agent == Agent::Echo);
-    (SWAP_AT..FADE_TICS).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert_eq!(w.player(0).fade, 0);
-    assert_eq!(w.phase(), Phase::Night { night: 2 });
-    clear_echoes(&mut w);
-    w.place(duplo, (Vec2::new(Fx::int(7) + Fx::HALF, y - Fx::ratio(4, 10)), Ang::ZERO), Agent::Player(0));
-    let b1 = w.player(1).body as usize;
-    w.bodies[b1].pos = Vec2::new(Fx::int(7) + Fx::HALF, y);
-    w.bodies[b1].heading = Ang::ZERO;
-    assert_eq!(captured(w.step(&[0; MAX_PLAYERS])), Some(1));
-    (0..FADE_TICS).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert_eq!(w.phase(), Phase::Lost);
+fn determinism_golden_hash() {
+    let all = || KINDS.into_iter().flat_map(|k| [replay(pick(&LAB, k)), replay(pick(&HIDE, k))]).fold(0u32, |a, h| a.rotate_left(7) ^ h);
+    let (a, b) = (all(), all());
+    assert_eq!(a, b);
+    assert_eq!(a, GOLDEN, "golden {a:#010x}");
+    let sobrado = map::campaign()[0];
+    let s = replay(sobrado);
+    assert_eq!(s, replay(sobrado));
+    println!("sobrado replay hash {s:#010x}");
 }
 
 #[test]
-fn finale_opens_only_for_a_still_dark_vigil() {
-    let mut w = tiny_world(1, 30);
-    to_night(&mut w, 5, true);
-    clear_echoes(&mut w);
-    assert!(!w.power_on());
-    let exit = w.exit_door as usize;
-    let inside = (Fx::int(7) + Fx::HALF, Fx::int(2) + Fx::HALF);
-    put(&mut w, 0, inside.0, inside.1, Ang::QUARTER, false);
-    let gate = at_hour(w.night_tics, OPENS_AFTER_HOURS);
-    (0..gate + 20).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert_eq!(w.phase(), Phase::Night { night: 5 });
-    assert!(w.doors[exit].locked);
-    w.step(&[LEFT, 0, 0, 0]);
-    w.step(&[RIGHT, 0, 0, 0]);
-    (0..HOLD_TICS - 1).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert!(w.doors[exit].locked && !w.exit_open);
-    let opened = w.step(&[0; MAX_PLAYERS]).iter().any(|e| *e == Event::DoorMove { door: exit as u8, opening: true });
-    assert!(opened && !w.doors[exit].locked && w.exit_open);
-    let mut tics = 0;
-    while w.phase() != Phase::Won && tics < 200 {
-        w.step(&[UP, 0, 0, 0]);
-        tics += 1;
-    }
-    assert_eq!(w.phase(), Phase::Won);
-}
-
-#[test]
-fn hunter_closes_in_on_the_living() {
-    let mut w = sobrado_world(1, 60);
-    let mut s = Script::new(21);
-    to_night(&mut w, 1, false);
-    while w.phase() == (Phase::Night { night: 1 }) {
-        let inputs = s.next();
-        w.step(&inputs);
-    }
-    to_night(&mut w, 4, true);
-    clear_echoes(&mut w);
-    put(&mut w, 0, Fx::int(20) + Fx::HALF, Fx::int(6) + Fx::HALF, Ang::ZERO, false);
-    w.place(1, (w.map.spawns[0].pos, w.map.spawns[0].rot), Agent::Echo);
-    w.echo[1] = Echo::new(tape_id(1, 0), 4, false);
-    w.chase_field();
-    let start = w.distance_at(w.bodies[1].pos);
-    let mut best = start;
-    let mut caught = false;
-    while w.phase() == (Phase::Night { night: 4 }) && !caught {
-        caught = captured(w.step(&[0; MAX_PLAYERS])).is_some();
-        best = best.min(w.distance_at(w.bodies[1].pos));
-    }
-    assert!(start >= 10 && start != u16::MAX, "start {start}");
-    assert!(caught || best <= 2, "hunter got from {start} only to {best}");
-}
-
-#[test]
-fn night_three_glitches_every_kind() {
-    let mut w = sobrado_world(2, 60);
-    to_night(&mut w, 3, false);
-    let mut seen = [false; 3];
-    let mut glitches = 0;
-    while w.phase() == (Phase::Night { night: 3 }) {
-        glitches += w.step(&[0; MAX_PLAYERS]).iter().filter(|e| matches!(e, Event::Glitch { .. })).count();
-        w.echo.iter().for_each(|e| match e.mode {
-            echo::Mode::Splice(_) => seen[0] = true,
-            echo::Mode::Reverse(_) => seen[1] = true,
-            echo::Mode::Stare => seen[2] = true,
-            _ => {}
+fn step_does_not_allocate() {
+    let maps = KINDS.iter().flat_map(|&k| [pick(&LAB, k), pick(&HIDE, k)]).chain([map::campaign()[0]]);
+    maps.for_each(|m| {
+        let mut w = World::new(m, setup(4, [0, 1, 2, 3]));
+        let (mut rng, mut held) = (Rng::new(5), [0; 4]);
+        let mut inputs = [[0u16; 4]; 4000];
+        inputs.iter_mut().for_each(|i| {
+            *i = std::array::from_fn(|p| {
+                if rng.below(12) == 0 {
+                    held[p] = rng.next_u32() as u16 & (UP | DOWN | LEFT | RIGHT | B | A | X | Y | DROP);
+                }
+                held[p]
+            })
         });
-    }
-    assert!(glitches >= 5 && seen == [true; 3], "{glitches} {seen:?}");
-}
-
-#[test]
-fn night_lasts_exactly_night_secs_from_bell_to_dawn() {
-    let mut w = tiny_world(1, 60);
-    let begins = (0..).find(|_| w.step(&[0; MAX_PLAYERS]).iter().any(|e| *e == Event::NightBegins { night: 1 })).unwrap_or(0);
-    let dawn = (1..).find(|_| w.step(&[0; MAX_PLAYERS]).iter().any(|e| *e == Event::DawnBreaks { night: 1 })).unwrap_or(0);
-    assert_eq!((begins + 1, dawn), (4 * TICS_PER_SEC, 60 * TICS_PER_SEC));
-}
-
-#[test]
-fn night_five_without_escape_is_lost() {
-    let mut w = tiny_world(1, 30);
-    to_night(&mut w, 5, true);
-    clear_echoes(&mut w);
-    (0..w.night_tics).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
+        let allocs = crate::audio::alloc::count(|| inputs.iter().for_each(|i| w.step(i)));
+        assert_eq!(allocs, 0, "{} {:?}", m.name, m.legend);
     });
-    assert_eq!(w.phase(), Phase::Lost);
 }
 
-#[test]
-fn tasks_power_and_copies_per_night() {
-    let mut w = sobrado_world(3, 30);
-    let active = w.tasks().iter().filter(|t| t.active).count();
-    assert!((3..=4).contains(&active));
-    assert_eq!(w.tasks().iter().filter(|t| t.active && t.kind == TaskKind::Breaker).count(), 1);
-    to_night(&mut w, 1, false);
-    let mut out = false;
-    while w.phase() == (Phase::Night { night: 1 }) {
-        out |= w.step(&[0; MAX_PLAYERS]).iter().any(|e| *e == Event::PowerOut);
-    }
-    assert!(out && w.extra as usize == active);
-    to_night(&mut w, 3, false);
-    assert_eq!(w.bodies().iter().filter(|b| b.visible).count(), 3);
-    assert_eq!(w.ctl.iter().filter(|c| c.agent == Agent::Echo).count(), 2 * 3);
-    assert!(w.power_on());
-}
 
-#[test]
-fn steady_state_never_grows_buffers() {
-    let mut w = sobrado_world(4, 30);
-    let caps = |w: &World| {
-        [
-            w.doors.capacity(),
-            w.door_dir.capacity(),
-            w.door_at.capacity(),
-            w.tasks.capacity(),
-            w.room_surface.capacity(),
-            w.final_tiles.capacity(),
-            w.tape.capacity(),
-            w.segs.capacity(),
-            w.field.capacity(),
-            w.queue.capacity(),
-            w.anchors.capacity(),
-            w.views.capacity(),
-            w.cam_of.capacity(),
-            w.poses.capacity(),
-        ]
+
+fn grid_town() -> String {
+    let (w, h) = (72, 56);
+    let tile = |x: i32, y: i32| match (x, y) {
+        _ if x == 0 || y == 0 || x == w - 1 || y == h - 1 => '#',
+        _ if (x % 8 == 0 && y % 8 == 4) || (y % 8 == 0 && x % 8 == 4) => 'D',
+        _ if x % 8 == 0 || y % 8 == 0 => '#',
+        _ => '.',
     };
-    let before = caps(&w);
-    let mut s = Script::new(11);
-    let mut deepest = 0;
-    let allocs = crate::audio::alloc::count(|| (0..10_000).for_each(|_| deep_step(&mut w, &mut s, &mut deepest)));
-    assert_eq!(allocs, 0);
-    assert_eq!(before, caps(&w));
+    let rows = |f: &dyn Fn(char) -> char| (0..h).map(|y| (0..w).map(|x| f(tile(x, y))).collect::<String>() + "\n").collect::<String>();
+    let doors = (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .filter(|&(x, y)| tile(x, y) == 'D')
+        .enumerate()
+        .map(|(i, (x, y))| format!("{x} {y} {} {}\n", if x % 8 == 0 { "v" } else { "h" }, if i % 2 == 0 { "open" } else { "closed" }))
+        .collect::<String>();
+    format!(
+        "[map] name=\"cidade grande\" w={w} h={h} sky=none fog=0,0,0 fog_near=5 fog_far=30 legend=corposeco\n[solid]\n{}[rooms]\n{}[area]\n0 rua\n[room]\na casa area=0 floor=taco wall=reboco ceil=forro light=40\n[cam]\n0 0 199 199 1 2 1 2 0 2 60\n[door]\n{doors}[wake]\n0 2.5 2.5 90\n1 3.5 2.5 90\n2 2.5 3.5 90\n3 3.5 3.5 90\n[legend]\nspawn 60.5 50.5 0\npatrol 4 4\npatrol 60 4\npatrol 60 50\npatrol 4 50\npatrol 36 28\npatrol 20 44\nlair 68 52\n[lock]\nsaida code 999\n[exit]\n69 53 70 54 lock=saida\n",
+        rows(&|c| c),
+        rows(&|c| if c == '#' { '-' } else { 'a' })
+    )
 }
 
-fn mid(x: i32, y: i32) -> Vec2 {
-    Vec2::new(Fx::int(x) + Fx::HALF, Fx::int(y) + Fx::HALF)
-}
-
-const WEST: Ang = Ang(3 << 14);
-
-fn fill_tape(w: &mut World, id: u8, input: impl Fn(u32) -> u16) {
-    let n = w.night_tics;
-    (0..n).for_each(|t| w.tape[id as usize * n as usize + t as usize] = input(t));
-}
-
-#[test]
-fn night_two_copies_arrive_late_and_unseen() {
-    let mut w = sobrado_world(2, 60);
-    let mut s = Script::new(8);
-    to_night(&mut w, 1, false);
-    while w.phase() == (Phase::Night { night: 1 }) {
-        let inputs = s.next();
-        w.step(&inputs);
-    }
-    to_night(&mut w, 2, false);
-    let copies: Vec<usize> = (0..MAX_BODIES).filter(|&i| w.ctl[i].agent == Agent::Echo).collect();
-    assert_eq!(copies.len(), 2);
-    assert!(copies.iter().all(|&i| !w.bodies[i].visible));
-    let mut arrived = vec![None; MAX_BODIES];
-    while w.phase() == (Phase::Night { night: 2 }) {
-        let was: Vec<bool> = w.bodies.iter().map(|b| b.visible).collect();
-        let t = w.phase_tic;
-        w.step(&[0; MAX_PLAYERS]);
-        copies.iter().filter(|&&i| !was[i] && w.bodies[i].visible).for_each(|&i| {
-            arrived[i] = Some(t);
-            let late = t >= scare::stage_tics(2) as u32 + 20 * TICS_PER_SEC;
-            assert!(late || w.watcher(w.bodies[i].pos, -1).is_none(), "copy {i} popped in on camera at {t}");
-        });
-    }
-    assert!(copies.iter().all(|&i| arrived[i].is_some_and(|t| t >= scare::stage_tics(2) as u32)), "{arrived:?}");
-}
-
-#[test]
-fn watched_copy_freezes_turns_its_head_and_resumes_out_of_view() {
-    let mut w = sobrado_world(1, 60);
-    to_night(&mut w, 3, true);
-    clear_echoes(&mut w);
-    let id = tape_id(1, 0);
-    fill_tape(&mut w, id, |_| UP);
-    let me = mid(3, 11);
-    put(&mut w, 0, me.x, me.y, WEST, false);
-    w.place(1, (mid(9, 11), WEST), Agent::Echo);
-    w.echo[1] = Echo { glitchy: false, ..Echo::new(id, 3, false) };
-    let start = w.bodies[1].pos;
-    (0..30).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert_eq!(w.bodies[1].pos, start);
-    assert!(w.echo[1].watched && w.gaze(1).is_some_and(|g| g != w.bodies[1].heading));
-    let sala = mid(3, 6);
-    put(&mut w, 0, sala.x, sala.y, Ang::ZERO, false);
-    (0..10).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    assert!(w.bodies[1].pos != start && !w.echo[1].watched);
-    assert_eq!(w.gaze(1), None);
-}
-
-#[test]
-fn copy_behind_a_wall_echoes_the_players_footsteps() {
-    let mut w = sobrado_world(1, 60);
-    to_night(&mut w, 2, true);
-    clear_echoes(&mut w);
-    let me = mid(8, 11);
-    put(&mut w, 0, me.x, me.y, Ang::QUARTER, false);
-    w.place(1, (mid(5, 9), Ang::ZERO), Agent::Echo);
-    w.echo[1] = Echo::new(tape_id(1, 0), 2, false);
-    let (mine, echoes) = (0..60).fold((0, 0), |(mine, echoes), _| {
-        let e = w.step(&[UP, 0, 0, 0]);
-        let mine = mine + e.iter().filter(|e| matches!(e, Event::Step { body: 0, .. })).count();
-        (mine, echoes + e.iter().filter(|e| matches!(e, Event::EchoStep { body: 1, of: 0, .. })).count())
-    });
-    assert!(mine >= 3 && echoes + 1 >= mine, "{mine} {echoes}");
-}
-
-#[test]
-fn hunter_that_sees_you_sprints_then_loses_interest() {
-    let mut w = sobrado_world(1, 60);
-    to_night(&mut w, 4, true);
-    clear_echoes(&mut w);
-    let id = tape_id(1, 0);
-    fill_tape(&mut w, id, |t| if t / tape::SEG % 2 == 1 { UP | B } else { UP });
-    w.cut_segments(1);
-    (0..GRACE_TICS).for_each(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-    });
-    let me = mid(8, 11);
-    put(&mut w, 0, me.x, me.y, Ang::QUARTER, false);
-    w.place(1, (mid(2, 11), Ang::QUARTER), Agent::Echo);
-    w.echo[1] = Echo::new(id, 4, false);
-    w.chase_field();
-    w.step(&[0; MAX_PLAYERS]);
-    assert!(w.echo[1].chase > 0 && w.echo[1].cursor / tape::SEG % 2 == 1, "{:?}", w.echo[1]);
-    let far = mid(25, 15);
-    put(&mut w, 0, far.x, far.y, Ang::ZERO, false);
-    (0..scare::CHASE_TICS).for_each(|_| w.notice(1));
-    assert_eq!(w.echo[1].chase, 0);
-}
-
-#[test]
-fn copy_keeps_its_lantern_on_facing_a_dark_wall() {
-    let mut w = sobrado_world(1, 60);
-    to_night(&mut w, 3, true);
-    clear_echoes(&mut w);
-    let sala = mid(3, 6);
-    put(&mut w, 0, sala.x, sala.y, Ang::ZERO, false);
-    w.place(1, (mid(1, 11), WEST), Agent::Echo);
-    w.echo[1] = Echo { glitchy: false, armed: true, left: 30, ..Echo::new(tape_id(1, 0), 3, false) };
-    w.step(&[0; MAX_PLAYERS]);
-    let start = w.bodies[1].pos;
-    let lit = (1..scare::LURE_TICS).all(|_| {
-        w.step(&[0; MAX_PLAYERS]);
-        w.bodies[1].lantern
-    });
-    assert!(lit && w.bodies[1].pos == start && w.echo[1].lure <= 1);
-}
-
-#[test]
-fn lantern_toggles_on_a_short_release_with_nothing_in_reach() {
-    let mut w = tiny_world(1, 30);
-    to_night(&mut w, 1, true);
-    let spot = mid(2, 2);
-    put(&mut w, 0, spot.x, spot.y, Ang::ZERO, false);
-    assert_eq!(w.focus(0), None);
-    let press = |w: &mut World, tics: u8| {
-        (0..tics).for_each(|_| {
-            w.step(&[A, 0, 0, 0]);
-        });
-        let during = w.bodies[0].lantern;
-        w.step(&[0; MAX_PLAYERS]);
-        (during, w.bodies[0].lantern)
-    };
-    assert_eq!(press(&mut w, 3), (false, true));
-    assert_eq!(press(&mut w, body::TAP_TICS - 1), (true, false));
-    assert_eq!(press(&mut w, body::TAP_TICS), (false, false));
-    assert_eq!(press(&mut w, 60), (false, false));
-    let door = mid(4, 1);
-    put(&mut w, 0, door.x, door.y, Ang::QUARTER, false);
-    let swing = w.door_dir[0];
-    assert!(matches!(w.focus(0), Some(Focus::Door { .. })));
-    assert_eq!(press(&mut w, 3), (false, false));
-    assert_ne!(w.door_dir[0], swing);
-}
-
-#[test]
-fn only_the_living_work_tasks() {
-    let mut w = tiny_world(2, 30);
-    to_night(&mut w, 2, true);
-    clear_echoes(&mut w);
-    let t = w.tasks.iter().position(|t| t.kind == TaskKind::Tv).unwrap();
-    w.tasks.iter_mut().enumerate().for_each(|(k, task)| {
-        task.active = k == t;
-        task.done = false;
-    });
-    let a = w.task_spot(t);
-    let face = (a - mid(w.tasks[t].x as i32, w.tasks[t].y as i32)).ang();
-    let stand = a - Vec2::from_ang(face).scale(Fx::ratio(9, 10));
-    let id = tape_id(1, 0);
-    fill_tape(&mut w, id, |_| A);
-    w.players[1].role = Role::Duplo;
-    put(&mut w, 1, stand.x, stand.y, face, false);
-    w.place(2, (stand, face), Agent::Echo);
-    w.echo[2] = Echo::new(id, 2, false);
-    let away = mid(1, 1);
-    put(&mut w, 0, away.x, away.y, Ang::ZERO, true);
-    (0..tasks::HOLD_TICS as u32 * 3).for_each(|_| {
-        w.step(&[0, A, 0, 0]);
-    });
-    assert!(!w.tasks[t].done && w.ctl[1].hold == 0 && w.ctl[2].hold == 0);
-    assert!([1, 2].iter().all(|&b| w.bodies[b].anim == Anim::Reach), "{:?}", [w.bodies[1].anim, w.bodies[2].anim]);
-    clear_echoes(&mut w);
-    put(&mut w, 1, away.x, away.y, Ang::ZERO, false);
-    put(&mut w, 0, stand.x, stand.y, face, true);
-    (0..tasks::HOLD_TICS).for_each(|_| {
-        w.step(&[A, 0, 0, 0]);
-    });
-    assert!(w.tasks[t].done);
-}
+static TOWN_TEXT: LazyLock<String> = LazyLock::new(grid_town);
+static TOWN: LazyLock<[Map<'static>; 4]> = LazyLock::new(|| parsed(&TOWN_TEXT));
 
 #[test]
 #[ignore]
-fn bench_four_players_twenty_copies() {
-    [4u8, 5].into_iter().for_each(|night| {
-        let mut w = sobrado_world(4, 360);
-        to_night(&mut w, night - 1, true);
-        w.extra = 8;
-        w.begin_dusk(night);
-        while w.phase() != (Phase::Night { night }) {
-            w.step(&[0; MAX_PLAYERS]);
-        }
-        let copies = w.ctl.iter().filter(|c| c.agent == Agent::Echo).count();
-        let mut s = Script::new(3);
-        let tics = 3000;
-        let start = std::time::Instant::now();
+fn step_cost_four_players_on_the_largest_map() {
+    KINDS.into_iter().for_each(|kind| {
+        let mut w = World::new(pick(&TOWN, kind), setup(4, [0, 1, 2, 3]));
+        let (mut rng, mut held) = (Rng::new(3), [0; 4]);
+        let tics = 30_000;
+        let mut worst = std::time::Duration::ZERO;
+        let mut stepping = std::time::Duration::ZERO;
         (0..tics).for_each(|_| {
-            let inputs = s.next();
+            let inputs = std::array::from_fn(|p| {
+                if rng.below(12) == 0 {
+                    held[p] = rng.next_u32() as u16 & (UP | DOWN | LEFT | RIGHT | B | A | X | Y | DROP);
+                }
+                held[p]
+            });
+            let t = std::time::Instant::now();
             w.step(&inputs);
-            w.capture = [0; MAX_PLAYERS];
-            w.players.iter_mut().for_each(|p| p.role = Role::Living);
+            let spent = t.elapsed();
+            stepping += spent;
+            worst = worst.max(spent);
+            if w.outcome() != Outcome::Playing {
+                w = World::new(w.map, w.setup);
+            }
         });
-        let per = start.elapsed().as_nanos() / tics as u128;
-        let heap = w.doors.len() * size_of::<Door>()
-            + w.door_dir.len()
-            + w.door_at.len()
-            + w.tasks.len() * size_of::<Task>()
-            + w.anchors.len() * size_of::<Vec2>()
-            + w.views.len() * size_of::<sight::View>()
-            + w.cam_of.len()
-            + w.poses.len() * size_of::<mirror::Pose>()
-            + w.room_surface.len()
-            + w.final_tiles.len() * 2
-            + w.tape.len() * 2
-            + w.segs.len() * size_of::<tape::Seg>()
-            + w.field.len() * 2
-            + w.queue.len() * 2;
-        println!("night {night} copies {copies} step {per} ns world {} B heap {heap} B phase {:?}", size_of::<World>(), w.phase());
+        let mean = stepping / tics;
+
+        let mut flood = vec![0u16; w.grid.cells()];
+        let mut heap = field::heap(w.grid.cells());
+        let t = std::time::Instant::now();
+        let costs = (0..w.grid.cells()).map(|c| w.legend_cost(c).map_or(pass::BLOCKED, |v| v as u8)).collect::<Vec<_>>();
+        (0..100).for_each(|_| {
+            field::flood(&mut flood, &mut heap, 2 * 72 + 2, field::FAR, None, |c| w.legend_prev(&costs, c));
+        });
+        println!("{kind:?}: mean {mean:?} worst {worst:?} full flood {:?}", t.elapsed() / 100);
     });
 }
+
+
+fn route(w: &World, goal: usize) -> Vec<u16> {
+    let mut dist = vec![u16::MAX; w.grid.cells()];
+    let open = |c: usize| match w.map.tiles[c] {
+        map::Tile::Floor | map::Tile::Portal => true,
+        map::Tile::Door => w.door_of(c).is_none_or(|d| !w.doors[d].locked),
+        _ => false,
+    };
+    let mut queue = std::collections::VecDeque::from([goal]);
+    dist[goal] = 0;
+    while let Some(c) = queue.pop_front() {
+        let (x, y) = w.grid.xy(c);
+        [(0, -1), (1, 0), (0, 1), (-1, 0)].into_iter().filter_map(|(dx, dy)| w.grid.cell(x + dx, y + dy)).for_each(|n| {
+            if dist[n] == u16::MAX && open(n) {
+                dist[n] = dist[c] + 1;
+                queue.push_back(n);
+            }
+        });
+    }
+    dist
+}
+
+fn steer(heading: Ang, aim: Ang) -> (u16, i32) {
+    let diff = (aim - heading).0 as i16 as i32;
+    let turn = match diff {
+        d if d > tank::TURN as i32 / 2 => LEFT,
+        d if d < -(tank::TURN as i32) / 2 => RIGHT,
+        _ => 0,
+    };
+    (turn, diff.abs())
+}
+
+fn walk_to(w: &mut World, p: usize, x: Fx, y: Fx) {
+    let target = Vec2::new(x, y);
+    let goal = w.grid.cell_of(target).unwrap();
+    let dist = route(w, goal);
+    let arrived = (0..4000).any(|_| {
+        let pl = w.players[p];
+        if (target - pl.pos).len_sq() < sq(Fx::ratio(15, 100)) {
+            return true;
+        }
+        let here = w.grid.cell_of(pl.pos).unwrap();
+        let (hx, hy) = w.grid.xy(here);
+        let next = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+            .into_iter()
+            .filter_map(|(dx, dy)| w.grid.cell(hx + dx, hy + dy))
+            .filter(|&n| dist[n] < dist[here])
+            .min_by_key(|&n| dist[n]);
+        let aim = match next {
+            Some(n) if n != goal => w.grid.centre(n),
+            _ => target,
+        };
+        let (turn, off) = steer(pl.heading, (aim - pl.pos).ang());
+        let shut = next.and_then(|n| w.door_of(n)).filter(|&d| !w.door_passable(d) && !w.door_dir[d]);
+        let bits = match shut {
+            Some(_) if off < 3641 && w.tic % 2 == 0 => A,
+            Some(_) => turn,
+            None if off < 8192 => turn | UP,
+            None => turn,
+        };
+        let mut inputs = [0; 4];
+        inputs[p] = bits;
+        w.step(&inputs);
+        false
+    });
+    assert!(arrived, "player {p} stuck at {:?} heading to {target:?}", w.players[p].pos);
+}
+
+fn face(w: &mut World, p: usize, d: i32) {
+    let turned = (0..200).any(|_| {
+        let (turn, _) = steer(w.players[p].heading, deg(d));
+        let mut inputs = [0; 4];
+        inputs[p] = turn;
+        w.step(&inputs);
+        turn == 0
+    });
+    assert!(turned);
+}
+
+const fn sq(f: Fx) -> i64 {
+    f.0 as i64 * f.0 as i64
+}
+
+#[test]
+fn sobrado_is_solvable_by_a_scripted_route() {
+    let sobrado = map::campaign()[0];
+    let mut w = World::new(sobrado, setup(1, [JAIRO, 0, 1, 3]));
+    calm(&mut w);
+    let item = |w: &World, id: &str| w.map.item_index(id).unwrap();
+    let lock = |w: &World, id: &str| w.map.lock_index(id).unwrap();
+    let opened = |w: &World, id: &str| w.locks[lock(w, id) as usize].open;
+    let held = |w: &World, id: &str| w.players[0].hands.contains(&Some(item(w, id)));
+    let take = |w: &mut World, x: Fx, y: Fx, id: &str| {
+        walk_to(w, 0, x, y);
+        assert_eq!(w.focus(0), Some(Focus::Item { item: item(w, id) }), "taking {id}");
+        press(w, 0, A);
+        assert!(held(w, id), "{id}");
+    };
+
+    take(&mut w, mid(33), mid(6), "chave_de_fenda");
+    walk_to(&mut w, 0, mid(53), mid(11));
+    assert!(matches!(w.focus(0), Some(Focus::Lock { needs: Some(ItemKind::ChaveDeFenda), .. })));
+    press(&mut w, 0, A);
+    assert!(opened(&w, "trinco"));
+    press(&mut w, 0, A);
+    assert_eq!((w.players[0].area, w.grid.cell_of(w.players[0].pos)), (0, w.grid.cell(25, 13)));
+
+    take(&mut w, mid(24), mid(17), "alicate");
+    walk_to(&mut w, 0, mid(25), mid(2));
+    face(&mut w, 0, 180);
+    assert!(matches!(w.focus(0), Some(Focus::Lock { needs: Some(ItemKind::Alicate), .. })));
+    press(&mut w, 0, A);
+    assert!(opened(&w, "corrente") && !opened(&w, "saida"));
+
+    walk_to(&mut w, 0, mid(22), mid(16));
+    face(&mut w, 0, 0);
+    assert!(matches!(w.focus(0), Some(Focus::Lock { code: true, .. })));
+    press(&mut w, 0, A);
+    [UP, UP, UP, RIGHT, UP, RIGHT, DOWN, DOWN, DOWN, A].into_iter().for_each(|b| {
+        press(&mut w, 0, b);
+    });
+    assert!(opened(&w, "caixa"));
+    press(&mut w, 0, A);
+    assert_eq!(w.focus(0), Some(Focus::Item { item: item(&w, "fusivel") }));
+    press(&mut w, 0, A);
+    assert!(held(&w, "fusivel") && held(&w, "alicate"));
+
+    walk_to(&mut w, 0, mid(21), mid(12));
+    face(&mut w, 0, 0);
+    assert!(matches!(w.focus(0), Some(Focus::Place { needs: ItemKind::Fusivel, .. })));
+    press(&mut w, 0, A);
+    assert!(opened(&w, "luz") && w.power());
+
+    walk_to(&mut w, 0, mid(4), mid(15));
+    face(&mut w, 0, 90);
+    assert!(matches!(w.focus(0), Some(Focus::Container { locked: false, .. })));
+    press(&mut w, 0, A);
+    take(&mut w, mid(4), mid(15), "chavinha");
+
+    walk_to(&mut w, 0, mid(15), mid(5));
+    face(&mut w, 0, 180);
+    assert!(matches!(w.focus(0), Some(Focus::Lock { needs: Some(ItemKind::Chave), .. })));
+    press(&mut w, 0, A);
+    assert!(opened(&w, "cristal"));
+    press(&mut w, 0, A);
+    take(&mut w, mid(15), mid(5), "chave_portao");
+
+    walk_to(&mut w, 0, mid(25), mid(2));
+    face(&mut w, 0, 180);
+    press(&mut w, 0, A);
+    assert!(opened(&w, "cadeado") && opened(&w, "saida"));
+    let won = (0..60).any(|_| {
+        w.step(&[UP, 0, 0, 0]);
+        w.outcome() == Outcome::Escaped
+    });
+    assert!(won, "{:?}", w.players[0]);
+    println!("sobrado solved in {} tics ({} s)", w.tic, w.tic / TICS_PER_SEC);
+}
+

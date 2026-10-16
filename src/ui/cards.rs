@@ -1,62 +1,63 @@
-use super::{BLOOD, DIM, FAINT, INK, Item, Line, SCREEN, centered, menu, ordinal};
+use super::lore::legend;
+use super::{BLOOD, DIM, FAINT, GOLD, INK, Item, SCREEN, centered, line, menu, width};
+use crate::map::Map;
 use crate::render::Ui2d;
-use std::fmt::Write;
 
-fn night_title(night: u8) -> Line {
-    let word = ordinal(night);
-    let mut l = Line::new();
-    let _ = write!(l, "{}{} noite", word.as_bytes()[0].to_ascii_uppercase() as char, &word[1..]);
-    l
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Card {
+    Intro,
+    Outro,
+    Restart,
+    Ending,
 }
 
-pub fn dusk(ui: &mut Ui2d, rect: [u16; 4], night: u8) {
-    let scale = if rect[2] >= 300 { 2 } else { 1 };
-    let mid = rect[3] as i16 / 2;
-    centered(ui, rect, mid - 10, night_title(night).as_str(), INK, scale);
-    centered(ui, rect, mid + 12, "22:00", DIM, 1);
+pub const INTRO_PORTRAIT: [u16; 4] = [152, 96, 80, 96];
+
+fn title(ui: &mut Ui2d, y: i16, s: &str, color: u16) {
+    let scale = if width(s, 2) <= SCREEN[2] as i16 - 16 { 2 } else { 1 };
+    centered(ui, SCREEN, y, s, color, scale);
 }
 
-pub fn dawn(ui: &mut Ui2d, rect: [u16; 4], night: u8) {
-    let scale = if rect[2] >= 300 { 2 } else { 1 };
-    let mid = rect[3] as i16 / 2;
-    centered(ui, rect, mid - 10, "Amanheceu", INK, scale);
-    let mut l = Line::new();
-    let _ = match 5u8.saturating_sub(night) {
-        1 => write!(l, "falta uma noite"),
-        n => write!(l, "faltam {n} noites"),
-    };
-    centered(ui, rect, mid + 12, l.as_str(), DIM, 1);
-}
-
-pub fn whisper(ui: &mut Ui2d, rect: [u16; 4], tick: u32) {
-    let y = rect[3] as i16 - 30;
-    let color = if tick % 47 < 2 { FAINT } else { BLOOD };
-    centered(ui, rect, y, "você agora é cópia. ninguém sabe.", color, 1);
-}
-
-pub fn pause(ui: &mut Ui2d, sel: usize, online: bool, tick: u32) {
-    centered(ui, SCREEN, 60, "Pausa", INK, 2);
-    menu(ui, 148, 100, &[Item::new("Continuar"), Item::new("Sair para o menu")], sel, tick);
-    if online {
-        centered(ui, SCREEN, 160, "a casa não espera: o jogo continua", DIM, 1);
+pub fn card(ui: &mut Ui2d, c: Card, map: &Map, phase: u8, phases: u8) {
+    let l = legend(map.legend);
+    match c {
+        Card::Intro => {
+            centered(ui, SCREEN, 16, line(format_args!("Fase {} de {}", phase + 1, phases)).as_str(), DIM, 1);
+            title(ui, 34, map.name, INK);
+            centered(ui, SCREEN, 62, line(format_args!("A lenda: {}", l.name)).as_str(), GOLD, 1);
+            centered(ui, SCREEN, 76, l.line, DIM, 1);
+            centered(ui, SCREEN, 200, "Sexta-feira da Paixão, perto da meia-noite", FAINT, 1);
+        }
+        Card::Outro => {
+            title(ui, 70, "Vocês escaparam", INK);
+            centered(ui, SCREEN, 100, map.name, DIM, 1);
+            let next = match phase + 1 < phases {
+                true => "a próxima fase foi liberada",
+                false => "a última lenda ficou para trás",
+            };
+            centered(ui, SCREEN, 120, next, GOLD, 1);
+        }
+        Card::Restart => {
+            centered(ui, SCREEN, 88, "Vocês desmaiaram demais.", BLOOD, 1);
+            centered(ui, SCREEN, 104, "A noite recomeça.", INK, 1);
+        }
+        Card::Ending => {
+            title(ui, 56, "Amanheceu em Pedra Seca", INK);
+            centered(ui, SCREEN, 92, "A Sexta-feira da Paixão acabou.", DIM, 1);
+            centered(ui, SCREEN, 106, "As lendas voltaram a dormir.", DIM, 1);
+            centered(ui, SCREEN, 132, "Obrigado por jogar.", GOLD, 1);
+            centered(ui, SCREEN, 184, "A voltar ao menu", FAINT, 1);
+        }
     }
-    centered(ui, SCREEN, 180, "segure A para pausar", FAINT, 1);
 }
 
-pub fn ending(ui: &mut Ui2d, won: bool, duplo: bool, night: u8) {
-    let (head, sub) = match (won, duplo) {
-        (true, _) => ("Vocês viram o sol", "sobreviveram às cinco noites"),
-        (false, true) => ("Ninguém percebeu", "agora todos são cópias"),
-        (false, false) => ("A casa ficou com vocês", ""),
-    };
-    centered(ui, SCREEN, 70, head, if won { INK } else { BLOOD }, 2);
-    let mut l = Line::new();
-    let _ = match sub.is_empty() {
-        true => write!(l, "chegaram até a {} noite", ordinal(night)),
-        false => write!(l, "{sub}"),
-    };
-    centered(ui, SCREEN, 104, l.as_str(), DIM, 1);
-    centered(ui, SCREEN, 170, "A voltar ao menu", FAINT, 1);
+pub fn pause(ui: &mut Ui2d, items: &[Item], sel: usize, online: bool, tick: u32) {
+    centered(ui, SCREEN, 56, "Pausa", INK, 2);
+    menu(ui, 140, 92, items, sel, tick);
+    if online {
+        centered(ui, SCREEN, 164, "a noite não espera: o jogo continua", DIM, 1);
+    }
+    centered(ui, SCREEN, 184, "START ou segure A para pausar", FAINT, 1);
 }
 
 pub fn notice(ui: &mut Ui2d, head: &str, detail: &str) {

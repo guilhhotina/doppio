@@ -10,21 +10,48 @@ const CEIL_Q15: i32 = (CEIL * 32767.0) as i32;
 const ONE_Q: f32 = (1u32 << 30) as f32;
 const TABLE: usize = 1024;
 
-const fn wave(harmonics: [i32; 2]) -> [i16; TABLE] {
+const fn wave(harmonics: [i32; 6]) -> [i16; TABLE] {
     let mut t = [0i16; TABLE];
     let mut i = 0;
     while i < TABLE {
-        let a = Ang((i << 6) as u16).sin().0 >> 1;
-        let b = Ang((i << 7) as u16).sin().0 >> 1;
-        let v = (a * harmonics[0] + b * harmonics[1]) >> 5;
+        let mut v = 0;
+        let mut k = 0;
+        while k < 6 {
+            v += (Ang(((i << 6) * (k + 1)) as u16).sin().0 >> 1) * harmonics[k];
+            k += 1;
+        }
+        v >>= 5;
         t[i] = if v > 32767 { 32767 } else if v < -32767 { -32767 } else { v as i16 };
         i += 1;
     }
     t
 }
 
-static SINE: [i16; TABLE] = wave([32, 0]);
-static HUM: [i16; TABLE] = wave([16, 11]);
+static SINE: [i16; TABLE] = wave([32, 0, 0, 0, 0, 0]);
+static HUM: [i16; TABLE] = wave([16, 11, 0, 0, 0, 0]);
+static BUZZ: [i16; TABLE] = wave([9, 8, 6, 4, 3, 2]);
+
+pub const WHITE_LEN: usize = 1 << 14;
+
+const fn white() -> [i16; WHITE_LEN] {
+    let mut t = [0i16; WHITE_LEN];
+    let mut x: u32 = 0x2545_F491;
+    let mut i = 0;
+    while i < WHITE_LEN {
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        t[i] = (x >> 16) as i16;
+        i += 1;
+    }
+    t
+}
+
+static WHITE: [i16; WHITE_LEN] = white();
+
+pub fn white_at(i: u32) -> i32 {
+    WHITE[i as usize & (WHITE_LEN - 1)] as i32
+}
 
 pub fn bipolar(rng: &mut Rng) -> f32 {
     (rng.next_u32() as i32) as f32 * (1.0 / 2_147_483_648.0)
@@ -32,10 +59,6 @@ pub fn bipolar(rng: &mut Rng) -> f32 {
 
 pub fn unit(rng: &mut Rng) -> f32 {
     (rng.next_u32() >> 8) as f32 * (1.0 / 16_777_216.0)
-}
-
-pub fn noise(rng: &mut Rng) -> i32 {
-    (rng.next_u32() as i32) >> 16
 }
 
 pub fn q(x: f32) -> i32 {
@@ -64,6 +87,10 @@ pub fn sine(ph: u32) -> i32 {
 
 pub fn hum(ph: u32) -> i32 {
     HUM[(ph >> 22) as usize] as i32
+}
+
+pub fn buzz(ph: u32) -> i32 {
+    BUZZ[(ph >> 22) as usize] as i32
 }
 
 pub fn mul15(a: i32, b: i32) -> i32 {
@@ -142,6 +169,9 @@ mod tests {
     fn noise_ranges() {
         let mut r = Rng::new(7);
         assert!((0..10_000).all(|_| (-1.0..1.0).contains(&bipolar(&mut r)) && (0.0..1.0).contains(&unit(&mut r))));
-        assert!((0..10_000).all(|_| (-UNIT..UNIT).contains(&noise(&mut r))));
+        let mean = (0..WHITE_LEN as u32).map(white_at).map(|x| x as i64).sum::<i64>() / WHITE_LEN as i64;
+        let rms = ((0..WHITE_LEN as u32).map(white_at).map(|x| (x as f64).powi(2)).sum::<f64>() / WHITE_LEN as f64).sqrt() / UNIT as f64;
+        assert!(mean.abs() < 600 && (0.5..0.65).contains(&rms), "{mean} {rms}");
+        assert_eq!(white_at(WHITE_LEN as u32), white_at(0));
     }
 }

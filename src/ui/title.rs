@@ -19,7 +19,7 @@ pub fn title(ui: &mut Ui2d, tick: u32, version: &str) {
         ui.text(x + dx + 2, y + (n >> 3) as i16 % 3 - 1, NAME, BLOOD, SCALE);
     }
     shadowed(ui, x, y, NAME, if n % 41 == 0 { DIM } else { INK }, SCALE);
-    centered(ui, SCREEN, y + 50, "cinco noites num sobrado", DIM, 1);
+    centered(ui, SCREEN, y + 50, "as lendas de Pedra Seca", DIM, 1);
     if tick / 30 % 2 == 0 {
         centered(ui, SCREEN, 160, "aperte A", INK, 1);
     }

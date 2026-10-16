@@ -15,7 +15,6 @@ pub use glue::register;
 pub use lobby::Listing;
 pub use proto::Reason;
 
-const DEFAULT_NIGHT_SECS: u32 = 360;
 const KEEPALIVE_POLLS: u32 = 120;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -46,6 +45,7 @@ pub struct Seat {
     pub nick: [u8; 16],
     pub local_port: Option<u8>,
     pub ready: bool,
+    pub character: u8,
 }
 
 #[derive(Clone, Copy)]
@@ -62,7 +62,6 @@ pub struct Net {
     session: Session,
     request: Option<Request>,
     start_pending: bool,
-    night: Option<u32>,
     polls: u32,
 }
 
@@ -75,13 +74,6 @@ pub fn name(bytes: &[u8]) -> &str {
 fn fit<const N: usize>(s: &str) -> [u8; N] {
     let end = (0..=s.len().min(N - 1)).rev().find(|&i| s.is_char_boundary(i)).unwrap_or(0);
     std::array::from_fn(|i| if i < end { s.as_bytes()[i] } else { 0 })
-}
-
-fn night_secs(fe: &Frontend, chosen: Option<u32>) -> u32 {
-    chosen
-        .or_else(|| fe.variable(c"doppio_night_seconds").and_then(|v| v.trim().parse().ok()))
-        .filter(|s| (60..=3600).contains(s))
-        .unwrap_or(DEFAULT_NIGHT_SECS)
 }
 
 fn fresh_seed(fe: &Frontend) -> u32 {
@@ -105,7 +97,6 @@ impl Net {
             session: Session::new(nick(fe)),
             request: None,
             start_pending: false,
-            night: None,
             polls: 0,
         }
     }
@@ -132,8 +123,16 @@ impl Net {
         self.session.reason()
     }
 
-    pub fn set_night_secs(&mut self, secs: u32) {
-        self.night = Some(secs);
+    pub fn set_phase(&mut self, phase: u8) {
+        self.session.set_phase(phase, &mut Packets);
+    }
+
+    pub fn phase(&self) -> u8 {
+        self.session.phase()
+    }
+
+    pub fn set_character(&mut self, local_index: usize, character: u8) {
+        self.session.set_character(local_index, character, &mut Packets);
     }
 
     pub fn host(&mut self, public: bool, relay: Option<&str>) {
@@ -234,7 +233,7 @@ impl Net {
             self.session.lose();
         }
         if std::mem::take(&mut self.start_pending) {
-            self.session.start(fresh_seed(env), night_secs(env, self.night), &mut Packets);
+            self.session.start(fresh_seed(env), &mut Packets);
         }
         self.polls = self.polls.wrapping_add(1);
         if self.polls % KEEPALIVE_POLLS == 0 {
@@ -284,10 +283,15 @@ mod tests {
         assert_eq!(net.seats().len(), 2);
         assert!(net.ready());
         net.set_ready(false);
+        net.set_phase(2);
+        net.set_character(1, 0);
+        assert_eq!(net.seats().iter().map(|s| s.character).collect::<Vec<_>>(), [0, 1]);
+        net.set_character(0, 3);
+        net.set_character(1, 0);
         assert!(net.start());
         assert_eq!(net.started(), None);
         net.poll(&fe);
-        assert_eq!(net.started().map(|s| (s.players, s.night_secs)), Some((2, DEFAULT_NIGHT_SECS)));
+        assert_eq!(net.started().map(|s| (s.players, s.phase, s.characters)), Some((2, 2, [3, 0, 0, 0])));
         net.push_local(&[4, 5, 6, 7]);
         assert_eq!(net.pop_tic(), Some([4, 5, 0, 0]));
         assert_eq!(net.link(), Link::Offline);
@@ -295,6 +299,7 @@ mod tests {
         assert_eq!(net.started(), None);
         assert_eq!(net.seats().len(), 2);
         assert!(net.ready());
+        assert_eq!(net.phase(), 2);
     }
 
     #[test]

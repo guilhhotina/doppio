@@ -1,5 +1,5 @@
-use super::echo::Mode;
-use super::{Agent, Phase, Role, World};
+use super::{ItemPlace, PlayerState, World};
+use crate::fx::Vec2;
 
 #[derive(Clone, Copy)]
 struct Fnv(u32);
@@ -14,82 +14,73 @@ impl Fnv {
     fn words(self, vs: &[u32]) -> Fnv {
         vs.iter().fold(self, |h, &v| h.word(v))
     }
+
+    fn vec(self, v: Vec2) -> Fnv {
+        self.words(&[v.x.0 as u32, v.y.0 as u32])
+    }
 }
 
-fn phase(p: Phase) -> u32 {
+fn state(s: PlayerState) -> u32 {
+    match s {
+        PlayerState::Free => 0,
+        PlayerState::Hidden { spot } => 0x100 | spot as u32,
+        PlayerState::Grabbed => 0x200,
+        PlayerState::Fainted { tics_left } => 0x30000 | tics_left as u32,
+        PlayerState::Escaped => 0x400,
+    }
+}
+
+fn place(p: ItemPlace) -> [u32; 3] {
     match p {
-        Phase::Dusk { night } => 0x100 | night as u32,
-        Phase::Night { night } => 0x200 | night as u32,
-        Phase::Dawn { night } => 0x300 | night as u32,
-        Phase::Won => 0x400,
-        Phase::Lost => 0x500,
-    }
-}
-
-fn agent(a: Agent) -> u32 {
-    match a {
-        Agent::Free => 0,
-        Agent::Player(p) => 0x100 | p as u32,
-        Agent::Echo => 0x200,
-    }
-}
-
-fn mode(m: Mode) -> [u32; 2] {
-    match m {
-        Mode::Play => [0, 0],
-        Mode::Splice(t) => [1, t as u32],
-        Mode::Reverse(at) => [2, at],
-        Mode::Stare => [3, 0],
-        Mode::Idle(n) => [4, n as u32],
+        ItemPlace::Floor { pos, area } => [area as u32, pos.x.0 as u32, pos.y.0 as u32],
+        ItemPlace::Held { player } => [0x100 | player as u32, 0, 0],
+        ItemPlace::Inside { prop } => [0x10000 | prop as u32, 0, 0],
+        ItemPlace::Used => [0x20000, 0, 0],
     }
 }
 
 pub fn world(w: &World) -> u32 {
-    let h = Fnv::START.words(&[
-        w.tic,
-        phase(w.phase),
-        w.phase_tic,
-        w.rng.0,
-        w.power as u32 | (w.exit_open as u32) << 1 | (w.extra as u32) << 8 | (w.still as u32) << 16,
+    let h = Fnv::START.words(&[w.tic, w.rng.0, w.outcome as u32 | (w.desmaios as u32) << 8 | (w.power as u32) << 16]);
+    let h = w.players[..w.count].iter().zip(&w.ctl).fold(h, |h, (p, c)| {
+        let hands = p.hands.map(|i| i.map_or(0xff, |i| i as u32));
+        let dial = c.dial.map_or([0; 3], |d| {
+            [d.lock as u32 | (d.len as u32) << 8 | (d.cursor as u32) << 16 | (d.wrong as u32) << 24, u32::from_le_bytes(d.digits), 1]
+        });
+        h.vec(p.pos).words(&[
+            p.character as u32 | (p.area as u32) << 8 | (p.anim as u32) << 16 | (p.lantern as u32) << 24,
+            p.heading.0 as u32 | (p.anim_tic as u32) << 16,
+            p.battery as u32 | (p.fade as u32) << 16,
+            hands[0] | hands[1] << 8,
+            state(p.state),
+            c.tank.prev as u32 | (c.tank.quick as u32) << 16 | (c.press as u32) << 24,
+            c.tank.quick_from.0 as u32 | (c.press_busy as u32) << 16 | (c.step as u32) << 24,
+            c.reach as u32 | (c.hide_t as u32) << 8 | (c.spot as u32) << 16 | (c.grab as u32) << 24,
+            dial[0],
+            dial[1],
+            dial[2] | c.reading.map_or(0xffff, |n| n as u32) << 8,
+        ])
+    });
+    let l = w.legend;
+    let b = w.brain;
+    let h = h.vec(l.pos).words(&[
+        l.heading.0 as u32 | (l.area as u32) << 16 | (l.anim as u32) << 24,
+        l.anim_tic as u32 | (l.mode as u32) << 16 | l.target.map_or(0xff, |t| t as u32) << 24,
+        l.stunned as u32,
     ]);
-    let h = w.bodies.iter().fold(h, |h, b| {
-        h.words(&[
-            b.pos.x.0 as u32,
-            b.pos.y.0 as u32,
-            b.heading.0 as u32 | (b.anim as u32) << 16 | (b.lantern as u32) << 24 | (b.visible as u32) << 25,
-            b.anim_tic as u32,
-        ])
+    let h = h.vec(b.goal).vec(b.origin).vec(b.charge_dir).words(&[
+        b.dirty as u32 | (b.seen_hide as u32) << 1 | (b.waypoint as u32) << 8 | (b.special as u32) << 16 | (b.step as u32) << 24,
+        b.field_goal as u32 | (b.field_complete as u32) << 16,
+        b.hear_cell as u32 | (b.hear_age as u32) << 16,
+        b.timer as u32 | (b.pause as u32) << 16,
+        b.cry as u32 | (b.breath as u32) << 16,
+        b.charge as u32 | (b.charge_cool as u32) << 16,
+        b.stall as u32 | (b.best as u32) << 16,
+        b.portal_wait as u32,
+    ]);
+    let h = w.doors.iter().zip(&w.door_dir).zip(&w.salt).fold(h, |h, ((d, &dir), &s)| {
+        h.words(&[d.open as u32 | (d.locked as u32) << 16 | (d.stuck as u32) << 17 | (dir as u32) << 18, s as u32])
     });
-    let h = w.ctl.iter().fold(h, |h, c| {
-        h.words(&[
-            agent(c.agent),
-            c.tank.prev as u32 | (c.tank.quick as u32) << 16,
-            c.tank.quick_from.0 as u32,
-            c.battery as u32 | (c.step as u32) << 16 | (c.hold as u32) << 24,
-            c.hold_task as u32 | (c.press as u32) << 8 | (c.press_busy as u32) << 16,
-        ])
-    });
-    let h = w.echo.iter().fold(h, |h, e| {
-        let [m, arg] = mode(e.mode);
-        let flags = e.left as u32 | (e.hunt as u32) << 8 | (e.glitchy as u32) << 9 | (e.watched as u32) << 10 | (e.armed as u32) << 11;
-        h.words(&[
-            e.tape as u32,
-            e.cursor,
-            flags | (e.lure as u32) << 16 | (e.shadow as u32) << 24,
-            m,
-            arg,
-            e.wait as u32 | (e.look as u16 as u32) << 16,
-            e.chase as u32 | (e.due as u32) << 16 | (e.of as u32) << 24,
-        ])
-    });
-    let h = w.captor.iter().fold(h, |h, &c| h.word(c as u32));
-    let h = w.players.iter().zip(&w.capture).fold(h, |h, (p, &c)| {
-        let role = match p.role {
-            Role::Living => 0,
-            Role::Duplo => 1,
-        };
-        h.words(&[p.body as u32 | role << 8 | (p.room as u32) << 16 | (p.fade as u32) << 24, p.battery as u32 | (c as u32) << 16])
-    });
-    let h = w.doors.iter().zip(&w.door_dir).fold(h, |h, (d, &dir)| h.words(&[d.open as u32 | (d.locked as u32) << 16 | (dir as u32) << 17]));
-    w.tasks.iter().fold(h, |h, t| h.word(t.active as u32 | (t.done as u32) << 1)).0
+    let h = w.props.iter().fold(h, |h, s| h.word(s.open as u32));
+    let h = w.items.iter().fold(h, |h, s| h.words(&place(s.place)));
+    w.locks.iter().fold(h, |h, s| h.word(s.open as u32)).0
 }

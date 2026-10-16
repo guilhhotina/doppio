@@ -8,11 +8,32 @@ pub fn id(name: &str) -> u8 {
         as u8
 }
 
+pub fn alpha(name: &str) -> bool {
+    name.ends_with("_a")
+}
+
+#[cfg(test)]
 pub fn decode(tex: &[u8]) -> (i32, i32, Vec<u16>) {
     let (w, h) = (1i32 << tex[0], 1i32 << tex[1]);
     let pal: [u16; 16] = std::array::from_fn(|i| u16::from_le_bytes([tex[2 + i * 2], tex[3 + i * 2]]));
     let px = tex[34..].iter().flat_map(|b| [pal[(b & 15) as usize], pal[(b >> 4) as usize]]).collect();
     (w, h, px)
+}
+
+pub fn rgba5551(c: u16, clear: bool) -> u16 {
+    let (r, g, b) = (c >> 11, c >> 6 & 31, c & 31);
+    match clear {
+        true => 0,
+        false => r << 11 | g << 6 | b << 1 | 1,
+    }
+}
+
+fn decode_rgba(name: &str, tex: &[u8]) -> (i32, i32, Vec<u16>) {
+    let (w, h) = (1i32 << tex[0], 1i32 << tex[1]);
+    let pal: [u16; 16] = std::array::from_fn(|i| u16::from_le_bytes([tex[2 + i * 2], tex[3 + i * 2]]));
+    let keyed = alpha(name);
+    let px = |i: u8| rgba5551(pal[i as usize], keyed && i == 0);
+    (w, h, tex[34..].iter().flat_map(|b| [px(b & 15), px(b >> 4)]).collect())
 }
 
 fn params(gl: &Gl, wrap: gl::GLenum) {
@@ -22,10 +43,10 @@ fn params(gl: &Gl, wrap: gl::GLenum) {
     gl.tex_parameter(gl::TEXTURE_WRAP_T, wrap);
 }
 
-pub fn upload_rgb565(gl: &Gl, w: i32, h: i32, px: &[u16]) -> u32 {
+pub fn upload_rgba5551(gl: &Gl, w: i32, h: i32, px: &[u16]) -> u32 {
     let t = gl.gen_texture();
     gl.bind_texture(0, t);
-    gl.tex_image(gl::RGB, w, h, gl::UNSIGNED_SHORT_5_6_5, Some(px));
+    gl.tex_image(gl::RGBA, w, h, gl::UNSIGNED_SHORT_5_5_5_1, Some(px));
     params(gl, gl::REPEAT);
     t
 }
@@ -67,7 +88,7 @@ pub fn noise(n: usize, seed: u32) -> Vec<u8> {
 }
 
 pub const ATLAS_W: i32 = 512;
-pub const ATLAS_H: i32 = 256;
+pub const ATLAS_H: i32 = 1024;
 pub const CELL: i32 = 32;
 
 pub struct Atlas {
@@ -76,7 +97,7 @@ pub struct Atlas {
 }
 
 pub fn atlas() -> Atlas {
-    let decoded: Vec<(i32, i32, Vec<u16>)> = TEXTURES.iter().map(|(_, t)| decode(t)).collect();
+    let decoded: Vec<(i32, i32, Vec<u16>)> = TEXTURES.iter().map(|(n, t)| decode_rgba(n, t)).collect();
     let mut order: Vec<usize> = (0..decoded.len()).collect();
     order.sort_by_key(|&i| (-decoded[i].1, -decoded[i].0));
     let mut px = vec![0u16; (ATLAS_W * ATLAS_H) as usize];
@@ -109,7 +130,7 @@ pub struct Textures {
 impl Textures {
     pub fn new(gl: &Gl) -> Textures {
         let Atlas { px, tiles } = atlas();
-        let atlas = upload_rgb565(gl, ATLAS_W, ATLAS_H, &px);
+        let atlas = upload_rgba5551(gl, ATLAS_W, ATLAS_H, &px);
         let dither = upload_luminance(gl, 4, 4, &dither());
         let noise = upload_luminance(gl, 64, 64, &noise(64 * 64, 0x5eed));
         gl.bind_texture(0, 0);
@@ -165,7 +186,8 @@ mod tests {
                 used[c] = true;
             });
             let corner = ((t[1] as i32 * CELL + h - 1) * ATLAS_W + t[0] as i32 * CELL + w - 1) as usize;
-            assert_eq!(a.px[corner], px[px.len() - 1], "{name}");
+            let last = px[px.len() - 1];
+            assert_eq!(a.px[corner], rgba5551(last, alpha(name) && last == 0xF81F), "{name}");
         });
     }
 }

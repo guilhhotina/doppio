@@ -1,18 +1,46 @@
+[map] name="Pedra Seca — o sobrado" w=54 h=20 sky=moon fog=3,3,5 fog_near=4 fog_far=16 legend=corposeco power=off
+
+[area]
+0 térreo
+1 andar de cima
+
+[room]
+v varanda floor=lajota wall=reboco ceil=forro light=20 area=0
+s sala_estar floor=taco wall=papel_floral ceil=forro light=40 area=0
+j sala_jantar floor=taco wall=reboco ceil=forro light=25 area=0
+k cozinha floor=ceramica wall=azulejo ceil=forro light=45 area=0
+c corredor floor=taco wall=papel_floral ceil=forro light=10 area=0
+a quarto_vo floor=taco wall=reboco_mofo ceil=forro light=22 area=0
+q quarto floor=taco wall=reboco ceil=forro light=15 area=0
+b banheiro floor=ceramica wall=azulejo ceil=reboco light=12 area=0
+l area_servico floor=lajota wall=reboco_mofo ceil=concreto light=6 area=0
+d despensa floor=concreto wall=reboco_mofo ceil=concreto light=3 area=0
+e corredor_lateral floor=terra wall=tijolo ceil=- light=8 area=0 out=1
+y quintal floor=grama wall=tijolo ceil=- light=12 area=0 out=1
+V varanda_de_cima area=1 floor=lajota wall=reboco ceil=- ext=reboco light=14 out=1
+S sala_costura area=1 floor=assoalho wall=papel_listrado ceil=forro_pintado light=18
+N quarto_benedita area=1 floor=assoalho wall=papel_listrado ceil=forro_pintado light=16
+T quarto_tonho area=1 floor=assoalho wall=papel_listrado ceil=forro_pintado light=14
+G quarto_bia area=1 floor=assoalho wall=reboco ceil=forro_pintado light=14
+J quarto_jairo area=1 floor=assoalho wall=papel_listrado ceil=forro_pintado light=12
+U banheiro_de_cima area=1 floor=ceramica wall=azulejo ceil=forro_pintado light=10
+C corredor_de_cima area=1 floor=assoalho wall=papel_listrado ceil=forro_pintado light=6
+
 [solid]
-#WWW#WWW#WWW#WWW#WWW#WW#####
-W..................BBB.#...#
-W......................D...#
-##W#D##W####W#W####W#W##...#
-#........#.....B#BB...B#...#
-#........#......#.....BWBB.#
-WB..B....#..BB..D......#...#
-#B..B....D..BB..#..BB..W...#
-#...B....#......#......#.BB#
-#BB....B.#......#.....B#...#
-####D#######D######D####...#
-W...............D.....B#..B#
-###D####D####D###......D...#
-#B..BB#B.BB#...B#B.....#...#
+#WWW#WWW#WWW#WWW#WWW#WW#####  #|||||||||#WWWW###WWWW##
+W..................BBB.#...#  |.........#BBB...#BB..B#
+W......................D...#  |.........#BB....#BB...#
+##W#D##W####W#W####W#W##...#  ####D######.....B#....B#
+#........#.....B#BB...B#...#  #.B.....B.#.....B#....B#
+#........#......#.....BWBB.#  W....BB...#B.....#.....W
+WB..B....#..BB..D......#...#  #.........#......#.....#
+#B..B....D..BB..#..BB..W...#  #####D########D#####D###
+#...B....#......#......#.BB#  #......................W
+#BB....B.#......#.....B#...#  #.#####D#####D######D###
+####D#######D######D####...#  #.#BB.....#BB....#B...B#
+W.P.............D.....B#..B#  WP#BB....B#BB...B#.....P
+###D####D####D###......D...#  ###......B#.....B#.BB..#
+#B..BB#B.BB#...B#B.....#...#  ###WWW#####WWWW###WW####
 #...BB#..BB#....###D####...#
 W.....#....#...B#B...BB#...#
 #.....#B...#B...#......D..B#
@@ -21,56 +49,220 @@ W.....#....#...B#B...BB#...#
                        #####
 
 [rooms]
-----------------------------
--vvvvvvvvvvvvvvvvvvvvvv-eee-
--vvvvvvvvvvvvvvvvvvvvvv-eee-
-------------------------eee-
--ssssssss-jjjjjj-kkkkkk-eee-
--ssssssss-jjjjjj-kkkkkk-eee-
--ssssssss-jjjjjj-kkkkkk-eee-
--ssssssss-jjjjjj-kkkkkk-eee-
--ssssssss-jjjjjj-kkkkkk-eee-
--ssssssss-jjjjjj-kkkkkk-eee-
-------------------------eee-
--ccccccccccccccc-llllll-yyy-
------------------llllll-yyy-
--aaaaa-qqqq-bbbb-llllll-yyy-
--aaaaa-qqqq-bbbb--------yyy-
--aaaaa-qqqq-bbbb-dddddd-yyy-
--aaaaa-qqqq-bbbb-dddddd-yyy-
--aaaaa-qqqq-bbbb-dddddd-yyy-
-------------------------yyy-
-----------------------------
-
-[room]
-v varanda floor=lajota wall=reboco ceil=forro light=20
-s sala_estar floor=taco wall=papel_floral ceil=forro light=40
-j sala_jantar floor=taco wall=reboco ceil=forro light=25
-k cozinha floor=ceramica wall=azulejo ceil=forro light=45
-c corredor floor=taco wall=papel_floral ceil=forro light=10
-a quarto_vo floor=taco wall=reboco_mofo ceil=forro light=22
-q quarto floor=taco wall=reboco ceil=forro light=15
-b banheiro floor=ceramica wall=azulejo ceil=reboco light=12
-l area_servico floor=lajota wall=reboco_mofo ceil=concreto light=6
-d despensa floor=concreto wall=reboco_mofo ceil=concreto light=3
-e corredor_lateral floor=terra wall=tijolo ceil=- light=8
-y quintal floor=grama wall=tijolo ceil=- light=12
+------------------------------------------------------
+-vvvvvvvvvvvvvvvvvvvvvv-eee----VVVVVVVVV-NNNNNN-TTTTT-
+-vvvvvvvvvvvvvvvvvvvvvv-eee----VVVVVVVVV-NNNNNN-TTTTT-
+------------------------eee-------V------NNNNNN-TTTTT-
+-ssssssss-jjjjjj-kkkkkk-eee----SSSSSSSSS-NNNNNN-TTTTT-
+-ssssssss-jjjjjj-kkkkkk-eee----SSSSSSSSS-NNNNNN-TTTTT-
+-ssssssss-jjjjjj-kkkkkk-eee----SSSSSSSSS-NNNNNN-TTTTT-
+-ssssssss-jjjjjj-kkkkkk-eee--------C--------C-----C---
+-ssssssss-jjjjjj-kkkkkk-eee----CCCCCCCCCCCCCCCCCCCCCC-
+-ssssssss-jjjjjj-kkkkkk-eee----C-----C-----C------C---
+------------------------eee----C-GGGGGGG-JJJJJJ-UUUUU-
+-ccccccccccccccc-llllll-yyy----C-GGGGGGG-JJJJJJ-UUUUUU
+-----------------llllll-yyy------GGGGGGG-JJJJJJ-UUUUU-
+-aaaaa-qqqq-bbbb-llllll-yyy---------------------------
+-aaaaa-qqqq-bbbb--------yyy---------------------------
+-aaaaa-qqqq-bbbb-dddddd-yyy---------------------------
+-aaaaa-qqqq-bbbb-dddddd-yyy---------------------------
+-aaaaa-qqqq-bbbb-dddddd-yyy---------------------------
+------------------------yyy---------------------------
+------------------------------------------------------
 
 [door]
 4 3 h open
 9 7 v open
 16 6 v open
 19 10 h open
-23 12 v open
+23 12 v stuck
 19 14 h closed
-23 16 v locked
+23 16 v stuck
 4 10 h open
 12 10 h closed
 16 11 v open
 3 12 h closed
 8 12 h open
 13 12 h closed
-23 2 v closed
+23 2 v locked:tabuas
+34 3 h closed
+35 7 h open
+44 7 h closed
+50 7 h open
+37 9 h closed
+43 9 h open
+50 9 h closed
+
+[portal]
+2 11 -> 31 10 180 escada
+31 11 -> 4 11 90 escada
+53 11 -> 25 13 0 janela_alta lock=trinco
+
+[lock]
+tabuas tool pe_de_cabra
+cristal key chavinha
+caixa code 317
+luz place fusivel 21 13
+trinco tool chave_de_fenda
+corrente tool alicate
+cadeado key chave_portao
+saida all corrente cadeado luz
+
+[item]
+chavinha chave 5.5 15.5
+chave_portao chave 15.5 4.5
+pe_de_cabra pe_de_cabra 19.5 12.5
+alicate alicate 24.5 17.5
+chave_de_fenda chave_de_fenda 33.5 6.5
+fusivel fusivel 22.5 17.5
+sal sal 21.5 8.5
+cruz cruz 41.5 5.5
+pilha_quarto lanterna_pilha 8.5 15.5
+pilha_jairo lanterna_pilha 44.5 12.5
+foto foto 50.5 5.5
+
+[prop]
+rede 20.5 1.5 90
+cadeira 2.5 1.5 180
+cadeira 6.5 1.5 180
+cortina 11.5 1.1 0
+rack 1.5 6.5 90
+tv_tubo 1.5 7 90
+sofa 4.5 7.5 270
+poltrona 2.5 9.4 135
+abajur 1.5 9.5 0
+estante 7.5 9.6 180
+cortina 1.1 6.5 90
+cortina 2.5 4.1 0
+cortina 7.5 4.1 0
+mesa 13 7 0
+cadeira 11.6 6.5 90
+cadeira 11.6 7.5 90
+cadeira 14.4 6.5 270
+cadeira 14.4 7.5 270
+cadeira 12.5 5.6 0
+cadeira 13.5 8.4 180
+cristaleira 15.5 4.5 270 lock=cristal item=chave_portao
+relogio_parede 10.1 5.5 90
+cortina 12.5 4.1 0
+geladeira 17.5 4.5 0
+fogao 18.5 4.5 0
+pia 22.5 5 270
+filtro_barro 22.5 9.5 270
+mesa 20 7.5 0
+cadeira 19.5 8.4 180
+cortina 19.5 4.1 0
+quadro_santo 7.5 11.1 0
+cortina 1.1 11.5 90
+criado_mudo 1.5 13.5 0
+abajur 1.5 13.5 0
+cama 5 14 0
+guarda_roupa 2 17.5 180
+quadro_santo 5.9 16 270
+cortina 1.1 15.5 90
+cama 10 14 0
+criado_mudo 7.5 13.5 0
+guarda_roupa 7.5 16.5 90
+cortina 9.5 17.9 180
+vaso 15.5 13.5 270
+pia 15.5 15.5 270
+espelho 15.9 15.5 270
+banheira 12.5 17 90
+cortina 14.5 17.9 180
+pia 22.5 11.5 270
+disjuntor 21.5 13.9 180
+estante 17.5 13.5 90
+estante 17.5 15.5 90
+estante 22 15.5 0
+estante 18 17.5 180
+estante 20.5 17.5 180
+geladeira 24.5 5.5 0
+poltrona 25.5 5.5 180
+estante 25.5 8.5 90
+cadeira 26.5 8.5 270
+cadeira 26.5 11.5 270
+pia 26.5 16.5 270
+disjuntor 25.5 18.9 180
+escada 2.5 11.5 270
+bau 5.4 15.5 270 item=chavinha
+cofre 22.5 17.5 270 lock=caixa item=fusivel
+calendario 17.1 8.5 90
+portao_ferro 25.5 0.9 0
+caixa_correio 26.8 4.5 270
+cadeira 32.5 1.5 180
+cadeira 34.5 1.5 180
+moringa 38.5 1.4 0
+maquina_costura 32.5 4.5 0
+cadeira 32.5 5.4 180
+estante 38.5 4.5 0
+mesa 36 5.5 0
+cortina 30.1 5.5 90
+radio_antigo 39.5 6.6 180
+cama 42 2 0
+criado_mudo 43.5 1.5 0
+guarda_roupa 46.5 4 270
+oratorio 41.5 5.5 90 item=cruz
+vela_castical 41.8 5.1 90
+cama 49 2 0
+estante 52.5 1.5 270
+guarda_roupa 52.5 4 270
+cortina 52.9 5.5 270
+cama 42 11 90
+criado_mudo 41.5 12.5 90
+guarda_roupa 46.5 12 270
+cama 34 11 90
+guarda_roupa 39.5 12 270
+abajur 33.5 12.5 0
+pia 48.5 10.5 0
+espelho 48.5 10.1 0
+vaso 52.5 10.5 270
+banheira 50 12.5 0
+quadro_santo 40.5 8.9 180
+relogio_parede 46.5 8.1 0
+quadro_santo 40.1 3.5 90
+cortina 44.5 1.1 0
+cortina 50.5 1.1 0
+cortina 34.5 12.9 180
+cortina 43.5 12.9 180
+cortina 49.5 12.9 180
+
+[hide]
+7 9 armario 180
+12 7 mesa 0
+20 7 mesa 0
+22 5 armario 270
+4 14 cama 0
+2 17 guarda_roupa 180
+9 14 cama 0
+7 16 guarda_roupa 90
+15 15 armario 270
+17 13 armario 90
+21 15 armario 0
+38 4 armario 0
+35 5 mesa 0
+42 2 cama 0
+46 4 guarda_roupa 270
+49 2 cama 0
+52 4 guarda_roupa 270
+42 11 cama 90
+46 12 guarda_roupa 270
+34 11 cama 90
+39 12 guarda_roupa 270
+48 10 armario 0
+
+[note]
+17 8 calendario "Folhinha de abril. Sexta-feira da Paixão circulada e, na margem, a letra da vó: caixa da despensa 3-1-7."
+40 3 quadro_santo "Corpo-seco foi homem tão ruim que nem o céu nem a terra quiseram. Anda seco na noite santa, atrás de gente."
+36 5 mesa "Sal grosso na soleira: o Corpo-seco não passa. Cruz benta na mão da benzedeira: ele não encosta."
+5 16 quadro_santo "Ele ouve passo, não enxerga no escuro. Anda devagar. Se não te viu entrar no armário, não te acha."
+1 13 criado_mudo "Recado da vó: a chavinha do baú abre a cristaleira. A chave do portão mora lá dentro."
+22 14 parede "Quadro de luz sem fusível. Tem um de reserva na caixa da despensa, aquela do segredo."
+26 4 caixa_correio "Portão elétrico: sem luz não abre. E o vô passou corrente e cadeado. Alicate tem no quintal."
+53 12 parede "O trinco do basculante foi aparafusado por dentro. Com uma chave de fenda dá pra sair pelo telhado."
+
+[light]
+41.8 5.1 1.2 255,160,80 3 flicker
+25.5 1.4 2.8 255,200,140 4 flicker
 
 [cam]
 ; doorways: seen from the side you walk into, never from behind a door that can close
@@ -114,97 +306,57 @@ y quintal floor=grama wall=tijolo ceil=- light=12
 24 6 26 10 26.7 2.8 1.3 24 0.4 10.5 56
 24 11 26 14 25.5 3.2 18.7 24.5 0.5 10.5 56
 24 15 26 18 25 2.8 11 25.5 0.3 18.8 60
+; andar de cima: varanda lengthwise from the far corner, the railing and the night beyond
+31 1 35 2 39.6 2.4 2.6 31 0.6 1.2 56
+36 1 39 2 31.4 2.4 2.6 39.6 0.6 1.2 56
+; costura: the varanda door from the cutting table, then corner shots across the machine
+34 3 34 3 34.5 1.8 6.6 34.5 1.2 1 50
+35 7 35 7 35.5 2.3 4.2 35.5 0.6 9 60
+31 4 35 6 39.4 2.4 6.6 31 0.6 4.2 62
+36 4 39 6 31.6 2.4 6.6 39.6 0.6 4.2 62
+; quartos: the door seen from the bed, then the room from the corner by the door
+44 7 44 7 44.5 2.3 1.6 44.5 0.6 8.4 60
+41 1 46 6 41.4 2.4 6.6 46.6 0.6 1.2 64
+50 7 50 7 50.5 2.3 1.6 50.5 0.6 8.4 60
+48 1 52 6 48.1 2.4 6.9 53 0.6 1 64
+37 9 37 9 37.5 2.3 12.6 37.5 0.6 7.8 60
+33 10 39 12 39.6 2.4 10.3 33 0.5 12.6 62
+43 9 43 9 43.5 2.3 12.6 43.5 0.6 7.8 60
+41 10 46 12 46.6 2.4 10.3 41 0.5 12.6 62
+50 9 50 9 50.5 2.3 12.6 50.5 0.6 7.8 60
+53 11 53 11 49.4 2.3 11.5 53.6 1.2 11.5 50
+48 10 52 12 52.8 2.4 12.8 48 0.6 10 62
+; corredor de cima: down the stairwell from the landing, then the long hall both ways
+31 9 31 11 31.5 2.4 8.2 31.5 0.3 11.6 60
+31 8 41 8 46.6 2.3 8.5 30.5 1 8.5 50
+42 8 52 8 36.4 2.3 8.5 53.5 1 8.5 50
 
-[prop]
-rede 20.5 1.5 90
-cadeira 2.5 1.5 180
-cadeira 6.5 1.5 180
-cortina 11.5 1.1 0
-rack 1.5 6.5 90
-tv_tubo 1.5 7 90
-sofa 4.5 7.5 270
-poltrona 2.5 9.4 135
-abajur 1.5 9.5 0
-estante 7.5 9.6 180
-cortina 1.1 6.5 90
-cortina 2.5 4.1 0
-cortina 7.5 4.1 0
-mesa 13 7 0
-cadeira 11.6 6.5 90
-cadeira 11.6 7.5 90
-cadeira 14.4 6.5 270
-cadeira 14.4 7.5 270
-cadeira 12.5 5.6 0
-cadeira 13.5 8.4 180
-cristaleira 15.5 4.5 270
-relogio_parede 10.1 5.5 90
-cortina 12.5 4.1 0
-geladeira 17.5 4.5 0
-fogao 18.5 4.5 0
-pia 22.5 5 270
-filtro_barro 22.5 9.5 270
-mesa 20 7.5 0
-cadeira 19.5 8.4 180
-cortina 19.5 4.1 0
-quadro_santo 7.5 11.1 0
-cortina 1.1 11.5 90
-criado_mudo 1.5 13.5 0
-abajur 1.5 13.5 0
-cama 5 14 0
-guarda_roupa 2 17.5 180
-quadro_santo 5.9 16 270
-cortina 1.1 15.5 90
-cama 10 14 0
-criado_mudo 7.5 13.5 0
-guarda_roupa 7.5 16.5 90
-cortina 9.5 17.9 180
-vaso 15.5 13.5 270
-pia 15.5 15.5 270
-espelho 15.9 15.5 270
-banheira 12.5 17 90
-cortina 14.5 17.9 180
-pia 22.5 11.5 270
-disjuntor 21.5 13.9 180
-estante 17.5 13.5 90
-estante 17.5 15.5 90
-estante 22 15.5 0
-estante 18 17.5 180
-estante 20.5 17.5 180
-geladeira 24.5 5.5 0
-poltrona 25.5 5.5 180
-estante 25.5 8.5 90
-cadeira 26.5 8.5 270
-cadeira 26.5 11.5 270
-pia 26.5 16.5 270
-disjuntor 25.5 18.9 180
+[wake]
+0 43.5 2.5 90
+1 50.5 2.5 90
+2 43.5 11.5 90
+3 35.5 11.5 90
 
-[spot]
-spawn 2.5 5.5 135
-spawn 6.5 5.5 225
-spawn 3.5 8.5 45
-spawn 6.5 8.5 315
-spawn 11.5 8.5 0
-spawn 14.5 5.5 270
-task window 11 1
-task window 2 4
-task window 12 4
-task window 19 4
-task window 1 11
-task window 1 15
-task window 9 17
-task window 14 17
-task breaker 21 13
-task breaker 25 18
-task key 2 13
-task key 8 13
-task key 15 5
-task key 21 17
-task key 24 6
-task tv 2 7
-task gas 18 5
-task faucet 21 5
-task faucet 14 15
-task faucet 21 11
-task faucet 25 16
-final 17 15 22 17
-exit 23 16
+[legend]
+spawn 20.5 16.5 0
+patrol 20 16
+patrol 20 12
+patrol 12 11
+patrol 5 6
+patrol 12 8
+patrol 19 6
+patrol 13 15
+patrol 3 15
+patrol 3 11
+patrol 36 8
+patrol 34 5
+patrol 44 4
+patrol 50 4
+patrol 48 8
+patrol 44 11
+patrol 36 11
+patrol 31 9
+lair 20 16
+
+[exit]
+24 1 26 1 lock=saida

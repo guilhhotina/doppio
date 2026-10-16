@@ -8,8 +8,7 @@ pub const LEFT: u16 = 1 << 6;
 pub const RIGHT: u16 = 1 << 7;
 pub const A: u16 = 1 << 8;
 pub const X: u16 = 1 << 9;
-pub const BUTTONS: u16 = B | Y | UP | DOWN | LEFT | RIGHT | A | X;
-pub const MOVE: u16 = UP | DOWN | LEFT | RIGHT | Y;
+pub const DROP: u16 = 1 << 10;
 
 pub const WALK: Fx = Fx::ratio(13, 300);
 pub const BACK: Fx = Fx::ratio(8, 300);
@@ -42,14 +41,6 @@ pub struct Motion {
 
 pub fn pressed(prev: u16, input: u16, bit: u16) -> bool {
     input & bit != 0 && prev & bit == 0
-}
-
-pub fn mirrored(input: u16) -> u16 {
-    let swap = |a: u16, b: u16| match (input & a != 0, input & b != 0) {
-        (true, false) | (false, true) => a | b,
-        _ => 0,
-    };
-    input ^ swap(UP, DOWN) ^ swap(LEFT, RIGHT)
 }
 
 impl Tank {
@@ -103,8 +94,6 @@ mod tests {
         assert_eq!(t.drive(Ang::ZERO, DOWN | B).delta.y, -BACK);
         assert_eq!(t.drive(Ang::ZERO, LEFT).heading, Ang(TURN));
         assert_eq!(t.drive(Ang::ZERO, RIGHT).gait, Gait::Turn);
-        assert_eq!(mirrored(UP | LEFT | A), DOWN | RIGHT | A);
-        assert_eq!(mirrored(UP | DOWN), UP | DOWN);
     }
 
     #[test]
