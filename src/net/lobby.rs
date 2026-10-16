@@ -10,7 +10,7 @@ const CORE_NAME: &str = "doppio";
 const RELAYED: i64 = 3;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Listing {
+pub enum Listing {
     Idle,
     Loading,
     Ready,
@@ -73,6 +73,10 @@ impl Lobby {
 
     pub fn rooms(&self) -> &[Room] {
         &self.rooms[..self.count]
+    }
+
+    pub fn listing(&self) -> Listing {
+        self.listing
     }
 
     pub fn refresh(&mut self, fe: &Frontend) {

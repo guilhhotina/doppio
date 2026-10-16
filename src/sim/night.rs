@@ -80,6 +80,9 @@ impl World {
         if t % FIELD_EVERY == 0 {
             self.chase_field();
         }
+        self.aim_cameras();
+        self.recall(t);
+        self.shadows();
         let mut drive = [0u16; MAX_BODIES];
         (0..self.players_n as usize).for_each(|p| {
             let input = match self.capture[p] {
@@ -90,18 +93,20 @@ impl World {
             drive[self.players[p].body as usize] = input;
         });
         (0..MAX_BODIES).for_each(|i| {
-            if self.ctl[i].agent == Agent::Echo {
-                drive[i] = self.echo_input(i);
+            if self.ctl[i].agent == Agent::Echo && !self.stage(i) {
+                drive[i] = self.copy_input(i);
             }
         });
         (0..MAX_BODIES).for_each(|i| {
             let staggered = match self.ctl[i].agent {
                 Agent::Free => return,
+                Agent::Echo if !self.bodies[i].visible => return,
                 Agent::Player(p) => self.capture[p as usize] > 0,
                 Agent::Echo => false,
             };
             self.drive_body(i, drive[i], staggered);
         });
+        self.echo_steps();
         self.swing_doors();
         self.catch();
         self.fades();
@@ -109,6 +114,7 @@ impl World {
             self.finale(&drive);
         }
         self.sync_players();
+        self.remember(t);
         self.phase_tic += 1;
         if self.phase == (Phase::Night { night }) && self.phase_tic >= self.night_tics {
             self.end_night(night);

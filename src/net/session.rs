@@ -58,6 +58,7 @@ pub struct Session {
     own_hashes: [(u32, u32); HASHES],
     remote_hashes: [(u32, u32); PENDING],
     desynced: bool,
+    reason: Option<Reason>,
 }
 
 fn ring(tic: u32) -> usize {
@@ -90,6 +91,7 @@ impl Session {
             own_hashes: [NO_HASH; HASHES],
             remote_hashes: [NO_HASH; PENDING],
             desynced: false,
+            reason: None,
         };
         s.publish(&mut ());
         s
@@ -136,12 +138,26 @@ impl Session {
         self.desynced
     }
 
+    pub fn reason(&self) -> Option<Reason> {
+        self.reason
+    }
+
     pub fn accepting(&self) -> bool {
         self.role == Role::Host && self.game.is_none() && !self.lost
     }
 
     pub fn lose(&mut self) {
         self.lost |= self.role != Role::Offline;
+    }
+
+    pub fn keepalive(&mut self, w: &mut impl Wire) {
+        if self.role == Role::Host && self.game.is_none() && !self.lost {
+            self.publish(w);
+        }
+    }
+
+    pub fn set_nick(&mut self, nick: [u8; NICK]) {
+        self.nick = nick;
     }
 
     fn hello(&self, w: &mut impl Wire) {
@@ -418,7 +434,10 @@ impl Session {
             (Role::Client, Msg::Start { seed, players, night_secs, slots }) => self.client_start(seed, players, night_secs, slots),
             (Role::Client, Msg::Tic { tic, inputs }) => self.client_tic(tic, inputs),
             (Role::Client, Msg::Hash { tic, hash }) => self.remote_hash(tic, hash),
-            (Role::Client, Msg::Leave { .. }) => self.lose(),
+            (Role::Client, Msg::Leave { reason }) => {
+                self.reason = Some(reason);
+                self.lose();
+            }
             _ => {}
         }
     }

@@ -71,8 +71,18 @@ pub fn world(w: &World) -> u32 {
     });
     let h = w.echo.iter().fold(h, |h, e| {
         let [m, arg] = mode(e.mode);
-        h.words(&[e.tape as u32, e.cursor, e.left as u32 | (e.hunt as u32) << 8 | (e.glitchy as u32) << 9, m, arg])
+        let flags = e.left as u32 | (e.hunt as u32) << 8 | (e.glitchy as u32) << 9 | (e.watched as u32) << 10 | (e.armed as u32) << 11;
+        h.words(&[
+            e.tape as u32,
+            e.cursor,
+            flags | (e.lure as u32) << 16 | (e.shadow as u32) << 24,
+            m,
+            arg,
+            e.wait as u32 | (e.look as u16 as u32) << 16,
+            e.chase as u32 | (e.due as u32) << 16 | (e.of as u32) << 24,
+        ])
     });
+    let h = w.captor.iter().fold(h, |h, &c| h.word(c as u32));
     let h = w.players.iter().zip(&w.capture).fold(h, |h, (p, &c)| {
         let role = match p.role {
             Role::Living => 0,

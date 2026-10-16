@@ -1,4 +1,5 @@
 use super::capture::GRACE_TICS;
+use super::scare::LURE_PERCENT;
 use super::tank::{mirrored, A, LEFT, RIGHT};
 use super::tape::SEG;
 use super::{Event, World, MAX_PLAYERS};
@@ -24,10 +25,35 @@ pub struct Echo {
     pub mode: Mode,
     pub hunt: bool,
     pub glitchy: bool,
+    pub wait: u16,
+    pub look: i16,
+    pub watched: bool,
+    pub chase: u16,
+    pub lure: u8,
+    pub armed: bool,
+    pub shadow: u8,
+    pub due: u8,
+    pub of: u8,
 }
 
 impl Echo {
-    pub const NONE: Echo = Echo { tape: 0, cursor: 0, left: 0, mode: Mode::Play, hunt: false, glitchy: false };
+    pub const NONE: Echo = Echo {
+        tape: 0,
+        cursor: 0,
+        left: 0,
+        mode: Mode::Play,
+        hunt: false,
+        glitchy: false,
+        wait: 0,
+        look: 0,
+        watched: false,
+        chase: 0,
+        lure: 0,
+        armed: false,
+        shadow: 0,
+        due: 0,
+        of: 0,
+    };
 
     pub fn new(tape: u8, night: u8, extra: bool) -> Echo {
         let hunt = extra || night >= 4;
@@ -114,7 +140,11 @@ impl World {
             }
             _ => (Mode::Play, cursor),
         };
-        self.echo[i] = Echo { mode, cursor, left: SEG as u8, ..e };
+        let armed = match e.armed || self.night() < 3 {
+            true => e.armed,
+            false => self.rng.below(100) < LURE_PERCENT,
+        };
+        self.echo[i] = Echo { mode, cursor, armed, left: SEG as u8, ..e };
     }
 
     fn glitch(&mut self, tape: u8, cursor: u32) -> Mode {

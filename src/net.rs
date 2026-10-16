@@ -8,12 +8,15 @@ use crate::core::Frontend;
 use crate::sim::Setup;
 use glue::{Event, Packets};
 use lobby::Lobby;
-use proto::{Msg, Reason};
+use proto::Msg;
 use session::{BROADCAST, HOST, Role, Session};
 
 pub use glue::register;
+pub use lobby::Listing;
+pub use proto::Reason;
 
 const DEFAULT_NIGHT_SECS: u32 = 360;
+const KEEPALIVE_POLLS: u32 = 120;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Link {
@@ -59,6 +62,8 @@ pub struct Net {
     session: Session,
     request: Option<Request>,
     start_pending: bool,
+    night: Option<u32>,
+    polls: u32,
 }
 
 pub fn name(bytes: &[u8]) -> &str {
@@ -72,28 +77,36 @@ fn fit<const N: usize>(s: &str) -> [u8; N] {
     std::array::from_fn(|i| if i < end { s.as_bytes()[i] } else { 0 })
 }
 
-fn night_secs(fe: &Frontend) -> u32 {
-    fe.variable(c"doppio_night_seconds")
-        .and_then(|v| v.trim().parse().ok())
+fn night_secs(fe: &Frontend, chosen: Option<u32>) -> u32 {
+    chosen
+        .or_else(|| fe.variable(c"doppio_night_seconds").and_then(|v| v.trim().parse().ok()))
         .filter(|s| (60..=3600).contains(s))
         .unwrap_or(DEFAULT_NIGHT_SECS)
 }
 
-fn fresh_seed() -> u32 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0x5EED, |d| d.subsec_nanos() ^ (d.as_secs() as u32).rotate_left(13))
+fn fresh_seed(fe: &Frontend) -> u32 {
+    fe.variable(c"doppio_seed").and_then(|v| v.trim().parse().ok()).unwrap_or_else(|| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0x5EED, |d| d.subsec_nanos() ^ (d.as_secs() as u32).rotate_left(13))
+    })
+}
+
+fn nick(fe: &Frontend) -> [u8; proto::NICK] {
+    let name = fe.username().filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "jogador".into());
+    fit(name.trim())
 }
 
 impl Net {
     pub fn new(fe: &Frontend) -> Net {
-        let nick = fe.username().filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "jogador".into());
         Net {
             lobby_ok: lobby::supported(fe),
             lobby: Lobby::new(),
-            session: Session::new(fit(nick.trim())),
+            session: Session::new(nick(fe)),
             request: None,
             start_pending: false,
+            night: None,
+            polls: 0,
         }
     }
 
@@ -109,6 +122,18 @@ impl Net {
 
     pub fn rooms(&self) -> &[Room] {
         self.lobby.rooms()
+    }
+
+    pub fn listing(&self) -> Listing {
+        self.lobby.listing()
+    }
+
+    pub fn lost_reason(&self) -> Option<Reason> {
+        self.session.reason()
+    }
+
+    pub fn set_night_secs(&mut self, secs: u32) {
+        self.night = Some(secs);
     }
 
     pub fn host(&mut self, public: bool, relay: Option<&str>) {
@@ -199,20 +224,25 @@ impl Net {
             self.lobby.poll(env);
         }
         glue::pump();
-        std::iter::from_fn(glue::next).for_each(|e| self.event(e));
+        std::iter::from_fn(glue::next).for_each(|e| self.event(e, env));
         if glue::take_overflow() {
             self.session.lose();
         }
         if std::mem::take(&mut self.start_pending) {
-            self.session.start(fresh_seed(), night_secs(env), &mut Packets);
+            self.session.start(fresh_seed(env), night_secs(env, self.night), &mut Packets);
+        }
+        self.polls = self.polls.wrapping_add(1);
+        if self.polls % KEEPALIVE_POLLS == 0 {
+            self.session.keepalive(&mut Packets);
         }
         glue::set_open(self.session.accepting());
     }
 
-    fn event(&mut self, e: Event) {
+    fn event(&mut self, e: Event, env: &Frontend) {
         match e {
             Event::Start { me } => {
                 self.start_pending = false;
+                self.session.set_nick(nick(env));
                 self.session.reset(if me == HOST { Role::Host } else { Role::Client }, me, &mut Packets);
             }
             Event::Packet { from, len, data } => {

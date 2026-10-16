@@ -132,10 +132,6 @@ impl Frustum {
             p[0] * v[0] + p[1] * v[1] + p[2] * v[2] + p[3] >= 0.0
         })
     }
-
-    pub fn sphere(&self, c: V3, r: f32) -> bool {
-        self.aabb(sub(c, [r; 3]), add(c, [r; 3]))
-    }
 }
 
 #[cfg(test)]

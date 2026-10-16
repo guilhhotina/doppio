@@ -13,7 +13,7 @@ mod tests;
 use crate::assets::TEXTURES;
 use crate::fx::Rng;
 use crate::map::{Map, Tile};
-use crate::sim::{Anim, Event, Events, MAX_PLAYERS, Phase, Role, World};
+use crate::sim::{Anim, Event, Events, MAX_PLAYERS, Phase, Role, TaskKind, World};
 use bed::Bed;
 use cue::Floor;
 use space::{Ear, point, room_near};
@@ -28,6 +28,8 @@ const BELL: Place = Place { left: 0.3, right: 0.42, muffle: 0.85 };
 const ROOSTER: Place = Place { left: 0.45, right: 0.3, muffle: 0.6 };
 const BIRDS: Place = Place { left: 0.35, right: 0.5, muffle: 0.25 };
 const MUFFLE_HZ: f32 = 650.0;
+const DRIP_EVERY: u32 = 41;
+const DRIP_DOUBLE: u32 = 9;
 
 pub struct Audio {
     rate: f32,
@@ -43,6 +45,7 @@ pub struct Audio {
     routes: [[i32; 4]; SLOTS],
     last: [i32; 2],
     spill: Option<[i32; 2]>,
+    drip_tic: u32,
 }
 
 fn prop(map: &Map<'_>, kind: &str) -> Option<(f32, f32)> {
@@ -86,6 +89,7 @@ impl Audio {
             bus: [0; BLOCK],
             bus_lp: [0; 2],
             bus_a: dsp::q(dsp::one_pole(MUFFLE_HZ, rate)),
+            drip_tic: u32::MAX,
             slots: [[0; HALF]; SLOTS],
             routes: std::array::from_fn(slot_gains),
             last: [0; 2],
@@ -176,6 +180,15 @@ impl Audio {
                     self.warble.kick(1.0 / (1.0 + 0.25 * d));
                 }
             }
+            Event::EchoStep { body: b, surface, of } => {
+                let run = (of as usize) < MAX_PLAYERS && body(world.player(of as usize).body).is_some_and(|(_, a)| matches!(a, Anim::Run));
+                if let Some(((x, y), _)) = body(b) {
+                    let floor = TEXTURES.get(surface as usize).map_or(Floor::Wood, |(name, _)| Floor::of(name));
+                    let step = cue::footstep(floor, run, &mut self.rng);
+                    self.play(&[Patch { gain: step.gain * 0.8, ..step }], Self::at(world, ear, x, y));
+                }
+            }
+            Event::CaughtBy { .. } => {}
         }
     }
 
@@ -191,7 +204,7 @@ impl Audio {
 
     pub fn ambience(&mut self, world: &World, listener: u8) {
         let Some(ear) = Ear::new(world, listener) else {
-            [&mut self.bed.hum, &mut self.bed.clock, &mut self.bed.wind, &mut self.bed.tv, &mut self.bed.tone, &mut self.bed.drone]
+            [&mut self.bed.hum, &mut self.bed.clock, &mut self.bed.wind, &mut self.bed.tv, &mut self.bed.hiss, &mut self.bed.tone, &mut self.bed.drone]
                 .into_iter()
                 .for_each(|l| l.aim(Place::CENTER, 0.0));
             return;
@@ -202,11 +215,28 @@ impl Audio {
         let outdoor = ear.room.and_then(|id| map.rooms.iter().find(|r| r.id == id)).is_some_and(|r| r.ceil.is_none());
         let hum = prop(map, "geladeira").filter(|_| power).map_or((Place::CENTER, 0.0), |(x, y)| (ear.place(world, x, y), 0.05));
         let clock = near("relogio_parede").filter(|c| c.2).map_or((Place::CENTER, 0.0), |(x, y, _)| (ear.place(world, x, y), 0.12));
-        let tv = near("tv_tubo").filter(|t| t.2 && power).map_or((Place::CENTER, 0.0), |(x, y, _)| (ear.place(world, x, y), 0.035));
-        let wind = match outdoor {
-            true => (Place::CENTER, 0.06),
-            false => nearest_window(map, &ear).map_or((Place::CENTER, 0.0), |(x, y)| (ear.place(world, x, y), 0.07)),
+        let pending = |kind: TaskKind| {
+            world
+                .tasks()
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.kind == kind && t.active && !t.done)
+                .map(|(i, _)| point(world.task_spot(i)))
+                .find(|&(x, y)| ear.room.is_some() && room_near(map, x, y) == ear.room)
         };
+        let tv = pending(TaskKind::Tv).filter(|_| power).map_or((Place::CENTER, 0.0), |(x, y)| (ear.place(world, x, y), 0.035));
+        let hiss = pending(TaskKind::Gas).map_or((Place::CENTER, 0.0), |(x, y)| (ear.place(world, x, y), 0.03));
+        let wind = match (outdoor, pending(TaskKind::Window)) {
+            (true, _) => (Place::CENTER, 0.06),
+            (false, Some((x, y))) => (ear.place(world, x, y), 0.16),
+            (false, None) => nearest_window(map, &ear).map_or((Place::CENTER, 0.0), |(x, y)| (ear.place(world, x, y), 0.05)),
+        };
+        let tic = world.phase_tic();
+        if let Some((x, y)) = pending(TaskKind::Faucet).filter(|_| tic != self.drip_tic && matches!(tic % DRIP_EVERY, 0 | DRIP_DOUBLE)) {
+            self.drip_tic = tic;
+            let pitch = 0.9 + (tic / DRIP_EVERY % 5) as f32 * 0.05;
+            self.play(&cue::drip(pitch), ear.place(world, x, y));
+        }
         let tone = (Place::CENTER, if outdoor { 0.008 } else { 0.02 });
         let tension = match world.phase() {
             Phase::Night { night } if night >= 3 => nearest_copy(world, listener, &ear).map_or(0.0, |d| (1.0 - (d - 1.5) / 12.0).clamp(0.0, 1.0)),
@@ -216,6 +246,7 @@ impl Audio {
         self.bed.hum.aim(hum.0, hum.1);
         self.bed.clock.aim(clock.0, clock.1);
         self.bed.tv.aim(tv.0, tv.1);
+        self.bed.hiss.aim(hiss.0, hiss.1);
         self.bed.wind.aim(wind.0, wind.1);
         self.bed.tone.aim(tone.0, tone.1);
         self.bed.drone.aim(Place::CENTER, 0.11 * tension * tension.sqrt());

@@ -1,10 +1,12 @@
-use super::tape::Seg;
+use super::tape::{Seg, SEG};
 use super::{Body, TaskKind, World, MAX_BODIES};
 use crate::fx::Vec2;
 use crate::map::Tile;
 
 pub const FIELD_EVERY: u32 = 15;
 const CANDIDATES: u32 = 24;
+const CHASE_CANDIDATES: u32 = 48;
+const SPRINT: u8 = (SEG / 3) as u8;
 const BLOCKED_PENALTY: u32 = 4;
 const UNREACHED: u16 = u16::MAX;
 
@@ -83,14 +85,18 @@ impl World {
         self.tile_index(p).map_or(UNREACHED, |t| self.field[t])
     }
 
-    fn score(&self, b: &Body, here: u16, seg: Seg) -> u32 {
+    fn score(&self, b: &Body, here: u16, seg: Seg, chasing: bool) -> u32 {
         let end = b.pos + seg.d.rotate(b.heading);
         let steps = match self.distance_at(end) {
             UNREACHED => here as u32 + BLOCKED_PENALTY,
             d => d as u32,
         };
         let near = self.living_bodies().map(|l| (l.pos - end).len().0 >> 12).min().unwrap_or(0).clamp(0, 1023);
-        (steps << 10) | near as u32
+        let sprint = match chasing {
+            true => ((steps >= here as u32) as u32) << 31 | ((seg.run < SPRINT) as u32) << 30,
+            false => 0,
+        };
+        sprint | (steps << 10) | near as u32
     }
 
     pub(super) fn pick_segment(&mut self, i: usize) -> u32 {
@@ -98,10 +104,12 @@ impl World {
         let here = self.distance_at(b.pos);
         let base = self.echo[i].tape as usize * self.nseg as usize;
         let nseg = self.nseg;
-        (0..CANDIDATES)
+        let chasing = self.echo[i].chase > 0;
+        let tries = if chasing { CHASE_CANDIDATES } else { CANDIDATES };
+        (0..tries)
             .fold((u32::MAX, 0), |best, _| {
                 let s = self.rng.below(nseg);
-                let score = self.score(&b, here, self.segs[base + s as usize]);
+                let score = self.score(&b, here, self.segs[base + s as usize], chasing);
                 match score < best.0 {
                     true => (score, s),
                     false => best,

@@ -172,10 +172,19 @@ def check(path, texdir):
         steps = int(math.hypot(bx - ax, bz - az) * 10) + 1
         return all(tile(int(ax + (bx - ax) * s / steps), int(az + (bz - az) * s / steps)) not in "#W "
                    for s in range(1, steps))
+
+    def through_door(ax, az, x, y):
+        bx, bz = x + 0.5, y + 0.5
+        steps = int(math.hypot(bx - ax, bz - az) * 10) + 1
+        cells = {(int(ax + (bx - ax) * s / steps), int(az + (bz - az) * s / steps)) for s in range(0, steps)}
+        return any(tile(cx, cz) == "D" and (cx, cz) != (x, y) for cx, cz in cells)
+
     for (x, y), i in sorted(owner.items()):
         eye = cams[i][1]
         if not sees(eye[0], eye[2], x + 0.5, y + 0.5):
             errors.append("cam %d cannot see its tile %d,%d (wall in the way)" % (i + 1, x, y))
+        if through_door(eye[0], eye[2], x, y):
+            errors.append("cam %d looks at tile %d,%d through a door that can close" % (i + 1, x, y))
         dx, dz = eye[3] - eye[0], eye[5] - eye[2]
         vx, vz = x + 0.5 - eye[0], y + 0.5 - eye[2]
         half = math.degrees(math.atan(math.tan(math.radians(eye[6] / 2)) * 16 / 9))

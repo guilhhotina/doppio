@@ -5,8 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, CString, c_char, c_int, c_uint, c_void};
 use std::ptr::null;
 
-pub const WIDTH: u32 = 1920;
-pub const HEIGHT: u32 = 1080;
+pub const WIDTH: u32 = 1152;
+pub const HEIGHT: u32 = 648;
 pub const FRAME_RATE: u64 = 60;
 pub const FPS: f64 = FRAME_RATE as f64;
 pub const SAMPLE_RATE: u32 = 32000;

@@ -105,6 +105,7 @@ pub struct Bed {
     pub clock: Layer,
     pub wind: Layer,
     pub tv: Layer,
+    pub hiss: Layer,
     pub tone: Layer,
     pub drone: Layer,
     tension: f32,
@@ -112,7 +113,7 @@ pub struct Bed {
     wind_hi: Box<[i16; LOOP]>,
     static_: Box<[i16; LOOP]>,
     rumble: Box<[i16; LOOP]>,
-    pos: [usize; 3],
+    pos: [usize; 4],
     hum_phase: u32,
     hum_inc: u32,
     tick_t: u32,
@@ -146,6 +147,7 @@ impl Bed {
             clock: Layer::new(per_control(0.3), per_control(0.3)),
             wind: Layer::new(per_control(0.8), per_control(0.8)),
             tv: Layer::new(per_control(0.5), per_control(0.006)),
+            hiss: Layer::new(per_control(0.6), per_control(0.05)),
             tone: Layer::new(per_control(1.0), per_control(1.0)),
             drone: Layer::new(per_control(2.5), per_control(4.0)),
             tension: 0.0,
@@ -153,7 +155,7 @@ impl Bed {
             wind_hi: noise_loop(12, band(760.0, 0.35, rate)),
             static_: noise_loop(13, high(2500.0, rate)),
             rumble: noise_loop(14, low2(140.0, rate)),
-            pos: [0, LOOP / 3, 2 * LOOP / 3],
+            pos: [0, LOOP / 3, 2 * LOOP / 3, LOOP / 2],
             hum_phase: 0,
             hum_inc: cycles(60.0, rate),
             tick_t: 0,
@@ -181,7 +183,7 @@ impl Bed {
     }
 
     fn control(&mut self) {
-        [&mut self.hum, &mut self.clock, &mut self.wind, &mut self.tv, &mut self.tone, &mut self.drone]
+        [&mut self.hum, &mut self.clock, &mut self.wind, &mut self.tv, &mut self.hiss, &mut self.tone, &mut self.drone]
             .into_iter()
             .for_each(Layer::glide);
         let q15 = |x: f32| (x * UNIT as f32) as i32;
@@ -218,9 +220,10 @@ impl Bed {
             });
             (self.tick_env, self.tick_lp, self.tick_bp) = (env, lp, bp);
         }
-        let (hg, wg, tg, rg, dg) = (self.hum.gains(), self.wind.gains(), self.tv.gains(), self.tone.gains(), self.drone.gains());
-        let (hum_on, wind_on, tv_on, tone_on, drone_on) = (self.hum.on, self.wind.on, self.tv.on, self.tone.on, self.drone.on);
-        if !(hum_on || wind_on || tv_on || tone_on || drone_on) {
+        let (hg, wg, tg, sg, rg, dg) = (self.hum.gains(), self.wind.gains(), self.tv.gains(), self.hiss.gains(), self.tone.gains(), self.drone.gains());
+        let (hum_on, wind_on, tv_on, hiss_on) = (self.hum.on, self.wind.on, self.tv.on, self.hiss.on);
+        let (tone_on, drone_on) = (self.tone.on, self.drone.on);
+        if !(hum_on || wind_on || tv_on || hiss_on || tone_on || drone_on) {
             return;
         }
         let ([lo, hi], swell, rub) = (self.wind_mix, self.swell, (self.tension * 0.18 * UNIT as f32) as i32);
@@ -240,6 +243,9 @@ impl Bed {
             }
             if tv_on {
                 add(static_[pos[1]] as i32, &tg);
+            }
+            if hiss_on {
+                add(static_[pos[3]] as i32, &sg);
             }
             if tone_on {
                 add(rumble[pos[2]] as i32, &rg);
@@ -283,7 +289,7 @@ mod tests {
     fn layers_fade_in_and_stay_bounded() {
         let mut bed = Bed::new(16000.0);
         bed.set_tension(1.0);
-        [&mut bed.hum, &mut bed.clock, &mut bed.wind, &mut bed.tv, &mut bed.tone, &mut bed.drone]
+        [&mut bed.hum, &mut bed.clock, &mut bed.wind, &mut bed.tv, &mut bed.hiss, &mut bed.tone, &mut bed.drone]
             .into_iter()
             .for_each(|l| l.aim(Place { muffle: 0.5, ..Place::CENTER }, 0.1));
         let mut mix = vec![0; 32000 * 2];

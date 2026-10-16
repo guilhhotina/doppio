@@ -24,7 +24,7 @@ const SHIN: f32 = 0.43;
 
 pub struct Mannequin {
     pub mesh: Mesh,
-    pub seg: Vec<u8>,
+    normals: Vec<V3>,
 }
 
 fn limb(p: &mut Pen, len: f32, r0: f32, r1: f32, sides: usize) {
@@ -91,22 +91,23 @@ fn build_segment(seg: usize, p: &mut Pen, hi: bool) {
 
 impl Mannequin {
     pub fn new(hi: bool) -> Mannequin {
-        let (mut mesh, mut seg) = (Mesh::default(), Vec::new());
+        let mut mesh = Mesh::default();
         (0..SEGS).for_each(|s| {
             let mut part = Mesh::default();
             build_segment(s, &mut Pen { mesh: &mut part, xf: mat::IDENTITY, density: 4.0 }, hi);
-            seg.extend(std::iter::repeat_n(s as u8, part.verts.len()));
+            part.verts.iter_mut().for_each(|v| v.nrm[3] = s as i8);
             mesh.append(&part);
         });
-        Mannequin { mesh, seg }
+        let normals = mesh.verts.iter().map(|v| mat::norm(v.normal())).collect();
+        Mannequin { mesh, normals }
     }
 
-    pub fn skin(&self, mats: &[M4; SEGS], light: impl Fn(V3) -> f32, out: &mut [Vert]) {
-        out.iter_mut().zip(&self.mesh.verts).zip(&self.seg).for_each(|((o, v), &s)| {
-            let m = &mats[s as usize];
-            let n = mat::norm(mat::dir(m, v.normal()));
-            *o = Vert::new(mat::point(m, v.pos), [0.0; 2], n).with_light(light(n));
-            o.uv = v.uv;
+    pub fn skin(&self, mats: &[M4; SEGS], light: impl Fn(V3) -> f32, tile: [u8; 4], out: &mut [Vert]) {
+        let q = |v: f32| (v * 127.0) as i8;
+        out.iter_mut().zip(&self.mesh.verts).zip(&self.normals).for_each(|((o, v), &n)| {
+            let m = &mats[v.nrm[3] as usize];
+            let n = mat::dir(m, n);
+            *o = Vert { pos: mat::point(m, v.pos), uv: v.uv, nrm: [q(n[0]), q(n[1]), q(n[2]), q(light(n))], tile };
         });
     }
 }
@@ -120,33 +121,8 @@ impl Crowd {
         Crowd { lod: [Mannequin::new(true), Mannequin::new(false)] }
     }
 
-    pub fn slot_verts(&self) -> usize {
-        self.lod.iter().map(|m| m.mesh.verts.len()).sum()
-    }
-
-    fn slot_indices(&self) -> usize {
-        self.lod.iter().map(|m| m.mesh.idx.len()).sum()
-    }
-
-    pub fn indices(&self, slots: usize) -> Vec<u16> {
-        let (nv, hi) = (self.slot_verts() as u16, self.lod[0].mesh.verts.len() as u16);
-        (0..slots as u16)
-            .flat_map(|s| {
-                let hi_idx = self.lod[0].mesh.idx.iter().map(move |i| i + s * nv);
-                hi_idx.chain(self.lod[1].mesh.idx.iter().map(move |i| i + s * nv + hi))
-            })
-            .collect()
-    }
-
-    pub fn skin(&self, mats: &[M4; SEGS], light: impl Fn(V3) -> f32, out: &mut [Vert]) {
-        let (hi, lo) = out.split_at_mut(self.lod[0].mesh.verts.len());
-        self.lod[0].skin(mats, &light, hi);
-        self.lod[1].skin(mats, &light, lo);
-    }
-
-    pub fn range(&self, slot: usize, far: bool) -> (usize, usize) {
-        let base = slot * self.slot_indices() + if far { self.lod[0].mesh.idx.len() } else { 0 };
-        (base * 2, self.lod[far as usize].mesh.idx.len())
+    pub fn get(&self, far: bool) -> &Mannequin {
+        &self.lod[far as usize]
     }
 }
 
@@ -246,8 +222,9 @@ pub struct Rig {
     pub beam: V3,
 }
 
-pub fn rig(x: f32, z: f32, heading: f32, anim: Anim, tic: u16, lantern: bool) -> Rig {
+pub fn rig(x: f32, z: f32, heading: f32, anim: Anim, tic: u16, lantern: bool, look: f32) -> Rig {
     let mut p = pose(anim, tic);
+    p.head[1] += look;
     if lantern && !matches!(anim, Anim::Reach | Anim::Stagger) {
         p.arm_r = [-0.55 + p.arm_r[0] * 0.15, -0.12];
         p.elbow_r = -0.85;
@@ -275,6 +252,11 @@ pub fn rig(x: f32, z: f32, heading: f32, anim: Anim, tic: u16, lantern: bool) ->
     }
 }
 
+pub fn face(mats: &[M4; SEGS]) -> (V3, V3) {
+    let h = &mats[HEAD];
+    (mat::point(h, [0.0, 0.22, 0.01]), mat::norm(mat::dir(h, [0.0, 0.0, 1.0])))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -282,44 +264,50 @@ mod tests {
     #[test]
     fn mannequin_budget() {
         let c = Crowd::new();
-        let (hi, lo) = (c.lod[0].mesh.tris(), c.lod[1].mesh.tris());
+        let (hi, lo) = (c.get(false).mesh.tris(), c.get(true).mesh.tris());
         assert!((250..=400).contains(&hi), "{hi} tris");
         assert!(lo <= 110, "{lo} tris");
-        assert!(c.lod.iter().all(|m| m.seg.len() == m.mesh.verts.len()));
-        let idx = c.indices(3);
-        assert!(idx.iter().all(|&i| (i as usize) < 3 * c.slot_verts()));
-        assert_eq!(c.range(2, true), ((2 * idx.len() / 3 + hi * 3) * 2, lo * 3));
+        assert!(c.lod.iter().all(|m| m.mesh.verts.iter().all(|v| (v.nrm[3] as usize) < SEGS)));
+        assert!(c.get(false).mesh.verts.len() * crate::sim::MAX_BODIES <= u16::MAX as usize);
     }
 
     #[test]
     fn feet_touch_floor_and_head_on_top() {
         [true, false].iter().for_each(|&detail| {
             let m = Mannequin::new(detail);
-            let r = rig(3.0, 4.0, 0.0, Anim::Idle, 0, false);
+            let r = rig(3.0, 4.0, 0.0, Anim::Idle, 0, false, 0.0);
             let mut out = vec![Vert::default(); m.mesh.verts.len()];
-            m.skin(&r.mats, |_| 0.5, &mut out);
-            let body: Vec<&Vert> = out.iter().zip(&m.seg).filter(|(_, s)| **s as usize != SEGS - 1).map(|(v, _)| v).collect();
+            m.skin(&r.mats, |_| 0.5, [1; 4], &mut out);
+            let body: Vec<&Vert> = out.iter().zip(&m.mesh.verts).filter(|(_, v)| v.nrm[3] as usize != SEGS - 1).map(|(o, _)| o).collect();
             let lo = body.iter().map(|v| v.pos[1]).fold(f32::MAX, f32::min);
             let hi = body.iter().map(|v| v.pos[1]).fold(f32::MIN, f32::max);
             assert!(lo.abs() < 0.06, "feet at {lo}");
             assert!((1.6..1.85).contains(&hi), "head top at {hi}");
             assert!(body.iter().all(|v| (v.pos[0] - 3.0).abs() < 0.5 && (v.pos[2] - 4.0).abs() < 0.5));
+            assert!(out.iter().all(|v| v.tile == [1; 4] && v.nrm[3] == 63));
         });
     }
 
     #[test]
     fn lantern_is_in_front_at_chest_height() {
-        let r = rig(0.0, 0.0, 0.0, Anim::Walk, 7, true);
+        let r = rig(0.0, 0.0, 0.0, Anim::Walk, 7, true, 0.0);
         assert!(r.lantern[2] > 0.15 && (0.8..1.5).contains(&r.lantern[1]), "{:?}", r.lantern);
         assert!(r.beam[2] > 0.8);
-        let r = rig(0.0, 0.0, PI / 2.0, Anim::Idle, 0, true);
+        let r = rig(0.0, 0.0, PI / 2.0, Anim::Idle, 0, true, 0.0);
         assert!(r.lantern[0] > 0.15, "{:?}", r.lantern);
     }
 
     #[test]
     fn all_anims_pose_finite() {
         [Anim::Idle, Anim::Walk, Anim::Run, Anim::Turn, Anim::QuickTurn, Anim::Reach, Anim::Stagger].iter().for_each(|&a| {
-            (0..60).for_each(|t| assert!(rig(1.0, 1.0, 0.3, a, t, true).mats.iter().flatten().all(|v| v.is_finite())));
+            (0..60).for_each(|t| assert!(rig(1.0, 1.0, 0.3, a, t, true, 2.0).mats.iter().flatten().all(|v| v.is_finite())));
         });
+    }
+
+    #[test]
+    fn look_turns_only_the_head() {
+        let (still, turned) = (rig(0.0, 0.0, 0.0, Anim::Idle, 0, false, 0.0), rig(0.0, 0.0, 0.0, Anim::Idle, 0, false, PI));
+        assert!(face(&still.mats).1[2] > 0.9 && face(&turned.mats).1[2] < -0.9);
+        assert!((0..SEGS).filter(|&s| s != HEAD).all(|s| still.mats[s] == turned.mats[s]));
     }
 }

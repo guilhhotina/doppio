@@ -7,9 +7,14 @@ mod collide;
 mod doors;
 mod echo;
 mod finale;
+mod focus;
 mod hash;
 mod hunt;
+mod label;
+mod mirror;
 mod night;
+mod scare;
+mod sight;
 mod spawn;
 mod tank;
 mod tape;
@@ -18,6 +23,8 @@ mod tasks;
 mod tests;
 
 use echo::Echo;
+use mirror::Pose;
+use sight::View;
 use tank::Tank;
 use tape::Seg;
 
@@ -32,6 +39,7 @@ const MAX_SPAWNS: usize = 16;
 const NO_BODY: u8 = u8::MAX;
 const NO_ROOM: u8 = u8::MAX;
 const NO_DOOR: u8 = u8::MAX;
+const NO_CAM: u8 = u8::MAX;
 pub const BATTERY_FULL: u16 = 54000;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -102,6 +110,7 @@ pub struct Task {
     pub y: u8,
     pub active: bool,
     pub done: bool,
+    pub room: u8,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -112,6 +121,12 @@ pub enum TaskKind {
     Tv,
     Gas,
     Faucet,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Focus {
+    Door { door: u8, locked: bool, open: bool },
+    Task { task: u8, kind: TaskKind, progress: u16 },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -127,6 +142,8 @@ pub enum Event {
     NightBegins { night: u8 },
     DawnBreaks { night: u8 },
     Glitch { body: u8 },
+    CaughtBy { player: u8, body: u8 },
+    EchoStep { body: u8, surface: u8, of: u8 },
 }
 
 #[derive(Clone)]
@@ -214,12 +231,19 @@ pub struct World {
     echo: [Echo; MAX_BODIES],
     players: [Player; MAX_PLAYERS],
     capture: [u8; MAX_PLAYERS],
+    captor: [u8; MAX_PLAYERS],
+    eyes: [u8; MAX_PLAYERS],
+    mirror: [Pose; MAX_PLAYERS],
     spawn_of: [[u8; MAX_SPAWNS]; NIGHTS as usize],
     doors: Vec<Door>,
     door_dir: Vec<bool>,
     door_at: Vec<u8>,
     exit_door: u8,
     tasks: Vec<Task>,
+    anchors: Vec<Vec2>,
+    views: Vec<View>,
+    cam_of: Vec<u8>,
+    poses: Vec<Pose>,
     room_surface: Vec<u8>,
     final_tiles: Vec<u16>,
     tape: Vec<u16>,
@@ -270,7 +294,8 @@ impl World {
             })
             .collect::<Vec<u8>>();
         let exit_door = door_at[(map.exit.y.floor() * map.w + map.exit.x.floor()).clamp(0, cells as i32 - 1) as usize];
-        let tasks = map
+        let room_at = |x: i32, y: i32| map.room_of.get((y * map.w + x) as usize).copied().flatten().unwrap_or(NO_ROOM);
+        let tasks: Vec<Task> = map
             .tasks
             .iter()
             .take(MAX_TASKS)
@@ -280,7 +305,12 @@ impl World {
                 y: t.pos.y.floor() as u8,
                 active: false,
                 done: false,
+                room: room_at(t.pos.x.floor(), t.pos.y.floor()),
             })
+            .collect();
+        let anchors = tasks.iter().map(|t| focus::anchor(map, t.kind, t.x as i32, t.y as i32)).collect();
+        let cam_of = (0..cells as i32)
+            .map(|i| map.cams.iter().position(|c| c.area.contains(i % map.w, i / map.w)).map_or(NO_CAM, |c| c as u8))
             .collect();
         let a = map.final_area;
         let final_tiles = (a.y0..=a.y1)
@@ -309,12 +339,19 @@ impl World {
                 false => ABSENT,
             }),
             capture: [0; MAX_PLAYERS],
+            captor: [NO_BODY; MAX_PLAYERS],
+            eyes: [NO_CAM; MAX_PLAYERS],
+            mirror: [Pose::NONE; MAX_PLAYERS],
             spawn_of: [[0; MAX_SPAWNS]; NIGHTS as usize],
             door_dir: vec![false; doors.len()],
             doors,
             door_at,
             exit_door,
             tasks,
+            anchors,
+            views: map.cams.iter().map(sight::view).collect(),
+            cam_of,
+            poses: vec![Pose::NONE; MAX_PLAYERS * night_tics as usize],
             room_surface: map.rooms.iter().map(|r| surface_of(r.floor)).collect(),
             final_tiles,
             tape: vec![0; NIGHTS as usize * MAX_PLAYERS * night_tics as usize],
@@ -378,6 +415,36 @@ impl World {
 
     pub fn map(&self) -> &'static Map<'static> {
         self.map
+    }
+
+    pub fn phase_tic(&self) -> u32 {
+        self.phase_tic
+    }
+
+    pub fn focus(&self, player: usize) -> Option<Focus> {
+        self.players.get(player).filter(|p| p.body != NO_BODY).and_then(|p| self.focus_of(p.body as usize))
+    }
+
+    pub fn task_spot(&self, task: usize) -> Vec2 {
+        self.anchors[task]
+    }
+
+    pub fn room_title(&self, room: u8) -> &'static str {
+        self.map.rooms.get(room as usize).map_or("", |r| label::room_title(r.name))
+    }
+
+    pub fn gaze(&self, body: usize) -> Option<Ang> {
+        self.head_of(body)
+    }
+
+    pub fn captor(&self, player: usize) -> Option<(u8, u8)> {
+        (player < self.players_n as usize && self.capture[player] > 0 && self.captor[player] != NO_BODY)
+            .then(|| (self.captor[player], self.capture[player].saturating_sub(2)))
+    }
+
+    pub fn echo_pose(&self, player: usize) -> Option<(Vec2, Ang, Anim, u16)> {
+        let recorded = matches!(self.phase, Phase::Night { night } if night >= 2);
+        (recorded && player < self.players_n as usize).then(|| self.mirror[player].decode())
     }
 
     fn tile_index(&self, p: Vec2) -> Option<usize> {

@@ -53,7 +53,7 @@ while [ $i -lt 50 ] && pidof core browser >/dev/null; do sleep 0.1; i=$((i + 1))
 pids=$(pidof core browser) && kill -9 $pids
 rm -rf /tmp/doppio && mkdir -p /tmp/doppio'
 tar -C "$stage" -cf - . | "$zssh" 'tar -C /tmp/doppio -xf -'
-"$zssh" "cd /tmp/doppio && chmod 755 core && (env $probe setsid $bin --conf ./doppio.toml --play 'libretro://$entry$query' > /tmp/doppio/log 2>&1 < /dev/null & echo \$! > /tmp/doppio/pid)
+"$zssh" "cd /tmp/doppio && chmod 755 core && (env $probe setsid $bin --conf ./doppio.toml ${DOPPIO_ARGS:-} --play 'libretro://$entry$query' > /tmp/doppio/log 2>&1 < /dev/null & echo \$! > /tmp/doppio/pid)
 [ $secs -gt 0 ] && (setsid sh -c 'sleep $secs; kill \$(cat /tmp/doppio/pid) 2>/dev/null' > /dev/null 2>&1 < /dev/null &)
 sleep 4
 echo pid \$(cat /tmp/doppio/pid)

@@ -39,9 +39,12 @@ impl World {
         for p in 0..self.players_n as usize {
             let me = self.players[p].body as usize;
             let victim = self.bodies[me];
-            if self.living(p) && (0..MAX_BODIES).any(|j| j != me && self.hostile(j) && grabs(&victim, &self.bodies[j])) {
+            let by = (0..MAX_BODIES).find(|&j| j != me && self.hostile(j) && grabs(&victim, &self.bodies[j]));
+            if let (true, Some(j)) = (self.living(p), by) {
                 self.capture[p] = 1;
+                self.captor[p] = j as u8;
                 self.events.push(Event::Captured { player: p as u8 });
+                self.events.push(Event::CaughtBy { player: p as u8, body: j as u8 });
             }
         }
     }
@@ -82,7 +85,7 @@ impl World {
         }
     }
 
-    fn night(&self) -> u8 {
+    pub(super) fn night(&self) -> u8 {
         match self.phase {
             Phase::Dusk { night } | Phase::Night { night } | Phase::Dawn { night } => night,
             Phase::Won | Phase::Lost => 5,
@@ -94,7 +97,7 @@ impl World {
         let old = self.players[p].body as usize;
         let free = (0..MAX_BODIES).find(|&j| self.ctl[j].agent == Agent::Free);
         let far_echo = (0..MAX_BODIES)
-            .filter(|&j| self.ctl[j].agent == Agent::Echo)
+            .filter(|&j| self.ctl[j].agent == Agent::Echo && self.bodies[j].visible)
             .max_by_key(|&j| (self.distance_at(self.bodies[j].pos), j));
         let Some(slot) = free.or(far_echo) else { return };
         if free.is_some() {

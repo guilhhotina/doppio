@@ -1,4 +1,4 @@
-use super::tank::Tank;
+use super::tank::{Gait, Tank};
 use super::{World, MAX_PLAYERS};
 use crate::fx::{Ang, Vec2};
 
@@ -8,10 +8,11 @@ pub const SEG: u32 = 60;
 pub struct Seg {
     pub d: Vec2,
     pub turn: Ang,
+    pub run: u8,
 }
 
 impl Seg {
-    pub const ZERO: Seg = Seg { d: Vec2::ZERO, turn: Ang::ZERO };
+    pub const ZERO: Seg = Seg { d: Vec2::ZERO, turn: Ang::ZERO, run: 0 };
 }
 
 pub fn tape_id(night: u8, player: usize) -> u8 {
@@ -25,7 +26,8 @@ pub fn measure(inputs: &[u16], prev: u16) -> Seg {
         .fold(start, |(mut tank, seg), &input| {
             let m = tank.drive(seg.turn, input);
             tank.prev = input;
-            (tank, Seg { d: seg.d + m.delta, turn: m.heading })
+            let run = seg.run + (m.gait == Gait::Run) as u8;
+            (tank, Seg { d: seg.d + m.delta, turn: m.heading, run })
         })
         .1
 }
@@ -63,15 +65,16 @@ impl World {
 
 #[cfg(test)]
 mod tests {
-    use super::super::tank::{LEFT, UP, WALK};
+    use super::super::tank::{B, LEFT, UP, WALK};
     use super::*;
     use crate::fx::Fx;
 
     #[test]
     fn measure_matches_kinematics() {
         let straight = measure(&[UP; SEG as usize], 0);
-        assert_eq!(straight, Seg { d: Vec2::new(Fx::ZERO, WALK * SEG as i32), turn: Ang::ZERO });
+        assert_eq!(straight, Seg { d: Vec2::new(Fx::ZERO, WALK * SEG as i32), turn: Ang::ZERO, run: 0 });
         let spin = measure(&[LEFT; 10], 0);
         assert_eq!((spin.d, spin.turn), (Vec2::ZERO, Ang(9100)));
+        assert_eq!(measure(&[UP | B, UP, UP | B, LEFT | B], 0).run, 2);
     }
 }

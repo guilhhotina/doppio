@@ -1,4 +1,5 @@
 use super::echo::Echo;
+use super::scare::stage_tics;
 use super::tape::tape_id;
 use super::{shuffle, Agent, Body, Ctl, Role, World, HIDDEN, MAX_BODIES, MAX_SPAWNS};
 use crate::fx::{Ang, Fx, Vec2};
@@ -71,7 +72,9 @@ impl World {
                 true => self.echo_spot(night, night, spot_k),
             };
             self.place(slot, spot, Agent::Echo);
-            self.echo[slot] = Echo::new(tape_id(k, p), night, extra);
+            let wait = stage_tics(night);
+            self.echo[slot] = Echo { wait, ..Echo::new(tape_id(k, p), night, extra) };
+            self.bodies[slot].visible = wait == 0;
         });
     }
 }

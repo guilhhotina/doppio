@@ -8,13 +8,14 @@ pub struct Vert {
     pub pos: V3,
     pub uv: [i16; 2],
     pub nrm: [i8; 4],
+    pub tile: [u8; 4],
 }
 
 impl Vert {
     pub fn new(pos: V3, uv: [f32; 2], n: V3) -> Vert {
         let q = |v: f32| (v * 127.0).round().clamp(-127.0, 127.0) as i8;
         let t = |v: f32| (v * UV_ONE).round().clamp(-32767.0, 32767.0) as i16;
-        Vert { pos, uv: [t(uv[0]), t(uv[1])], nrm: [q(n[0]), q(n[1]), q(n[2]), 127] }
+        Vert { pos, uv: [t(uv[0]), t(uv[1])], nrm: [q(n[0]), q(n[1]), q(n[2]), 127], tile: [0; 4] }
     }
 
     pub fn normal(&self) -> V3 {
@@ -25,6 +26,10 @@ impl Vert {
         let mut v = self;
         v.nrm[3] = (l * 127.0).round().clamp(0.0, 127.0) as i8;
         v
+    }
+
+    pub fn with_tile(self, tile: [u8; 4]) -> Vert {
+        Vert { tile, ..self }
     }
 }
 

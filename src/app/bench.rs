@@ -1,6 +1,7 @@
-use crate::fx::{Ang, Fx, Vec2};
-use crate::map::{Axis, DoorState, Map};
-use crate::render::Scene;
+use super::backdrop::{ang, doors, fx};
+use crate::fx::{Ang, Vec2};
+use crate::map::Map;
+use crate::render::{Cues, Echo, MAX_TELLS, Scene, Tell};
 use crate::sim::{Anim, Body, Door, MAX_BODIES};
 
 pub struct Bench {
@@ -9,14 +10,7 @@ pub struct Bench {
     power: bool,
     origin: [f32; 2],
     tic: u32,
-}
-
-fn fx(v: f32) -> Fx {
-    Fx((v * 65536.0) as i32)
-}
-
-fn ang(rad: f32) -> Ang {
-    Ang((rad.rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU * 65536.0) as u16)
+    cues: Cues,
 }
 
 pub struct Spec {
@@ -25,6 +19,19 @@ pub struct Spec {
     pub power: bool,
     pub lantern: bool,
     pub anim: Anim,
+    pub tells: Tell,
+    pub gaze: Option<f32>,
+    pub caught: bool,
+    pub echo: Option<[f32; 3]>,
+}
+
+fn cues(map: &Map, s: &Spec) -> Cues {
+    let mut c = Cues::NONE;
+    c.tells.iter_mut().take(map.tasks.len().min(MAX_TELLS)).for_each(|t| *t = s.tells);
+    c.gaze.iter_mut().take(s.bodies).skip(1).for_each(|g| *g = s.gaze.map(|d| ang(d.to_radians())));
+    c.caught[0] = (s.caught && s.bodies > 1).then_some((1, 0));
+    c.echo[0] = s.echo.map(|e| Echo { pos: Vec2::new(fx(e[0]), fx(e[1])), heading: ang(e[2].to_radians()), anim: Anim::Idle, tic: 0 });
+    c
 }
 
 impl Bench {
@@ -38,18 +45,7 @@ impl Bench {
         });
         bodies[0].pos = Vec2::new(fx(s.at[0]), fx(s.at[1]));
         bodies[0].heading = ang(s.at[2].to_radians());
-        let doors = map
-            .doors
-            .iter()
-            .map(|d| Door {
-                x: d.x as u8,
-                y: d.y as u8,
-                vertical: d.axis == Axis::V,
-                open: if d.state == DoorState::Open { 52000 } else { 0 },
-                locked: d.state == DoorState::Locked,
-            })
-            .collect();
-        let mut b = Bench { bodies, doors, power: s.power, origin: [s.at[0], s.at[1]], tic: 0 };
+        let mut b = Bench { bodies, doors: doors(map), power: s.power, origin: [s.at[0], s.at[1]], tic: 0, cues: cues(map, s) };
         b.place();
         b
     }
@@ -69,11 +65,12 @@ impl Bench {
     pub fn step(&mut self) {
         self.tic += 1;
         self.bodies.iter_mut().filter(|b| b.visible).for_each(|b| b.anim_tic = b.anim_tic.wrapping_add(1));
+        self.cues.echo[0].iter_mut().for_each(|e| e.tic = e.tic.wrapping_add(1));
         self.place();
     }
 
     pub fn scene(&self) -> Scene<'_> {
-        Scene { bodies: &self.bodies, doors: &self.doors, power: self.power }
+        Scene { bodies: &self.bodies, doors: &self.doors, power: self.power, cues: &self.cues }
     }
 }
 
@@ -84,7 +81,7 @@ mod tests {
 
     #[test]
     fn bench_places_requested_bodies() {
-        let spec = Spec { bodies: 20, at: [4.5, 6.5, 90.0], power: false, lantern: true, anim: Anim::Idle };
+        let spec = Spec { bodies: 20, at: [4.5, 6.5, 90.0], power: false, lantern: true, anim: Anim::Idle, tells: Tell::Pending, gaze: Some(90.0), caught: true, echo: None };
         let mut b = Bench::new(map::sobrado(), &spec);
         (0..40).for_each(|_| b.step());
         let s = b.scene();
@@ -92,5 +89,8 @@ mod tests {
         assert_eq!(s.doors.len(), map::sobrado().doors.len());
         assert!(!s.power);
         assert_eq!(s.bodies[0].pos, Vec2::new(fx(4.5), fx(6.5)));
+        assert_eq!(s.cues.tells.iter().filter(|t| **t == Tell::Pending).count(), map::sobrado().tasks.len());
+        assert!(s.cues.gaze[0].is_none() && s.cues.gaze[19].is_some() && s.cues.gaze[20].is_none());
+        assert_eq!(s.cues.caught[0], Some((1, 0)));
     }
 }

@@ -66,8 +66,41 @@ pub fn noise(n: usize, seed: u32) -> Vec<u8> {
     .collect()
 }
 
+pub const ATLAS_W: i32 = 512;
+pub const ATLAS_H: i32 = 256;
+pub const CELL: i32 = 32;
+
+pub struct Atlas {
+    pub px: Vec<u16>,
+    pub tiles: Vec<[u8; 4]>,
+}
+
+pub fn atlas() -> Atlas {
+    let decoded: Vec<(i32, i32, Vec<u16>)> = TEXTURES.iter().map(|(_, t)| decode(t)).collect();
+    let mut order: Vec<usize> = (0..decoded.len()).collect();
+    order.sort_by_key(|&i| (-decoded[i].1, -decoded[i].0));
+    let mut px = vec![0u16; (ATLAS_W * ATLAS_H) as usize];
+    let mut tiles = vec![[0u8; 4]; decoded.len()];
+    let (mut x, mut y, mut shelf) = (0, 0, 0);
+    order.iter().for_each(|&i| {
+        let (w, h, src) = &decoded[i];
+        if x + w > ATLAS_W {
+            (x, y, shelf) = (0, y + shelf, 0);
+        }
+        assert!(y + h <= ATLAS_H, "texture atlas overflow");
+        src.chunks(*w as usize).enumerate().for_each(|(row, line)| {
+            let at = ((y + row as i32) * ATLAS_W + x) as usize;
+            px[at..at + *w as usize].copy_from_slice(line);
+        });
+        tiles[i] = [x / CELL, y / CELL, w / CELL, h / CELL].map(|v| v as u8);
+        (x, shelf) = (x + w, shelf.max(*h));
+    });
+    Atlas { px, tiles }
+}
+
 pub struct Textures {
-    pub ids: Vec<u32>,
+    pub atlas: u32,
+    pub tiles: Vec<[u8; 4]>,
     pub dither: u32,
     pub noise: u32,
     pub bytes: usize,
@@ -75,19 +108,20 @@ pub struct Textures {
 
 impl Textures {
     pub fn new(gl: &Gl) -> Textures {
-        let (ids, bytes) = TEXTURES.iter().fold((Vec::with_capacity(TEXTURES.len()), 0), |(mut ids, bytes), (_, t)| {
-            let (w, h, px) = decode(t);
-            ids.push(upload_rgb565(gl, w, h, &px));
-            (ids, bytes + px.len() * 2)
-        });
+        let Atlas { px, tiles } = atlas();
+        let atlas = upload_rgb565(gl, ATLAS_W, ATLAS_H, &px);
         let dither = upload_luminance(gl, 4, 4, &dither());
         let noise = upload_luminance(gl, 64, 64, &noise(64 * 64, 0x5eed));
         gl.bind_texture(0, 0);
-        Textures { ids, dither, noise, bytes: bytes + 16 + 64 * 64 }
+        Textures { atlas, tiles, dither, noise, bytes: px.len() * 2 + 16 + 64 * 64 }
+    }
+
+    pub fn tile(&self, name: &str) -> [u8; 4] {
+        self.tiles[id(name) as usize]
     }
 
     pub fn delete(&self, gl: &Gl) {
-        self.ids.iter().chain([&self.dither, &self.noise]).for_each(|&t| gl.delete_texture(t));
+        [self.atlas, self.dither, self.noise].iter().for_each(|&t| gl.delete_texture(t));
     }
 }
 
@@ -115,5 +149,23 @@ mod tests {
     #[test]
     fn every_texture_resolves() {
         assert!(TEXTURES.iter().enumerate().all(|(i, (n, _))| id(n) as usize == i));
+    }
+
+    #[test]
+    fn atlas_holds_every_texture_without_overlap() {
+        let a = atlas();
+        let cells = (ATLAS_W / CELL * ATLAS_H / CELL) as usize;
+        let mut used = vec![false; cells];
+        a.tiles.iter().zip(TEXTURES).for_each(|(t, (name, tex))| {
+            let (w, h, px) = decode(tex);
+            assert_eq!([t[2] as i32 * CELL, t[3] as i32 * CELL], [w, h], "{name}");
+            (0..t[3] as i32).flat_map(|dy| (0..t[2] as i32).map(move |dx| (dx, dy))).for_each(|(dx, dy)| {
+                let c = ((t[1] as i32 + dy) * (ATLAS_W / CELL) + t[0] as i32 + dx) as usize;
+                assert!(!used[c], "{name} overlaps");
+                used[c] = true;
+            });
+            let corner = ((t[1] as i32 * CELL + h - 1) * ATLAS_W + t[0] as i32 * CELL + w - 1) as usize;
+            assert_eq!(a.px[corner], px[px.len() - 1], "{name}");
+        });
     }
 }

@@ -273,6 +273,14 @@ pub fn rooster() -> [Patch; 4] {
     ]
 }
 
+pub fn drip(pitch: f32) -> [Patch; 2] {
+    let plink = Patch { tone: 0.0, dry: 1.0, attack: 0.002, glide: 5.0, bp: 0.0, prio: PRIO_WORLD, ..BASE };
+    [
+        Patch { freq: 820.0 * pitch, decay: 0.05, gain: 0.22, ..plink },
+        Patch { delay: 0.11, freq: 1240.0 * pitch, decay: 0.03, gain: 0.06, ..plink },
+    ]
+}
+
 pub fn birds() -> [Patch; 2] {
     let chirp = Patch { tone: 0.0, dry: 1.0, attack: 0.008, decay: 0.07, gap_jitter: 0.3, vary: 0.5, gain: 0.12, bp: 0.0, prio: PRIO_EVENT, ..BASE };
     [

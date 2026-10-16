@@ -4,6 +4,11 @@ use crate::map::{Map, Tile};
 pub const LAMP_HEIGHT: f32 = 2.35;
 const SPAN: f32 = 9.0;
 const MOON: V3 = [0.42, 0.78, 0.46];
+const ABAJUR_HEIGHT: f32 = 1.2;
+const ABAJUR_GAIN: f32 = 2.4;
+const ABAJUR_FALLOFF: f32 = 0.9;
+const CEILING_GAIN: f32 = 4.0;
+const CEILING_FALLOFF: f32 = 0.2;
 
 #[derive(Clone, Copy, Debug)]
 pub struct RoomBox {
@@ -13,9 +18,17 @@ pub struct RoomBox {
     pub level: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Lamp {
+    pub room: u8,
+    pub pos: V3,
+    pub gain: f32,
+    pub falloff: f32,
+}
+
 pub struct Lamps {
     pub rooms: Vec<RoomBox>,
-    lamps: Vec<(u8, V3)>,
+    lamps: Vec<Lamp>,
 }
 
 pub fn room_near(map: &Map, x: i32, y: i32) -> Option<u8> {
@@ -53,20 +66,26 @@ fn spots(b: &RoomBox) -> Vec<V3> {
         .collect()
 }
 
+fn abajurs<'a>(map: &'a Map, rooms: &'a [RoomBox]) -> impl Iterator<Item = Lamp> + 'a {
+    map.props.iter().filter(|p| p.kind == "abajur").filter_map(move |p| {
+        let (x, z) = (p.pos.x.to_f32(), p.pos.y.to_f32());
+        let room = room_near(map, x.floor() as i32, z.floor() as i32).filter(|&r| !rooms[r as usize].outdoor)?;
+        Some(Lamp { room, pos: [x, ABAJUR_HEIGHT, z], gain: ABAJUR_GAIN, falloff: ABAJUR_FALLOFF })
+    })
+}
+
 impl Lamps {
     pub fn new(map: &Map) -> Lamps {
         let rooms = room_boxes(map);
-        let lamps = rooms
-            .iter()
-            .enumerate()
-            .filter(|(_, b)| !b.outdoor)
-            .flat_map(|(i, b)| spots(b).into_iter().map(move |p| (i as u8, p)))
-            .collect();
+        let ceiling = rooms.iter().enumerate().filter(|(_, b)| !b.outdoor).flat_map(|(i, b)| {
+            spots(b).into_iter().map(move |pos| Lamp { room: i as u8, pos, gain: CEILING_GAIN * b.level, falloff: CEILING_FALLOFF })
+        });
+        let lamps = ceiling.chain(abajurs(map, &rooms)).collect();
         Lamps { rooms, lamps }
     }
 
-    pub fn lamps(&self, room: u8) -> impl Iterator<Item = V3> + '_ {
-        self.lamps.iter().filter(move |(r, _)| *r == room).map(|(_, p)| *p)
+    pub fn lamps(&self, room: u8) -> impl Iterator<Item = &Lamp> + '_ {
+        self.lamps.iter().filter(move |l| l.room == room)
     }
 
     pub fn light(&self, room: u8, p: V3, n: Option<V3>) -> f32 {
@@ -78,9 +97,9 @@ impl Lamps {
             false => self
                 .lamps(room)
                 .map(|l| {
-                    let d = mat::sub(l, p);
+                    let d = mat::sub(l.pos, p);
                     let d2 = mat::dot(d, d);
-                    b.level * 4.0 * shade * wrap(mat::scale(d, 1.0 / d2.sqrt().max(1e-3))) / (1.0 + 0.2 * d2)
+                    l.gain * shade * wrap(mat::scale(d, 1.0 / d2.sqrt().max(1e-3))) / (1.0 + l.falloff * d2)
                 })
                 .sum::<f32>(),
         }
@@ -105,6 +124,17 @@ mod tests {
             let v = l.light(i as u8, c, Some([0.0, 1.0, 0.0]));
             assert!(v > 0.0 && v <= 1.0);
         });
+    }
+
+    #[test]
+    fn abajur_brightens_its_corner() {
+        let m = map::sobrado();
+        let lit = Lamps::new(m);
+        let unlit = Lamps { lamps: lit.lamps.iter().copied().filter(|l| l.gain != ABAJUR_GAIN).collect(), rooms: lit.rooms.clone() };
+        let abajur = lit.lamps.iter().find(|l| l.gain == ABAJUR_GAIN).expect("map has an abajur");
+        let floor = [abajur.pos[0] + 0.6, 0.0, abajur.pos[2]];
+        let up = Some([0.0, 1.0, 0.0]);
+        assert!(lit.light(abajur.room, floor, up) > unlit.light(abajur.room, floor, up) + 0.1);
     }
 
     #[test]

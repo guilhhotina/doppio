@@ -1,3 +1,4 @@
+use super::cloth;
 use super::mat::{self, M4, V3};
 use super::mesh::{Faces, Mesh, Pen};
 use super::texture;
@@ -303,23 +304,31 @@ fn vaso(s: &mut Sink) {
     s.pen("concreto").cylinder([0.0, 0.386, 0.05], 0.13, 0.13, 0.001, 8, true);
 }
 
-fn cortina(s: &mut Sink) {
+pub fn rod(s: &mut Sink) {
     s.pen("metal").cuboid([-0.75, 2.3, 0.06], [0.75, 2.33, 0.09], Faces(0x17));
+}
+
+pub fn cloth(s: &mut Sink) {
     let mut p = s.pen("colcha");
-    [-0.72f32, 0.36].iter().for_each(|&x0| {
-        (0..4).for_each(|i| {
-            let (a, b) = (x0 + i as f32 * 0.09, x0 + (i + 1) as f32 * 0.09);
-            let (za, zb) = if i % 2 == 0 { (0.05, 0.12) } else { (0.12, 0.05) };
-            p.quad(
-                [[a, 0.25, za], [b, 0.25, zb], [b, 2.3, zb], [a, 2.3, za]],
-                [[i as f32 * 0.2, 4.0], [(i + 1) as f32 * 0.2, 4.0], [(i + 1) as f32 * 0.2, 0.0], [i as f32 * 0.2, 0.0]],
-            );
-        });
-    });
+    cloth::quads(1, |_, _| 0.0, |q, uv| p.quad(q, uv));
+}
+
+fn cortina(s: &mut Sink) {
+    rod(s);
+    cloth(s);
+}
+
+fn abajur_dims(supported: bool) -> (f32, f32, f32) {
+    if supported { (0.28, 0.18, 0.15) } else { (1.35, 0.28, 0.24) }
+}
+
+pub fn shade_centre(supported: bool) -> V3 {
+    let (stem, shade, _) = abajur_dims(supported);
+    [0.0, stem - 0.02 + shade * 0.5, 0.0]
 }
 
 fn abajur(s: &mut Sink, supported: bool) {
-    let (stem, shade, r) = if supported { (0.28f32, 0.18f32, 0.15f32) } else { (1.35, 0.28, 0.24) };
+    let (stem, shade, r) = abajur_dims(supported);
     let mut m = s.pen("metal");
     m.cylinder([0.0, 0.0, 0.0], 0.09, 0.07, 0.03, 6, true);
     m.cylinder([0.0, 0.03, 0.0], 0.012, 0.012, stem, 4, false);

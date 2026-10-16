@@ -126,6 +126,7 @@ fn every_cue_is_finite_bounded_and_ends() {
         cue::captured().to_vec(),
         cue::rooster().to_vec(),
         cue::birds().to_vec(),
+        cue::drip(1.0).to_vec(),
     ];
     groups.iter().flatten().for_each(|p| {
         let mut audio = Audio::new(RATE);

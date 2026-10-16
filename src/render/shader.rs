@@ -6,8 +6,8 @@ pub const MAX_LIGHTS: usize = 4;
 const WORLD_VS: &str = "attribute vec3 a_pos;
 attribute vec2 a_uv;
 attribute vec4 a_nrm;
+attribute vec4 a_tile;
 uniform mat4 u_mvp;
-uniform mat4 u_model;
 uniform vec3 u_lamp;
 uniform vec3 u_amb;
 uniform vec4 u_lpos[4];
@@ -18,10 +18,12 @@ uniform vec2 u_snap;
 varying vec3 v_uvq;
 varying vec3 v_col;
 varying float v_fog;
+varying vec4 v_tile;
 void main() {
-    vec3 wp = (u_model * vec4(a_pos, 1.0)).xyz;
-    vec3 n = normalize((u_model * vec4(a_nrm.xyz, 0.0)).xyz);
+    vec3 wp = a_pos;
+    vec3 n = a_nrm.xyz;
     vec3 c = u_amb + u_lamp * a_nrm.w;
+    vec4 p = u_mvp * vec4(a_pos, 1.0);
     for (int i = 0; i < 4; i++) {
         vec3 d = u_lpos[i].xyz - wp;
         float dd = dot(d, d);
@@ -31,13 +33,13 @@ void main() {
         c += vec3(1.0, 0.88, 0.66) * (u_lpos[i].w * cone * wrap / (1.0 + dd * 0.16));
     }
     v_col = c;
-    vec4 p = u_mvp * vec4(a_pos, 1.0);
     if (p.w > 0.05) {
         p.xy = floor(p.xy / p.w * u_snap + 0.5) / u_snap * p.w;
     }
     v_fog = clamp((length(wp - u_eye) - u_fog.x) * u_fog.y, 0.0, 1.0);
     float q = p.w * 0.05;
     v_uvq = vec3(a_uv * (q / 2048.0), q);
+    v_tile = a_tile * vec4(0.0625, 0.125, 0.0625, 0.125);
     gl_Position = p;
 }
 ";
@@ -50,6 +52,7 @@ uniform vec4 u_fx;
 varying vec3 v_uvq;
 varying vec3 v_col;
 varying float v_fog;
+varying vec4 v_tile;
 void main() {
     vec2 uv = v_uvq.xy / v_uvq.z;
 #ifdef SCREEN
@@ -57,7 +60,7 @@ void main() {
     float line = fract(gl_FragCoord.y * 0.5) * 0.25 + 0.75;
     vec3 c = vec3(0.78, 0.86, 1.0) * (s * u_fx.z * line + u_fx.w) + v_col * 0.04;
 #else
-    vec3 c = texture2D(u_tex, uv).rgb * v_col;
+    vec3 c = texture2D(u_tex, v_tile.xy + fract(uv) * v_tile.zw).rgb * v_col;
 #endif
     c = mix(c, u_fogc, v_fog);
     float d = texture2D(u_dither, gl_FragCoord.xy * 0.25).r;
@@ -69,19 +72,18 @@ const GLOW_VS: &str = "attribute vec3 a_pos;
 attribute vec2 a_uv;
 attribute vec4 a_nrm;
 uniform mat4 u_mvp;
-uniform mat4 u_model;
 uniform vec3 u_eye;
 uniform vec2 u_snap;
-varying float v_a;
+attribute vec4 a_tile;
+varying vec3 v_c;
 void main() {
     vec4 p = u_mvp * vec4(a_pos, 1.0);
     if (p.w > 0.05) {
         p.xy = floor(p.xy / p.w * u_snap + 0.5) / u_snap * p.w;
     }
-    vec3 wp = (u_model * vec4(a_pos, 1.0)).xyz;
-    vec3 n = normalize((u_model * vec4(a_nrm.xyz, 0.0)).xyz);
-    float f = abs(dot(n, normalize(u_eye - wp)));
-    v_a = a_uv.x * (1.0 / 2048.0) * f * f;
+    float f = abs(dot(a_nrm.xyz, normalize(u_eye - a_pos)));
+    float k = a_uv.y > 1024.0 ? 1.0 : f * f;
+    v_c = a_tile.rgb * (a_uv.x * (1.0 / 2048.0) * k / 255.0);
     gl_Position = p;
 }
 ";
@@ -89,10 +91,10 @@ void main() {
 const GLOW_FS: &str = "precision mediump float;
 uniform sampler2D u_dither;
 uniform vec3 u_color;
-varying float v_a;
+varying vec3 v_c;
 void main() {
     float d = texture2D(u_dither, gl_FragCoord.xy * 0.25).r;
-    gl_FragColor = vec4(floor(u_color * v_a * 31.0 + d) * (1.0 / 31.0), 1.0);
+    gl_FragColor = vec4(floor(u_color * v_c * 31.0 + d) * (1.0 / 31.0), 1.0);
 }
 ";
 
@@ -173,24 +175,22 @@ impl<const N: usize> Program<N> {
 
 pub mod world {
     pub const MVP: usize = 0;
-    pub const MODEL: usize = 1;
-    pub const LAMP: usize = 2;
-    pub const AMB: usize = 3;
-    pub const LPOS: usize = 4;
-    pub const LDIR: usize = 8;
-    pub const EYE: usize = 12;
-    pub const FOG: usize = 13;
-    pub const SNAP: usize = 14;
-    pub const FOGC: usize = 15;
-    pub const FX: usize = 16;
+    pub const LAMP: usize = 1;
+    pub const AMB: usize = 2;
+    pub const LPOS: usize = 3;
+    pub const LDIR: usize = 7;
+    pub const EYE: usize = 11;
+    pub const FOG: usize = 12;
+    pub const SNAP: usize = 13;
+    pub const FOGC: usize = 14;
+    pub const FX: usize = 15;
 }
 
 pub mod glow {
     pub const MVP: usize = 0;
     pub const SNAP: usize = 1;
     pub const COLOR: usize = 2;
-    pub const MODEL: usize = 3;
-    pub const EYE: usize = 4;
+    pub const EYE: usize = 3;
 }
 
 pub mod blit {
@@ -204,16 +204,16 @@ pub mod ui {
     pub const SCALE: usize = 0;
 }
 
-const WORLD_UNIFORMS: [&CStr; 19] = [
-    c"u_mvp", c"u_model", c"u_lamp", c"u_amb", c"u_lpos[0]", c"u_lpos[1]", c"u_lpos[2]", c"u_lpos[3]", c"u_ldir[0]",
-    c"u_ldir[1]", c"u_ldir[2]", c"u_ldir[3]", c"u_eye", c"u_fog", c"u_snap", c"u_fogc", c"u_fx", c"u_tex", c"u_dither",
+const WORLD_UNIFORMS: [&CStr; 18] = [
+    c"u_mvp", c"u_lamp", c"u_amb", c"u_lpos[0]", c"u_lpos[1]", c"u_lpos[2]", c"u_lpos[3]", c"u_ldir[0]", c"u_ldir[1]",
+    c"u_ldir[2]", c"u_ldir[3]", c"u_eye", c"u_fog", c"u_snap", c"u_fogc", c"u_fx", c"u_tex", c"u_dither",
 ];
-const WORLD_ATTRIBS: [&CStr; 3] = [c"a_pos", c"a_uv", c"a_nrm"];
+const WORLD_ATTRIBS: [&CStr; 4] = [c"a_pos", c"a_uv", c"a_nrm", c"a_tile"];
 
 pub struct Shaders {
-    pub world: Program<19>,
-    pub screen: Program<19>,
-    pub glow: Program<6>,
+    pub world: Program<18>,
+    pub screen: Program<18>,
+    pub glow: Program<5>,
     pub blit: Program<3>,
     pub blit_fx: Program<6>,
     pub ui: Program<2>,
@@ -225,7 +225,7 @@ impl Shaders {
         Ok(Shaders {
             world: Program::new(gl, WORLD_VS, WORLD_FS, &WORLD_ATTRIBS, WORLD_UNIFORMS)?,
             screen: Program::new(gl, WORLD_VS, &screen_fs, &WORLD_ATTRIBS, WORLD_UNIFORMS)?,
-            glow: Program::new(gl, GLOW_VS, GLOW_FS, &WORLD_ATTRIBS, [c"u_mvp", c"u_snap", c"u_color", c"u_model", c"u_eye", c"u_dither"])?,
+            glow: Program::new(gl, GLOW_VS, GLOW_FS, &WORLD_ATTRIBS, [c"u_mvp", c"u_snap", c"u_color", c"u_eye", c"u_dither"])?,
             blit: Program::new(gl, BLIT_VS, BLIT_FS, &[c"a_pos"], [c"u_rect", c"u_canvas", c"u_tex"])?,
             blit_fx: Program::new(
                 gl,
@@ -243,5 +243,17 @@ impl Shaders {
         [self.world.id, self.screen.id, self.glow.id, self.blit.id, self.blit_fx.id, self.ui.id]
             .iter()
             .for_each(|&p| gl.delete_program(p));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::texture::{ATLAS_H, ATLAS_W, CELL};
+
+    #[test]
+    fn tile_scale_matches_atlas() {
+        let scale = format!("vec4({}, {}, {}, {})", CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32, CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32);
+        assert!(WORLD_VS.contains(&scale), "{scale}");
     }
 }

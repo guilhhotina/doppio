@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -27,10 +28,12 @@ static void apply(const char *cmd, const char *name, int port)
 static void *reader(void *arg)
 {
     (void)arg;
-    unlink("/tmp/zedia-keys");
-    if (mkfifo("/tmp/zedia-keys", 0600) != 0) return NULL;
+    const char *path = getenv("ZEDIA_KEYS");
+    if (!path || !path[0]) path = "/tmp/zedia-keys";
+    unlink(path);
+    if (mkfifo(path, 0600) != 0) return NULL;
     for (;;) {
-        FILE *f = fopen("/tmp/zedia-keys", "r");
+        FILE *f = fopen(path, "r");
         if (!f) return NULL;
         char line[96];
         while (fgets(line, sizeof(line), f)) {

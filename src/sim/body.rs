@@ -76,7 +76,7 @@ impl World {
             self.ctl[i].hold = 0;
             return Reach::Nothing;
         }
-        match (self.door_ahead(i), self.task_near(self.bodies[i].pos)) {
+        match (self.door_ahead(i), self.reach_task(i)) {
             (Some(d), _) => {
                 if pressed(prev, input, A) {
                     self.use_door(d);
@@ -115,15 +115,17 @@ impl World {
         self.ctl[i].step = match (walking, self.ctl[i].step) {
             (false, _) => FIRST_STEP,
             (true, 0) => {
-                let surface = self.surface_at(self.bodies[i].pos);
-                self.events.push(Event::Step { body: i as u8, surface });
+                if self.echo[i].shadow == 0 {
+                    let surface = self.surface_at(self.bodies[i].pos);
+                    self.events.push(Event::Step { body: i as u8, surface });
+                }
                 interval
             }
             (true, n) => n.min(interval) - 1,
         };
     }
 
-    fn surface_at(&self, p: Vec2) -> u8 {
+    pub(super) fn surface_at(&self, p: Vec2) -> u8 {
         self.tile_index(p)
             .and_then(|t| self.map.room_of[t])
             .map_or(0, |r| self.room_surface[r as usize])
