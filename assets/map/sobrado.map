@@ -1,0 +1,183 @@
+[solid]
+#WWW#WWW#WWW#WWW#WWW#WW#####
+W..................BBB.#...#
+W......................D...#
+##W#D##W####W#W####W#W##...#
+#........#.....B#BB...B#...#
+#........#......#.....BW...#
+WB..B....#..BB..D......#...#
+#B..B....D..BB..#..BB..D...#
+#...B....#......#......#...#
+#BB....B.#......#.....B#...#
+####D#######D######D####...#
+W...............D.....B#...#
+###D####D####D###......D...#
+#B..BB#B.BB#...B#......#...#
+#...BB#..BB#....###D####...#
+W.....#....#...B#.....B#...#
+#.....#B...#B...#......D...#
+#BB...#B...#B...#BB....#...#
+###W#####W####W#########...#
+                       #####
+
+[rooms]
+----------------------------
+-vvvvvvvvvvvvvvvvvvvvvv-eee-
+-vvvvvvvvvvvvvvvvvvvvvv-eee-
+------------------------eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+-ssssssss-jjjjjj-kkkkkk-eee-
+------------------------eee-
+-ccccccccccccccc-llllll-yyy-
+-----------------llllll-yyy-
+-aaaaa-qqqq-bbbb-llllll-yyy-
+-aaaaa-qqqq-bbbb--------yyy-
+-aaaaa-qqqq-bbbb-dddddd-yyy-
+-aaaaa-qqqq-bbbb-dddddd-yyy-
+-aaaaa-qqqq-bbbb-dddddd-yyy-
+------------------------yyy-
+----------------------------
+
+[room]
+v varanda floor=lajota wall=reboco ceil=forro light=25
+s sala_estar floor=taco wall=papel_floral ceil=forro light=35
+j sala_jantar floor=taco wall=reboco ceil=forro light=30
+k cozinha floor=ceramica wall=azulejo ceil=forro light=40
+c corredor floor=taco wall=papel_floral ceil=forro light=15
+a quarto_vo floor=taco wall=reboco_mofo ceil=forro light=20
+q quarto floor=taco wall=reboco ceil=forro light=25
+b banheiro floor=ceramica wall=azulejo ceil=reboco light=20
+l area_servico floor=lajota wall=reboco_mofo ceil=concreto light=15
+d despensa floor=concreto wall=reboco_mofo ceil=concreto light=5
+e corredor_lateral floor=terra wall=tijolo ceil=- light=10
+y quintal floor=grama wall=tijolo ceil=- light=10
+
+[door]
+4 3 h open
+9 7 v open
+16 6 v open
+19 10 h open
+23 7 v closed
+23 12 v open
+19 14 h closed
+23 16 v locked
+4 10 h open
+12 10 h closed
+16 11 v open
+3 12 h closed
+8 12 h open
+13 12 h closed
+23 2 v closed
+
+[cam]
+1 10 5 12 15.6 1.9 11.5 0.5 1.1 11.5 42
+6 10 11 12 1.2 2.3 11.5 16.5 0.6 11.5 50
+12 10 16 12 9.5 0.4 11.5 16.8 1.6 11.5 62
+1 3 4 9 8.7 2.4 4.3 1.4 0.4 9.2 62
+5 4 9 9 1.3 1.1 9.7 8.6 1.4 4.6 64
+10 4 12 9 15.7 2.4 9.7 10.4 0.5 4.4 62
+13 4 15 9 10.3 2.3 4.3 15.5 0.6 9.2 62
+16 4 19 9 22.7 2.4 9.7 17.2 0.5 4.5 64
+20 4 22 9 17.3 1 5.4 22.6 1.3 8.8 60
+17 10 19 13 22.7 2.4 13.7 17.2 0.5 11 62
+20 11 23 13 17.3 2.4 11.3 23 0.5 13.6 62
+17 14 19 17 22.7 2.4 17.7 17.2 0.4 15 64
+20 15 23 17 17.3 0.9 15.3 22.8 1.3 17.2 60
+1 13 5 15 5.7 2.4 17.7 1.2 0.5 13.2 64
+1 16 5 17 1.3 2.4 13.3 5.5 0.3 17.8 62
+7 13 10 15 10.7 2.4 17.7 7.2 0.5 13.2 64
+7 16 10 17 7.3 2.4 13.3 10.5 0.3 17.8 62
+12 13 15 15 12.3 2.5 17.7 15.4 0.4 13.3 66
+12 16 15 17 15.7 2.5 13.3 12.2 0.3 17.8 62
+1 1 8 2 11.5 2.4 1.2 0.6 0.6 2.6 52
+9 1 15 2 7.6 0.6 2.8 16 1.4 1 60
+16 1 23 2 14.5 2.4 1.2 23.6 0.5 2.6 56
+24 1 26 5 25 3 10.6 25 0.5 0.6 48
+23 6 26 10 26.7 2.8 1.3 24 0.4 10.5 56
+24 11 26 14 25.5 3.2 18.7 24.5 0.5 10.5 56
+24 15 26 18 25 2.8 11 25.5 0.3 18.8 60
+
+[prop]
+rack 1.5 6.5 90
+tv_tubo 1.5 7 90
+sofa 4.5 7.5 270
+poltrona 2.5 9.4 135
+abajur 1.5 9.5 0
+estante 7.5 9.6 180
+cortina 1 4 0
+cortina 2.5 4.1 0
+cortina 7.5 4.1 0
+mesa 13 7 0
+cadeira 11.6 6.5 90
+cadeira 11.6 7.5 90
+cadeira 14.4 6.5 270
+cadeira 14.4 7.5 270
+cadeira 12.5 5.6 0
+cadeira 13.5 8.4 180
+cristaleira 15.5 4.5 270
+relogio_parede 10.1 5.5 90
+geladeira 17.5 4.5 0
+fogao 18.5 4.5 0
+pia 22.5 5 270
+filtro_barro 22.5 9.5 270
+mesa 20 7.5 0
+cadeira 19.5 8.4 180
+quadro_santo 7.5 11.05 0
+espelho 14.5 11.95 180
+criado_mudo 1.5 13.5 0
+abajur 1.5 13.5 0
+cama 5 14 0
+guarda_roupa 2 17.5 180
+quadro_santo 5.95 16 270
+cortina 1 15.5 90
+cama 10 14 0
+criado_mudo 7.5 13.5 0
+guarda_roupa 7.5 16.5 90
+vaso 15.5 13.5 270
+pia 15.5 15.5 270
+espelho 15.95 15.5 270
+banheira 12.5 17 90
+pia 22.5 11.5 270
+disjuntor 21.5 13.95 180
+estante 18 17.5 180
+estante 22.5 15.5 270
+rede 20.5 1.5 90
+cadeira 2.5 1.5 180
+cadeira 6.5 1.5 180
+
+[spot]
+spawn 2.5 5.5 135
+spawn 6.5 5.5 225
+spawn 3.5 8.5 45
+spawn 6.5 8.5 315
+spawn 11.5 8.5 0
+spawn 14.5 5.5 270
+task window 2 4
+task window 7 4
+task window 12 4
+task window 14 4
+task window 19 4
+task window 21 4
+task window 1 11
+task window 1 15
+task window 3 17
+task window 9 17
+task window 14 17
+task breaker 21 13
+task breaker 17 12
+task key 2 13
+task key 8 13
+task key 15 5
+task key 21 17
+task tv 2 7
+task gas 18 5
+task gas 17 13
+task faucet 21 4
+task faucet 14 15
+task faucet 21 11
+final 17 15 22 17
+exit 23 16

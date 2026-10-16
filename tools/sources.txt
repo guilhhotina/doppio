@@ -1,0 +1,23 @@
+azulejo procedural:tools/synth.py(azulejo) own-work CC0
+ceramica https://polyhaven.com/a/floor_tiles_08 CC0
+ceramica_barro https://polyhaven.com/a/clay_plaster CC0
+colcha https://polyhaven.com/a/floral_jacquard CC0
+concreto https://polyhaven.com/a/concrete_floor_worn_001 CC0
+croche procedural:tools/synth.py(croche) own-work CC0
+forro https://polyhaven.com/a/japanese_cedar_planks CC0
+grama https://polyhaven.com/a/grass_ground CC0
+lajota https://polyhaven.com/a/terracotta_floor_tiles CC0
+madeira_escura https://polyhaven.com/a/wood_table_worn CC0
+madeira_porta procedural:tools/synth.py(porta)+https://polyhaven.com/a/wood_table_worn CC0
+metal https://polyhaven.com/a/blue_metal_plate CC0
+papel_floral procedural:tools/synth.py(floral)+https://polyhaven.com/a/decrepit_wallpaper CC0
+papel_jornal procedural:tools/textures.sh(t_papel_jornal)+tools/synth.py(porta) own-work CC0
+quadro_santo https://commons.wikimedia.org/wiki/File:SacredHeartBatoni.jpg Pompeo-Batoni-1767 public-domain(CC0-tagged)
+reboco https://polyhaven.com/a/painted_plaster_wall CC0
+reboco_mofo https://polyhaven.com/a/painted_plaster_wall+https://polyhaven.com/a/worn_mossy_plasterwall CC0
+relogio procedural:tools/textures.sh(t_relogio) own-work CC0
+taco procedural:tools/synth.py(taco)+https://polyhaven.com/a/black_walnut_veneer_02 CC0
+tecido_sofa https://polyhaven.com/a/floral_jacquard CC0
+terra https://polyhaven.com/a/red_dirt_mud_01 CC0
+tijolo https://polyhaven.com/a/red_brick CC0
+vidro_noite procedural:tools/synth.py(vidro) own-work CC0
