@@ -1,4 +1,4 @@
-use super::{DIM, Dir, FAINT, GOLD, INK, SCREEN, arrow, centered, shadowed};
+use super::{DIM, Dir, GOLD, INK, Item, SCREEN, arrow, centered, menu, shadowed};
 use crate::render::Ui2d;
 
 enum Key {
@@ -9,7 +9,7 @@ enum Key {
 const ROWS: [(Key, &str); 7] = [
     (Key::Pad(Dir::Up, Dir::Down), "andar (frente e trás)"),
     (Key::Pad(Dir::Left, Dir::Right), "virar"),
-    (Key::Button("A"), "interagir / lanterna"),
+    (Key::Button("A"), "interagir / toque: lanterna"),
     (Key::Button("B"), "segurar para correr"),
     (Key::Button("X"), "lanterna"),
     (Key::Button("Y"), "virar rápido"),
@@ -23,11 +23,11 @@ const RULES: [&str; 4] = [
     "Não dê as costas no escuro.",
 ];
 
-pub fn howto(ui: &mut Ui2d) {
+pub fn howto(ui: &mut Ui2d, tick: u32) {
     centered(ui, SCREEN, 14, "Como jogar", INK, 2);
     let (kx, tx) = (72i16, 132i16);
     ROWS.iter().enumerate().for_each(|(i, (k, text))| {
-        let y = 44 + i as i16 * 13;
+        let y = 40 + i as i16 * 12;
         match k {
             Key::Pad(a, b) => {
                 arrow(ui, tx - 30, y, *a, GOLD);
@@ -37,6 +37,7 @@ pub fn howto(ui: &mut Ui2d) {
         }
         shadowed(ui, tx, y, text, INK, 1);
     });
-    RULES.iter().enumerate().for_each(|(i, r)| centered(ui, SCREEN, 144 + i as i16 * 11, r, DIM, 1));
-    centered(ui, SCREEN, 200, "B voltar", FAINT, 1);
+    centered(ui, SCREEN, 126, "segure A para pausar", GOLD, 1);
+    RULES.iter().enumerate().for_each(|(i, r)| centered(ui, SCREEN, 142 + i as i16 * 11, r, DIM, 1));
+    menu(ui, 168, 190, &[Item::new("Voltar")], 0, tick);
 }

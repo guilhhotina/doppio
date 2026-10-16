@@ -43,7 +43,7 @@ exit 9 2
 
 static TINY_MAP: LazyLock<Map<'static>> = LazyLock::new(|| map::parse(TINY).unwrap_or_else(|e| panic!("{e}")));
 
-const GOLDEN: (u32, u32) = (0xb51d_befa, 0x9836_7713);
+const GOLDEN: (u32, u32) = (0x2947_fee8, 0x4cb4_82e6);
 
 pub fn tiny_world(players: u8, night_secs: u32) -> World {
     World::new(&TINY_MAP, Setup { seed: 7, players, night_secs })
@@ -528,6 +528,68 @@ fn copy_keeps_its_lantern_on_facing_a_dark_wall() {
         w.bodies[1].lantern
     });
     assert!(lit && w.bodies[1].pos == start && w.echo[1].lure <= 1);
+}
+
+#[test]
+fn lantern_toggles_on_a_short_release_with_nothing_in_reach() {
+    let mut w = tiny_world(1, 30);
+    to_night(&mut w, 1, true);
+    let spot = mid(2, 2);
+    put(&mut w, 0, spot.x, spot.y, Ang::ZERO, false);
+    assert_eq!(w.focus(0), None);
+    let press = |w: &mut World, tics: u8| {
+        (0..tics).for_each(|_| {
+            w.step(&[A, 0, 0, 0]);
+        });
+        let during = w.bodies[0].lantern;
+        w.step(&[0; MAX_PLAYERS]);
+        (during, w.bodies[0].lantern)
+    };
+    assert_eq!(press(&mut w, 3), (false, true));
+    assert_eq!(press(&mut w, body::TAP_TICS - 1), (true, false));
+    assert_eq!(press(&mut w, body::TAP_TICS), (false, false));
+    assert_eq!(press(&mut w, 60), (false, false));
+    let door = mid(4, 1);
+    put(&mut w, 0, door.x, door.y, Ang::QUARTER, false);
+    let swing = w.door_dir[0];
+    assert!(matches!(w.focus(0), Some(Focus::Door { .. })));
+    assert_eq!(press(&mut w, 3), (false, false));
+    assert_ne!(w.door_dir[0], swing);
+}
+
+#[test]
+fn only_the_living_work_tasks() {
+    let mut w = tiny_world(2, 30);
+    to_night(&mut w, 2, true);
+    clear_echoes(&mut w);
+    let t = w.tasks.iter().position(|t| t.kind == TaskKind::Tv).unwrap();
+    w.tasks.iter_mut().enumerate().for_each(|(k, task)| {
+        task.active = k == t;
+        task.done = false;
+    });
+    let a = w.task_spot(t);
+    let face = (a - mid(w.tasks[t].x as i32, w.tasks[t].y as i32)).ang();
+    let stand = a - Vec2::from_ang(face).scale(Fx::ratio(9, 10));
+    let id = tape_id(1, 0);
+    fill_tape(&mut w, id, |_| A);
+    w.players[1].role = Role::Duplo;
+    put(&mut w, 1, stand.x, stand.y, face, false);
+    w.place(2, (stand, face), Agent::Echo);
+    w.echo[2] = Echo::new(id, 2, false);
+    let away = mid(1, 1);
+    put(&mut w, 0, away.x, away.y, Ang::ZERO, true);
+    (0..tasks::HOLD_TICS as u32 * 3).for_each(|_| {
+        w.step(&[0, A, 0, 0]);
+    });
+    assert!(!w.tasks[t].done && w.ctl[1].hold == 0 && w.ctl[2].hold == 0);
+    assert!([1, 2].iter().all(|&b| w.bodies[b].anim == Anim::Reach), "{:?}", [w.bodies[1].anim, w.bodies[2].anim]);
+    clear_echoes(&mut w);
+    put(&mut w, 1, away.x, away.y, Ang::ZERO, false);
+    put(&mut w, 0, stand.x, stand.y, face, true);
+    (0..tasks::HOLD_TICS).for_each(|_| {
+        w.step(&[A, 0, 0, 0]);
+    });
+    assert!(w.tasks[t].done);
 }
 
 #[test]

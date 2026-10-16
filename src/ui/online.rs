@@ -45,7 +45,7 @@ fn clip(s: &str, n: usize) -> &str {
     &s[..s.char_indices().nth(n).map_or(s.len(), |(i, _)| i)]
 }
 
-pub fn lobby(ui: &mut Ui2d, heading: &str, seats: &[SeatRow], status: &str, help: &str) {
+pub fn lobby(ui: &mut Ui2d, heading: &str, seats: &[SeatRow], status: &str, items: &[Item], sel: usize, tick: u32) {
     centered(ui, SCREEN, 14, heading, INK, 2);
     let x = 88i16;
     (0..4).for_each(|i| {
@@ -66,6 +66,6 @@ pub fn lobby(ui: &mut Ui2d, heading: &str, seats: &[SeatRow], status: &str, help
             None => shadowed(ui, x, y, "lugar vazio", FAINT, 1),
         }
     });
-    centered(ui, SCREEN, 132, status, DIM, 1);
-    centered(ui, SCREEN, 200, help, FAINT, 1);
+    centered(ui, SCREEN, 122, status, DIM, 1);
+    menu(ui, 136, 142, items, sel, tick);
 }

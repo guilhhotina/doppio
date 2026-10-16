@@ -188,10 +188,12 @@ struct Ctl {
     step: u8,
     hold: u8,
     hold_task: u8,
+    press: u8,
+    press_busy: bool,
 }
 
 impl Ctl {
-    const FREE: Ctl = Ctl { agent: Agent::Free, tank: Tank::REST, battery: BATTERY_FULL, step: 0, hold: 0, hold_task: 0 };
+    const FREE: Ctl = Ctl { agent: Agent::Free, tank: Tank::REST, battery: BATTERY_FULL, step: 0, hold: 0, hold_task: 0, press: 0, press_busy: false };
 
     const fn fresh(agent: Agent) -> Ctl {
         Ctl { agent, ..Ctl::FREE }

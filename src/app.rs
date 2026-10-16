@@ -47,8 +47,6 @@ pub struct App {
     bench: Option<(Bench, usize, Clock)>,
     ports: [Option<u8>; MAX_PLAYERS],
     night_secs: u32,
-    ready: bool,
-    readied: bool,
     hashlog: u32,
     frame: u32,
     perf: Perf,
@@ -122,8 +120,6 @@ impl App {
             bench,
             ports: [Some(0), None, None, None],
             night_secs,
-            ready: false,
-            readied: false,
             hashlog: number(fe, c"doppio_hashlog").unwrap_or(0),
             frame: 0,
             perf: Perf::default(),
@@ -154,8 +150,6 @@ impl App {
         self.net.leave();
         self.game = None;
         self.audio = Audio::new(SAMPLE_RATE);
-        self.ready = false;
-        self.readied = false;
         self.screen = screen;
     }
 
@@ -180,7 +174,7 @@ impl App {
             (_, Some(g)) if g.online() && !ended && self.net.desynced() => self.quit_to(Screen::Notice(Notice::Desync)),
             (Link::Hosting | Link::Joined, Some(g)) if g.online() && self.net.started().is_none() => {
                 self.game = None;
-                self.screen = Screen::Lobby { since: self.frame, hosting: link == Link::Hosting };
+                self.screen = Screen::Lobby { since: self.frame, hosting: link == Link::Hosting, sel: 0 };
             }
             (_, None) => match self.net.started() {
                 Some(setup) => {
@@ -194,16 +188,11 @@ impl App {
                     self.screen = Screen::Game;
                 }
                 None if link != Link::Offline && !matches!(self.screen, Screen::Lobby { .. }) => {
-                    self.screen = Screen::Lobby { since: self.frame, hosting: link == Link::Hosting };
+                    self.screen = Screen::Lobby { since: self.frame, hosting: link == Link::Hosting, sel: 0 };
                 }
                 None => {}
             },
             _ => {}
-        }
-        if matches!(link, Link::Hosting | Link::Joined) && !self.readied && self.game.is_none() {
-            self.readied = true;
-            self.ready = true;
-            self.net.set_ready(true);
         }
     }
 
@@ -231,7 +220,7 @@ impl App {
     }
 
     fn menus(&mut self, edges: &[u16; 4]) {
-        let guest = matches!(self.screen, Screen::Couch | Screen::Lobby { .. }) && self.join_ports(edges);
+        let guest = matches!(self.screen, Screen::Couch { .. } | Screen::Lobby { .. }) && self.join_ports(edges);
         let own = if guest { 0 } else { edges[0] | edges[1..].iter().fold(0, |m, e| m | e & !(pad::START | pad::B)) };
         let key = pad::key(own);
         let ctx = flow::Ctx {
@@ -253,24 +242,20 @@ impl App {
                 let (list, n) = ports_list(&self.ports);
                 self.net.set_local_players(&list[..n]);
                 self.net.host(public, flow::RELAYS[relay].1);
-                self.ready = false;
-                self.readied = false;
             }
             flow::Action::Refresh => self.net.refresh_rooms(),
             flow::Action::Join(i) => {
                 let (list, n) = ports_list(&self.ports);
                 self.net.set_local_players(&list[..n]);
                 self.net.join(i);
-                self.ready = false;
-                self.readied = false;
             }
             flow::Action::Start => {
                 self.net.set_night_secs(self.night_secs);
                 self.net.start();
             }
             flow::Action::Ready => {
-                self.ready = !self.ready;
-                self.net.set_ready(self.ready);
+                let ready = !self.net.ready();
+                self.net.set_ready(ready);
             }
             flow::Action::Leave => self.quit_to(self.screen),
             flow::Action::CouchReset => self.ports = [Some(0), None, None, None],
@@ -279,19 +264,21 @@ impl App {
 
     fn in_game(&mut self, fe: &Frontend, edges: &[u16; 4], input: &[u16; 4]) {
         let Some(g) = self.game.as_mut() else { return };
+        let now = Instant::now();
         let key = pad::key(pad::merged(edges));
+        let held = g.held_to_pause(input, now);
         match (g.over(), g.pause) {
             (true, _) if key == Some(pad::Key::Confirm) => return self.quit_to(Screen::main()),
             (true, _) => {}
-            (false, None) if pad::merged(edges) & pad::PAUSE != 0 => g.pause = Some(0),
+            (false, None) if held || pad::merged(edges) & pad::PAUSE != 0 => g.pause = Some(0),
             (false, None) => {}
             (false, Some(sel)) => match key {
                 Some(pad::Key::Confirm) if sel == 1 => return self.quit_to(Screen::main()),
-                Some(pad::Key::Confirm | pad::Key::Back) => g.pause = None,
+                Some(pad::Key::Confirm | pad::Key::Back) => g.resume(input),
                 k => g.pause = Some(pad::list(sel, 2, k)),
             },
         }
-        g.advance(fe, &mut self.net, &mut self.audio, input, Instant::now());
+        g.advance(fe, &mut self.net, &mut self.audio, input, now);
     }
 
     fn draw_menus(&mut self) {
@@ -300,7 +287,7 @@ impl App {
         match self.screen {
             Screen::Title => ui::title(ui, t, concat!("v", env!("CARGO_PKG_VERSION"))),
             Screen::Game => {}
-            s => flow::draw(ui, s, &self.net, &self.ports, self.night_secs, self.ready, t),
+            s => flow::draw(ui, s, &self.net, &self.ports, self.night_secs, t),
         }
     }
 

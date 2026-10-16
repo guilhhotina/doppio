@@ -66,7 +66,7 @@ pub fn world(w: &World) -> u32 {
             c.tank.prev as u32 | (c.tank.quick as u32) << 16,
             c.tank.quick_from.0 as u32,
             c.battery as u32 | (c.step as u32) << 16 | (c.hold as u32) << 24,
-            c.hold_task as u32,
+            c.hold_task as u32 | (c.press as u32) << 8 | (c.press_busy as u32) << 16,
         ])
     });
     let h = w.echo.iter().fold(h, |h, e| {

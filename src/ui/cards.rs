@@ -40,6 +40,7 @@ pub fn pause(ui: &mut Ui2d, sel: usize, online: bool, tick: u32) {
     if online {
         centered(ui, SCREEN, 160, "a casa não espera: o jogo continua", DIM, 1);
     }
+    centered(ui, SCREEN, 180, "segure A para pausar", FAINT, 1);
 }
 
 pub fn ending(ui: &mut Ui2d, won: bool, duplo: bool, night: u8) {

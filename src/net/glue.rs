@@ -126,7 +126,7 @@ pub fn register(fe: &Frontend) {
         poll: None,
         connected: Some(connected),
         disconnected: Some(disconnected),
-        protocol_version: c"doppio 1".as_ptr(),
+        protocol_version: c"doppio 2".as_ptr(),
     };
     if !fe.env(ENV_SET_NETPACKET_INTERFACE, &mut cb) {
         fe.log(LOG_INFO, "frontend has no netpacket interface: offline only");

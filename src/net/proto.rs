@@ -1,4 +1,4 @@
-pub const VERSION: [u8; 16] = *b"doppio 1\0\0\0\0\0\0\0\0";
+pub const VERSION: [u8; 16] = *b"doppio 2\0\0\0\0\0\0\0\0";
 pub const MAX_PACKET: usize = 96;
 pub const NICK: usize = 16;
 pub const SLOTS: usize = 4;
@@ -26,7 +26,7 @@ pub enum Reason {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Msg {
-    Hello { version: [u8; 16], nick: [u8; NICK], local_count: u8 },
+    Hello { version: [u8; 16], nick: [u8; NICK], local_count: u8, ready: bool },
     Roster { count: u8, seats: [RosterSeat; SLOTS] },
     Ready { ready: bool },
     Start { seed: u32, players: u8, night_secs: u32, slots: [Owner; SLOTS] },
@@ -125,7 +125,7 @@ impl Msg {
     pub fn encode(&self, buf: &mut [u8; MAX_PACKET]) -> usize {
         let w = W { buf, n: 0 };
         match self {
-            Msg::Hello { version, nick, local_count } => w.u8(HELLO).bytes(version).bytes(nick).u8(*local_count),
+            Msg::Hello { version, nick, local_count, ready } => w.u8(HELLO).bytes(version).bytes(nick).u8(*local_count).u8(*ready as u8),
             Msg::Roster { count, seats } => seats
                 .iter()
                 .fold(w.u8(ROSTER).u8(*count), |w, s| w.owner(&s.owner).u8(s.ready as u8).bytes(&s.nick)),
@@ -144,7 +144,7 @@ impl Msg {
     pub fn decode(b: &[u8]) -> Option<Msg> {
         let mut r = R(b);
         let msg = match r.u8()? {
-            HELLO => Msg::Hello { version: r.take()?, nick: r.take()?, local_count: r.u8()? },
+            HELLO => Msg::Hello { version: r.take()?, nick: r.take()?, local_count: r.u8()?, ready: r.bool()? },
             ROSTER => Msg::Roster { count: r.u8().filter(|&c| c as usize <= SLOTS)?, seats: r.array(R::seat)? },
             READY => Msg::Ready { ready: r.bool()? },
             START => Msg::Start {
@@ -175,7 +175,8 @@ mod tests {
     fn roundtrip() {
         let seat = |c, i, r, n| RosterSeat { owner: Owner { client: c, index: i }, ready: r, nick: nick(n) };
         let msgs = [
-            Msg::Hello { version: VERSION, nick: nick("João"), local_count: 2 },
+            Msg::Hello { version: VERSION, nick: nick("João"), local_count: 2, ready: true },
+            Msg::Hello { version: VERSION, nick: nick("x"), local_count: 1, ready: false },
             Msg::Roster { count: 3, seats: [seat(0, 0, true, "a"), seat(0, 1, true, "a"), seat(7, 0, false, "b"), EMPTY_SEAT] },
             Msg::Ready { ready: true },
             Msg::Ready { ready: false },

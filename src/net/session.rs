@@ -74,7 +74,7 @@ impl Session {
             nick,
             ports: [0, 1, 2, 3],
             port_count: 1,
-            ready: false,
+            ready: true,
             machines: [NO_MACHINE; SLOTS],
             machine_count: 1,
             seats: [NO_SEAT; SLOTS],
@@ -98,8 +98,8 @@ impl Session {
     }
 
     pub fn reset(&mut self, role: Role, me: u16, w: &mut impl Wire) {
-        let (nick, ports, port_count) = (self.nick, self.ports, self.port_count);
-        *self = Session { ports, port_count, ..Session::new(nick) };
+        let (nick, ports, port_count, ready) = (self.nick, self.ports, self.port_count, self.ready);
+        *self = Session { ports, port_count, ready, ..Session::new(nick) };
         self.role = role;
         self.me = me;
         match role {
@@ -142,6 +142,10 @@ impl Session {
         self.reason
     }
 
+    pub fn ready(&self) -> bool {
+        self.ready
+    }
+
     pub fn accepting(&self) -> bool {
         self.role == Role::Host && self.game.is_none() && !self.lost
     }
@@ -161,7 +165,7 @@ impl Session {
     }
 
     fn hello(&self, w: &mut impl Wire) {
-        w.send(HOST, &Msg::Hello { version: VERSION, nick: self.nick, local_count: self.port_count });
+        w.send(HOST, &Msg::Hello { version: VERSION, nick: self.nick, local_count: self.port_count, ready: self.ready });
     }
 
     fn roster(&self) -> (u8, [RosterSeat; SLOTS]) {
@@ -348,7 +352,7 @@ impl Session {
         self.lose();
     }
 
-    fn host_hello(&mut self, from: u16, version: [u8; 16], nick: [u8; NICK], count: u8, w: &mut impl Wire) {
+    fn host_hello(&mut self, from: u16, version: [u8; 16], nick: [u8; NICK], count: u8, ready: bool, w: &mut impl Wire) {
         let known = self.machines[1..self.machine_count].iter().position(|m| m.client == from).map(|i| i + 1);
         let count = count.min(SLOTS as u8);
         let fits = self.others(from) + count + self.port_count <= SLOTS as u8
@@ -367,11 +371,11 @@ impl Session {
                 }
             }
             (None, Some(i)) => {
-                self.machines[i] = Machine { nick, count, ..self.machines[i] };
+                self.machines[i] = Machine { nick, count, ready, ..self.machines[i] };
                 self.publish(w);
             }
             (None, None) => {
-                self.machines[self.machine_count] = Machine { client: from, nick, count, ready: false };
+                self.machines[self.machine_count] = Machine { client: from, nick, count, ready };
                 self.machine_count += 1;
                 self.publish(w);
             }
@@ -424,7 +428,7 @@ impl Session {
 
     pub fn receive(&mut self, from: u16, msg: Msg, w: &mut impl Wire) {
         match (self.role, msg) {
-            (Role::Host, Msg::Hello { version, nick, local_count }) => self.host_hello(from, version, nick, local_count, w),
+            (Role::Host, Msg::Hello { version, nick, local_count, ready }) => self.host_hello(from, version, nick, local_count, ready, w),
             (Role::Host, Msg::Ready { ready }) => self.host_ready(from, ready, w),
             (Role::Host, Msg::Input { tic, slot, bits }) => self.host_input(from, tic, slot, bits, w),
             (Role::Host, Msg::Leave { .. }) => self.gone(from, w),
@@ -479,6 +483,10 @@ mod tests {
 
     impl Peer {
         fn new(id: u16, name: &str, ports: &[u8]) -> Peer {
+            Peer::ready_at_start(id, name, ports, false)
+        }
+
+        fn ready_at_start(id: u16, name: &str, ports: &[u8], ready: bool) -> Peer {
             let mut p = Peer {
                 id,
                 s: Session::new(nick(name)),
@@ -489,6 +497,7 @@ mod tests {
                 alive: true,
             };
             p.s.set_local_players(ports, &mut ());
+            p.s.set_ready(ready, &mut ());
             p.s.reset(if id == HOST { Role::Host } else { Role::Client }, id, &mut p.out);
             p
         }
@@ -668,7 +677,7 @@ mod tests {
         host.set_local_players(&[0, 1, 2], &mut ());
         host.reset(Role::Host, HOST, &mut ());
         let mut out = Outbox::default();
-        let hello = |v, c| Msg::Hello { version: v, nick: nick("x"), local_count: c };
+        let hello = |v, c| Msg::Hello { version: v, nick: nick("x"), local_count: c, ready: false };
         host.receive(1, hello(*b"doppio 0\0\0\0\0\0\0\0\0", 1), &mut out);
         host.receive(2, hello(VERSION, 2), &mut out);
         host.receive(3, hello(VERSION, 1), &mut out);
@@ -685,6 +694,24 @@ mod tests {
         client.reset(Role::Client, 1, &mut ());
         client.receive(HOST, Msg::Leave { reason: Reason::Version }, &mut ());
         assert_eq!(client.link(), Link::Lost);
+    }
+
+    #[test]
+    fn ready_set_before_the_link_reaches_the_host_without_input() {
+        let mut rng = Rng::new(31);
+        let mut net = Fake::new(5);
+        let mut peers = vec![Peer::new(0, "host", &[0]), Peer::ready_at_start(1, "guest", &[0], true)];
+        assert!(peers[1].out.0.iter().all(|(_, b)| !matches!(Msg::decode(b), Some(Msg::Ready { .. }))));
+        (0..30).for_each(|_| net.frame(&mut rng, &mut peers));
+        assert!(peers[0].s.seats()[1].ready && peers[0].s.can_start());
+        assert!(peers[1].s.seats()[1].ready && peers[1].s.ready());
+        let guest = &mut peers[1];
+        guest.s.set_local_players(&[0, 1], &mut guest.out);
+        (0..30).for_each(|_| net.frame(&mut rng, &mut peers));
+        assert_eq!(peers[0].s.seats().len(), 3);
+        assert!(peers[0].s.seats()[1..].iter().all(|s| s.ready) && peers[0].s.can_start());
+        let host = &mut peers[0];
+        assert!(host.s.start(5, 60, &mut host.out));
     }
 
     #[test]

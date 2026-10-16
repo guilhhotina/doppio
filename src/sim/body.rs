@@ -1,5 +1,5 @@
 use super::tank::{pressed, Gait, A, X};
-use super::{collide, Agent, Anim, Event, World, BATTERY_FULL};
+use super::{collide, Agent, Anim, Event, World, BATTERY_FULL, TICS_PER_SEC};
 use crate::fx::{Fx, Vec2};
 use crate::map::Tile;
 
@@ -9,6 +9,7 @@ const WALK_STEP: u8 = 15;
 const RUN_STEP: u8 = 9;
 const FIRST_STEP: u8 = 4;
 const REACH: Fx = Fx::ratio(7, 10);
+pub const TAP_TICS: u8 = (TICS_PER_SEC / 2) as u8;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Reach {
@@ -55,7 +56,8 @@ impl World {
         self.bodies[i].pos = pos;
         self.bodies[i].heading = m.heading;
         let reach = self.interact(i, prev, input);
-        self.lantern(i, pressed(prev, input, X) || (pressed(prev, input, A) && reach == Reach::Nothing));
+        let tap = self.tap(i, prev, input, reach);
+        self.lantern(i, pressed(prev, input, X) || tap);
         self.footstep(i, m.gait, pos != before.pos);
         let next = anim(staggered, m.gait, reach);
         self.bodies[i].anim_tic = match next == before.anim {
@@ -91,6 +93,19 @@ impl World {
             }
             (None, None) => Reach::Nothing,
         }
+    }
+
+    fn tap(&mut self, i: usize, prev: u16, input: u16, reach: Reach) -> bool {
+        let c = self.ctl[i];
+        let busy = reach == Reach::Busy;
+        let (press, held_busy) = match (input & A != 0, pressed(prev, input, A)) {
+            (true, true) => (1, busy),
+            (true, false) => (c.press.saturating_add(1), c.press_busy || busy),
+            (false, _) => (0, false),
+        };
+        self.ctl[i].press = press;
+        self.ctl[i].press_busy = held_busy;
+        prev & A != 0 && input & A == 0 && c.press < TAP_TICS && !c.press_busy
     }
 
     fn lantern(&mut self, i: usize, toggle: bool) {

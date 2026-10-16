@@ -1,6 +1,6 @@
 use super::clock::Clock;
 use super::layout;
-use super::pad::PLAY;
+use super::pad::{A, PLAY};
 use crate::audio::Audio;
 use crate::core::Frontend;
 use crate::ffi::LOG_INFO;
@@ -8,12 +8,13 @@ use crate::net::{Net, Seat};
 use crate::render::{CANVAS_H, CANVAS_W, Ui2d, View};
 use crate::sim::{MAX_PLAYERS, Phase, Role, Setup, TICS_PER_SEC, World};
 use crate::{map, ui};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const WHISPER_TICS: u32 = 8 * TICS_PER_SEC;
 const END_FRAMES: u32 = 150;
 const PAUSE_FADE: u8 = 170;
 const END_FADE: u8 = 200;
+const PAUSE_HOLD: Duration = Duration::from_secs(1);
 
 pub struct Game {
     world: Box<World>,
@@ -25,6 +26,8 @@ pub struct Game {
     duplo_at: [Option<u32>; MAX_PLAYERS],
     end_frames: u32,
     hashlog: u32,
+    hold: [Option<Instant>; MAX_PLAYERS],
+    quiet: [u16; 4],
     pub pause: Option<usize>,
 }
 
@@ -44,6 +47,8 @@ impl Game {
             duplo_at: [None; MAX_PLAYERS],
             end_frames: 0,
             hashlog,
+            hold: [None; MAX_PLAYERS],
+            quiet: [0; 4],
             pause: None,
         }
     }
@@ -68,13 +73,28 @@ impl Game {
         self.local().next().map_or(0, |s| self.world.player(s).body)
     }
 
+    pub fn held_to_pause(&mut self, input: &[u16; 4], now: Instant) -> bool {
+        self.quiet = std::array::from_fn(|p| self.quiet[p] & input[p]);
+        let free = |s: usize| {
+            self.seats[s].is_some_and(|p| input[p as usize] & !self.quiet[p as usize] & A != 0) && self.world.focus(s).is_none()
+        };
+        let hold: [Option<Instant>; MAX_PLAYERS] = std::array::from_fn(|s| free(s).then(|| self.hold[s].unwrap_or(now)));
+        self.hold = hold;
+        hold.iter().flatten().any(|&since| now.duration_since(since) >= PAUSE_HOLD)
+    }
+
+    pub fn resume(&mut self, input: &[u16; 4]) {
+        self.pause = None;
+        self.quiet = input.map(|b| b & A);
+    }
+
     pub fn advance(&mut self, fe: &Frontend, net: &mut Net, audio: &mut Audio, input: &[u16; 4], now: Instant) {
         if self.pause.is_some() && !self.online {
             self.clock.hold(now);
             return;
         }
         let frozen = self.pause.is_some() || self.finished();
-        let local: [u16; 4] = std::array::from_fn(|p| if frozen { 0 } else { input[p] & PLAY });
+        let local: [u16; 4] = std::array::from_fn(|p| if frozen { 0 } else { input[p] & PLAY & !self.quiet[p] });
         let listener = self.listener();
         let (world, tic, hashlog) = (&mut self.world, &mut self.tic, self.hashlog);
         self.clock.run(now, || {
@@ -180,5 +200,27 @@ mod tests {
         assert_eq!(n, 2);
         assert_eq!(views[0].follow, g.world().player(1).body);
         assert_eq!(views[1].follow, g.world().player(2).body);
+    }
+
+    #[test]
+    fn holding_a_with_nothing_in_reach_pauses_after_a_second() {
+        let seats = [Seat { nick: [0; 16], local_port: Some(2), ready: true }];
+        let t0 = Instant::now();
+        let at = |ms: u64| t0 + Duration::from_millis(ms);
+        let mut g = Game::new(Setup { seed: 3, players: 1, night_secs: 60 }, &seats, false, 0, t0);
+        assert_eq!(g.world().focus(0), None);
+        let a = [0, 0, A, 0];
+        assert!(!g.held_to_pause(&[A, 0, 0, 0], t0));
+        assert!(!g.held_to_pause(&a, at(100)));
+        assert!(!g.held_to_pause(&a, at(1000)));
+        assert!(!g.held_to_pause(&[0; 4], at(1050)));
+        assert!(!g.held_to_pause(&a, at(1100)));
+        assert!(g.held_to_pause(&a, at(2100)));
+        g.pause = Some(0);
+        g.resume(&a);
+        assert!(!g.held_to_pause(&a, at(2200)) && !g.held_to_pause(&a, at(4000)));
+        assert!(!g.held_to_pause(&[0; 4], at(4100)));
+        assert!(!g.held_to_pause(&a, at(4200)));
+        assert!(g.held_to_pause(&a, at(5200)));
     }
 }

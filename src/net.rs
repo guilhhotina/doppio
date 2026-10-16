@@ -162,6 +162,7 @@ impl Net {
             Role::Offline => {}
         }
         self.session.reset(Role::Offline, HOST, &mut ());
+        self.session.set_ready(true, &mut ());
         self.start_pending = false;
     }
 
@@ -179,6 +180,10 @@ impl Net {
 
     pub fn set_ready(&mut self, ready: bool) {
         self.session.set_ready(ready, &mut Packets);
+    }
+
+    pub fn ready(&self) -> bool {
+        self.session.ready()
     }
 
     pub fn start(&mut self) -> bool {
@@ -277,6 +282,8 @@ mod tests {
         assert!(!net.lobby_supported());
         net.set_local_players(&[0, 1]);
         assert_eq!(net.seats().len(), 2);
+        assert!(net.ready());
+        net.set_ready(false);
         assert!(net.start());
         assert_eq!(net.started(), None);
         net.poll(&fe);
@@ -287,6 +294,7 @@ mod tests {
         net.leave();
         assert_eq!(net.started(), None);
         assert_eq!(net.seats().len(), 2);
+        assert!(net.ready());
     }
 
     #[test]
