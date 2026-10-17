@@ -728,8 +728,8 @@ cadeira 58.6 51.4 0
 31 29 40 37 31.1 0.5 29.1 40.5 2.2 38.5 64
 ; praca SE: high from the coreto over the banca de jornal
 41 28 49 37 38.5 3 29.5 50.1 0.5 35 64
-; farmacia manipulacao (wake): from the loja door corner, the stuck estoque door below
-5 18 11 22 10.6 2.5 22.6 5.7 0.6 17.8 64
+; farmacia manipulacao (wake): high from the NW corner facing the stuck estoque door (south) and the loja door (east)
+5 18 11 22 5.4 2.5 18.4 9.2 0.6 22.9 66
 ; farmacia estoque north: from the shelves, the stuck door and the fusivel
 4 23 10 26 6.4 2.4 29.6 8.5 0.6 23.2 62
 ; farmacia estoque south: from the stuck door toward the beco door
