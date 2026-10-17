@@ -9,10 +9,16 @@ pub fn build(kind: &str, s: &mut Sink) -> bool {
     match kind {
         "arvore" => arvore(s),
         "bananeira" => {
-            s.pen("casca").cylinder([0.0, 0.0, 0.0], 0.12, 0.09, 1.6, 5, false);
-            s.cross("bananeira_a", [0.0, 0.0, 0.0], 1.6, 3.2, 3, 0.3);
+            s.pen("casca").cylinder([0.0, 0.0, 0.0], 0.11, 0.08, 1.5, 5, false);
+            s.cross("bananeira_a", [0.0, 0.65, 0.0], 0.95, 2.0, 2, 0.3);
         }
-        "bambu" => s.cross("bambu_a", [0.0, 0.0, 0.0], 1.4, 2.8, 3, 0.0),
+        "bambu" => {
+            [-0.12f32, 0.1, 0.02].iter().enumerate().for_each(|(i, &x)| {
+                let z = [-0.08f32, 0.06, 0.12][i];
+                s.pen("madeira_crua").cylinder([x, 0.0, z], 0.04, 0.035, 2.5, 4, false);
+            });
+            s.cross("bambu_a", [0.0, 0.9, 0.0], 0.9, 1.8, 2, 0.2);
+        }
         "cerca_madeira" => cerca(s),
         "tronco" => tronco(s),
         "pedra" => pedra(s),
@@ -25,17 +31,29 @@ pub fn build(kind: &str, s: &mut Sink) -> bool {
 }
 
 fn arvore(s: &mut Sink) {
-    s.pen("casca").cylinder([0.0, 0.0, 0.0], 0.22, 0.15, 2.2, 5, false);
-    let local = mat::mul(&mat::translate([0.0, 1.7, 0.0]), &mat::rot_z(0.6));
-    s.pen_at("casca", &local).cylinder([0.0, 0.0, 0.0], 0.08, 0.05, 1.0, 3, false);
-    s.cross("folhas_a", [0.0, 1.4, 0.0], 3.0, 2.6, 3, 0.2);
-    s.cross("folhas_a", [0.3, 2.5, -0.2], 2.0, 1.8, 2, 0.9);
-    let ring = |i: usize| {
-        let a = i as f32 / 6.0 * TAU;
-        [a.sin() * 1.4, 2.7, a.cos() * 1.4]
-    };
+    let mut b = s.pen("casca");
+    b.cylinder([0.0, 0.0, 0.0], 0.4, 0.23, 0.85, 6, false);
+    b.cylinder([0.0, 0.85, 0.0], 0.23, 0.15, 1.65, 5, false);
+    (0..4).for_each(|i| {
+        let a = i as f32 * 0.25 * TAU + 0.4;
+        let (sn, cs) = a.sin_cos();
+        b.tri([[sn * 0.58, 0.0, cs * 0.58], [-cs * 0.1, 0.0, sn * 0.1], [sn * 0.18, 0.9, cs * 0.18]], [[0.0, 1.0], [0.5, 1.0], [0.25, 0.0]]);
+        b.tri([[cs * 0.1, 0.0, -sn * 0.1], [sn * 0.58, 0.0, cs * 0.58], [sn * 0.18, 0.9, cs * 0.18]], [[0.0, 1.0], [0.5, 1.0], [0.25, 0.0]]);
+    });
+    [(0.52f32, 0.0f32, 2.05f32), (-0.48, 0.35, 2.15), (0.15, -0.5, 2.2)].iter().for_each(|&(rz, rx, y)| {
+        let local = mat::mul(&mat::translate([0.0, y, 0.0]), &mat::mul(&mat::rot_x(rx), &mat::rot_z(rz)));
+        s.pen_at("casca", &local).cylinder([0.0, 0.0, 0.0], 0.08, 0.04, 0.95, 4, false);
+    });
+    s.cross("folhas_a", [0.0, 2.4, 0.0], 1.25, 1.05, 2, 0.3);
     let mut c = s.pen("folhas_a");
-    (1..5).for_each(|i| c.tri([ring(0), ring(i + 1), ring(i)], [[0.5, 0.0], [1.0, 1.0], [0.0, 1.0]]));
+    [(2.45f32, 3.05f32, 1.15f32), (2.85, 3.35, 0.82)].iter().for_each(|&(y0, y1, r)| {
+        (0..6).for_each(|i| {
+            let (a0, a1) = (i as f32 / 6.0 * TAU, (i + 1) as f32 / 6.0 * TAU);
+            let (p0, p1, top) = ([a0.sin() * r, y0, a0.cos() * r], [a1.sin() * r, y0, a1.cos() * r], [0.0, y1, 0.0]);
+            c.tri([top, p1, p0], [[0.5, 0.0], [1.0, 1.0], [0.0, 1.0]]);
+            c.tri([top, p0, p1], [[0.5, 0.0], [0.0, 1.0], [1.0, 1.0]]);
+        });
+    });
 }
 
 fn cerca(s: &mut Sink) {

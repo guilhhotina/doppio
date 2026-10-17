@@ -103,8 +103,11 @@ vitrine procedural:tools/synth.py(vidro)+textures.sh(t_vitrine) own-work CC0
 cast_alva procedural:tools/cast_textures.sh(alva) own-work CC0
 cast_benedita https://commons.wikimedia.org/wiki/File:Portrait_of_an_elderly_woman_(I0027806).tiff public-domain+procedural:tools/cast_textures.sh(benedita)
 cast_bia https://commons.wikimedia.org/wiki/File:A_young_woman_in_the_1920s_to_1930s_-_DPLA_-_58890cae980aeef52defcd865ba423c4.jpg public-domain+procedural:tools/cast_textures.sh(bia)
+cast_bode procedural:tools/cast_textures.sh(bode) own-work CC0
 cast_cabra https://commons.wikimedia.org/wiki/File:Goat_Anatomy_Head.jpg CC0+procedural:tools/cast_textures.sh(cabra)
+cast_chita procedural:tools/cast_textures.sh(chita) own-work CC0
 cast_corpo https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain+procedural:tools/cast_textures.sh(corpo)
+cast_costela https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain+procedural:tools/cast_textures.sh(costela)
 cast_couro https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain
 cast_florido procedural:tools/cast_textures.sh(florido) own-work CC0
 cast_jairo https://commons.wikimedia.org/wiki/File:Unidentified_man_with_mustache,_Portland,_Oregon,_ca_1890_(PORTRAITS_546).jpg Eastman-ca1890 public-domain+procedural:tools/cast_textures.sh(jairo)
@@ -112,9 +115,15 @@ cast_jeans procedural:tools/cast_textures.sh(jeans) own-work CC0
 cast_matinta https://commons.wikimedia.org/wiki/File:Unknown_(American)_-_Elderly_Woman_-_55.80_-_Detroit_Institute_of_Arts.jpg public-domain+procedural:tools/cast_textures.sh(matinta)
 cast_misc procedural:tools/cast_textures.sh(misc) own-work CC0
 cast_moletom procedural:tools/cast_textures.sh(moletom) own-work CC0
+cast_pele procedural:tools/cast_textures.sh(pele) own-work CC0
 cast_pelo procedural:tools/cast_textures.sh(pelo) own-work CC0
 cast_preto procedural:tools/cast_textures.sh(preto) own-work CC0
 cast_tonho https://commons.wikimedia.org/wiki/File:Unidentified_boy_photograph_-_DPLA_-_b33c835fd845cfa3b6f70b994a4edd3e.jpg public-domain+procedural:tools/cast_textures.sh(tonho)
 cast_trapo https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain
 cast_xadrez procedural:tools/cast_textures.sh(xadrez) own-work CC0
 cast_xale procedural:tools/cast_textures.sh(xale) own-work CC0
+ui_font_a procedural:tools/uiart.py(fonts)+https://not-jam.itch.io/not-jam-font-pack(Not-Jam-Old-Style-14,CC0)+linux-kbd-consolefonts(lat1-08) CC0
+ui_latao_a procedural:tools/uiart.py(latao)+https://polyhaven.com/a/rusty_metal_02+https://polyhaven.com/a/blue_metal_plate CC0
+ui_logo_a procedural:tools/uiart.py(logo)+https://fonts.google.com/specimen/IM+Fell+English+SC(OFL-1.1) OFL
+ui_moldura_a procedural:tools/uiart.py(moldura)+https://polyhaven.com/a/rusty_metal CC0
+ui_papel procedural:tools/textures.sh(t_ui_papel)+https://polyhaven.com/a/rough_plaster_03 CC0

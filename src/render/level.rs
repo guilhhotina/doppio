@@ -58,6 +58,7 @@ pub struct Group {
 pub enum Drive {
     Prop(u16),
     Lock(u8),
+    Hide(u8),
 }
 
 pub struct Mover {
@@ -232,9 +233,12 @@ impl<'a> Builder<'a> {
         let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
         let a = [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5];
         let out = self.map.rooms[room as usize].out.then_some((room, top));
-        let y0 = if base { BASE } else { 0.0 };
+        let plinth = !base && tex != self.map.rooms[room as usize].wall;
+        let y0 = if base { BASE } else if plinth { 0.16 } else { 0.0 };
         if base {
             self.vface(room, "madeira_escura", a, f, 1.0, [0.0, BASE], top);
+        } else if plinth {
+            self.vface(room, "pedra", a, f, 1.0, [0.0, 0.16], top);
         }
         if !window {
             let door = |k: i32| self.map.tile(x + d[1] * k, y - d[0] * k) == Tile::Door;
@@ -287,7 +291,21 @@ impl<'a> Builder<'a> {
 
     fn wall_tile(&mut self, x: i32, y: i32) {
         let window = self.map.tile(x, y) == Tile::Window;
-        let faces: Vec<(u8, f32)> = DIRS.iter().filter(|d| open(self.map.tile(x + d[0], y + d[1]))).filter_map(|d| self.wall_side(x, y, *d, window)).collect();
+        let open_dirs: Vec<[i32; 2]> = DIRS.iter().copied().filter(|d| open(self.map.tile(x + d[0], y + d[1]))).collect();
+        let faces: Vec<(u8, f32)> = open_dirs.iter().filter_map(|d| self.wall_side(x, y, *d, window)).collect();
+        if !window && open_dirs.len() >= 3 && DIRS.iter().all(|d| self.map.tile(x + d[0], y + d[1]) != Tile::Door) {
+            if let Some(room) = open_dirs.iter().find_map(|d| self.z.room(x + d[0], y + d[1])) {
+                let r = &self.map.rooms[room as usize];
+                let top = r.h.to_f32();
+                if !r.out && top >= 3.8 && matches!(r.wall, "cal" | "pedra" | "marmore_sujo" | "azulejo_capela") {
+                    let (x0, z0) = (x as f32, y as f32);
+                    let mut p = Pen { mesh: self.part(room, "marmore_sujo"), xf: mat::IDENTITY, density: 2.0 };
+                    p.cuboid([x0 - 0.08, 0.0, z0 - 0.08], [x0 + 1.08, 0.42, z0 + 1.08], Faces(0x37));
+                    let cap_y = (top - 0.36).min(3.6);
+                    p.cuboid([x0 - 0.07, cap_y, z0 - 0.07], [x0 + 1.07, cap_y + 0.22, z0 + 1.07], Faces(0x3b));
+                }
+            }
+        }
         let lo = [x as f32, y as f32];
         let hi = [lo[0] + 1.0, lo[1] + 1.0];
         match faces.iter().copied().max_by(|a, b| a.1.total_cmp(&b.1)) {
@@ -310,16 +328,34 @@ impl<'a> Builder<'a> {
         dirs.iter().for_each(|d| {
             let Some(room) = self.z.room(x + d[0], y + d[1]) else { return };
             let (tex, top, _) = self.style(x, y, room);
+            let floor = self.map.rooms[room as usize].floor;
             let f = [d[0] as f32, d[1] as f32];
             let r = [f[1], -f[0]];
             let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
-            self.grid(room, tex, false, [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5], f, &[0.0, 1.0], &[HEAD, top], [2.0; 4], top);
+            let a = [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5];
+            self.grid(room, tex, false, a, f, &[0.0, 1.0], &[HEAD, top], [2.0; 4], top);
+            let m = self.part(room, "madeira_crua");
+            let base = m.verts.len();
+            let pt = |k: f32, y: f32, depth: f32| [a[0] + r[0] * k - f[0] * depth, y, a[1] + r[1] * k - f[1] * depth];
+            let n_l = [f[0] + r[0], 0.0, f[1] + r[1]];
+            let n_r = [f[0] - r[0], 0.0, f[1] - r[1]];
+            let n_t = [f[0], -1.0, f[1]];
+            m.quad_facing([pt(0.0, 0.0, 0.0), pt(0.085, 0.0, 0.045), pt(0.085, HEAD, 0.045), pt(0.0, HEAD, 0.0)], [[0.0, HEAD], [0.1, HEAD], [0.1, 0.0], [0.0, 0.0]], n_l);
+            m.quad_facing([pt(0.915, 0.0, 0.045), pt(1.0, 0.0, 0.0), pt(1.0, HEAD, 0.0), pt(0.915, HEAD, 0.045)], [[0.0, HEAD], [0.1, HEAD], [0.1, 0.0], [0.0, 0.0]], n_r);
+            m.quad_facing([pt(0.0, HEAD - 0.05, 0.045), pt(1.0, HEAD - 0.05, 0.045), pt(1.0, HEAD + 0.05, 0.0), pt(0.0, HEAD + 0.05, 0.0)], [[0.0, 0.1], [1.0, 0.1], [1.0, 0.0], [0.0, 0.0]], n_t);
+            m.verts[base..].iter_mut().for_each(|v| *v = v.with_lit([34, 29, 22, 38]));
+            let (p0, p1) = (pt(0.0, 0.0, 0.0), pt(1.0, 0.0, 0.5));
+            let (lo, hi) = ([p0[0].min(p1[0]), p0[2].min(p1[2])], [p0[0].max(p1[0]), p0[2].max(p1[2])]);
+            self.hface(room, floor, lo, hi, 0.0, true);
+            self.hface(room, "madeira_crua", lo, hi, HEAD, false);
+            let (l0, l1) = (pt(0.08, 0.0, 0.32), pt(0.92, 0.0, 0.5));
+            let (llo, lhi) = ([l0[0].min(l1[0]), l0[2].min(l1[2])], [l0[0].max(l1[0]), l0[2].max(l1[2])]);
+            let fbase = self.part(room, floor).verts.len();
+            self.hface(room, floor, llo, lhi, 0.003, true);
+            self.part(room, floor).verts[fbase..].iter_mut().for_each(|v| *v = v.with_lit([95, 74, 44, 110]));
         });
         if let Some(room) = self.z.room(x, y) {
             let r = &self.map.rooms[room as usize];
-            let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
-            self.hface(room, r.floor, lo, hi, 0.0, true);
-            self.hface(room, r.wall, lo, hi, HEAD, false);
             if let Some(roof) = self.roof_of(room) {
                 self.roof(roof, x, y, r.h.to_f32());
             }
@@ -332,6 +368,10 @@ impl<'a> Builder<'a> {
         let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
         if floor {
             self.hface(room, r.floor, lo, hi, 0.0, true);
+            let h = ((x as u32).wrapping_mul(73856093) ^ (y as u32).wrapping_mul(19349663)).wrapping_mul(0x9e3779b9);
+            if !r.out && matches!(r.floor, "marmore_xadrez" | "lajota" | "ladrilho_hidraulico") && (h >> 28) == 0 {
+                self.hface(room, "pedra", [lo[0] + 0.15, lo[1] + 0.18], [lo[0] + 0.78, lo[1] + 0.74], 0.003, true);
+            }
         }
         r.ceil.into_iter().for_each(|c| self.hface(room, c, lo, hi, r.h.to_f32(), false));
         if let Some(roof) = self.roof_of(room) {
@@ -414,11 +454,11 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn shell(&mut self, gates: &mut Vec<(usize, M4, u8)>) {
+    fn shell(&mut self, gates: &mut Vec<(usize, M4, u8)>, doors: &mut Vec<(usize, M4, u8)>) {
         let map = self.map;
         (0..map.h).flat_map(|y| (0..map.w).map(move |x| (x, y))).for_each(|(x, y)| match map.tile(x, y) {
             Tile::Floor | Tile::Blocker => self.floor_tile(x, y, true),
-            Tile::Hide => self.hide_tile(x, y),
+            Tile::Hide => self.hide_tile(x, y, doors),
             Tile::Portal => self.portal_tile(x, y, gates),
             Tile::Door => self.door_tile(x, y),
             Tile::Wall | Tile::Window => self.wall_tile(x, y),
@@ -428,7 +468,7 @@ impl<'a> Builder<'a> {
         });
     }
 
-    fn hide_tile(&mut self, x: i32, y: i32) {
+    fn hide_tile(&mut self, x: i32, y: i32, doors: &mut Vec<(usize, M4, u8)>) {
         self.floor_tile(x, y, true);
         let (Some(hi), Some(room)) = (self.map.hide_at(x, y), self.z.room(x, y)) else { return };
         let h = self.map.hides[hi];
@@ -438,7 +478,10 @@ impl<'a> Builder<'a> {
         }
         let mut sink = Sink { parts: &mut self.parts, screens: &mut self.screens, marks: &mut self.marks, room, xf };
         let _ = props::build(hide_kind(h.kind), &mut sink, false);
-        props::part(hide_kind(h.kind), &mut sink);
+        match props::hinge(hide_kind(h.kind)) {
+            Some(_) => doors.push((hi, xf, room)),
+            None => props::part(hide_kind(h.kind), &mut sink),
+        }
     }
 }
 
@@ -496,10 +539,13 @@ fn bounds(verts: &[Vert]) -> (V3, V3) {
 }
 
 fn bake(m: &Mesh, lamps: &Lamps, room: u8, tiles: &[[u8; 4]], tex: u8) -> Vec<Vert> {
+    let vitral = TEXTURES[tex as usize].0 == "vitral";
     m.verts
         .iter()
         .map(|v| {
-            let (moon, lit) = lamps.bake(room, v.pos, v.normal());
+            let (moon, mut lit) = lamps.bake(room, v.pos, v.normal());
+            let moon = if vitral { moon.max(0.85) } else { moon };
+            lit = std::array::from_fn(|k| lit[k].saturating_add(v.lit[k]));
             v.with_light(moon).with_lit(lit).with_tile(tiles[tex as usize])
         })
         .collect()
@@ -512,8 +558,8 @@ fn prop_xf(x: f32, y: f32, z: f32, rot: f32) -> M4 {
 impl Level {
     pub fn new(map: &Map, z: &Zones, lamps: &Lamps, tiles: &[[u8; 4]]) -> Level {
         let mut b = Builder { map, z, parts: Parts::new(), roofs: Parts::new(), screens: Mesh::default(), marks: Vec::new() };
-        let mut gates = Vec::new();
-        b.shell(&mut gates);
+        let (mut gates, mut hide_doors) = (Vec::new(), Vec::new());
+        b.shell(&mut gates, &mut hide_doors);
         let supports = supports(map);
         let mut movers = Vec::new();
         let mut screen_rooms = Vec::new();
@@ -535,6 +581,13 @@ impl Level {
                 }
                 None => props::part(p.kind, &mut Sink { parts: &mut b.parts, screens: &mut b.screens, marks: &mut b.marks, room, xf }),
             }
+        });
+        hide_doors.iter().for_each(|&(hi, xf, room)| {
+            let kind = hide_kind(map.hides[hi].kind);
+            let mut parts = Parts::new();
+            props::part(kind, &mut Sink { parts: &mut parts, screens: &mut b.screens, marks: &mut b.marks, room, xf: mat::IDENTITY });
+            let hinge = props::hinge(kind).expect("hide door hinge");
+            movers.push(mover(parts, Drive::Hide(hi as u8), hinge, xf, room, lamps, tiles));
         });
         gates.iter().for_each(|&(pi, xf, room)| {
             let mut parts = Parts::new();

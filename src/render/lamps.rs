@@ -163,7 +163,7 @@ impl Lamps {
         let d = mat::sub(l.pos, p);
         let d2 = mat::dot(d, d);
         let wrap = n.map_or(0.75, |n| mat::dot(n, mat::scale(d, 1.0 / d2.sqrt().max(1e-3))).max(0.0) * 0.85 + 0.15);
-        let under = n.map_or(1.0, |n| if n[1] < -0.5 && l.radius == 0.0 { 0.35 } else { 1.0 });
+        let under = n.map_or(1.0, |n| if n[1] < -0.5 && l.radius == 0.0 { 0.62 } else { 1.0 });
         match l.open {
             false => (l.room == room) as u8 as f32 * under * wrap / (1.0 + l.falloff * d2),
             true => {

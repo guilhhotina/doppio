@@ -1,9 +1,10 @@
 use super::pad::{Key, list};
 use crate::map::Map;
 use crate::net::{self, Link, Listing, Net, Reason};
-use crate::render::Ui2d;
+use crate::render::{Ui2d, WHITE};
 use crate::ui::lore::{CHARACTERS, character, legend};
-use crate::ui::{self, FAINT, INK, Item, Line, Party, PartySeat, SCREEN, centered, line};
+use crate::ui::art::{self, Button};
+use crate::ui::{self, Body, DIM, INK, Item, Line, Party, PartySeat, SCREEN, Serif, centered, line, width};
 
 pub const RELAYS: [(&str, Option<&str>); 5] =
     [("nenhum", None), ("São Paulo", Some("saopaulo")), ("Nova York", Some("nyc")), ("Madri", Some("madrid")), ("Singapura", Some("singapore"))];
@@ -189,15 +190,17 @@ pub struct Look<'a> {
 }
 
 fn heading(ui: &mut Ui2d, s: &str) {
-    centered(ui, SCREEN, 14, s, INK, 2);
+    centered(ui, SCREEN, 14, s, INK, Serif);
 }
 
-fn footer(ui: &mut Ui2d, s: &str) {
-    centered(ui, SCREEN, 204, s, FAINT, 1);
+fn footer(ui: &mut Ui2d) {
+    let w = 16 + width("escolher", Body) + 10 + 16 + width("voltar", Body);
+    let x = art::key_hint(ui, (SCREEN[2] as i16 - w) / 2, 202, Button::A, "escolher", DIM);
+    art::key_hint(ui, x, 202, Button::B, "voltar", DIM);
 }
 
 fn main_menu(ui: &mut Ui2d, sel: usize, lobby: bool, t: u32) {
-    centered(ui, SCREEN, 18, "DOPPIO", INK, 3);
+    art::logo(ui, (SCREEN[2] as i16 - art::LOGO_SIZE[0]) / 2, 2, WHITE);
     let items = [
         Item { note: Some("uma pessoa, fase a fase"), ..Item::new("Campanha") },
         Item { note: Some("dois a quatro controles nesta TV"), ..Item::new("Jogar no sofá") },
@@ -205,8 +208,8 @@ fn main_menu(ui: &mut Ui2d, sel: usize, lobby: bool, t: u32) {
         Item::new("Como jogar"),
         Item::new("Créditos"),
     ];
-    ui::menu(ui, 120, 70, &items, sel, t);
-    footer(ui, "A escolher   B voltar");
+    ui::menu(ui, 128, 76, &items, sel, t);
+    footer(ui);
 }
 
 fn campaign(ui: &mut Ui2d, sel: usize, couch: bool, l: &Look) {
@@ -228,7 +231,7 @@ fn campaign(ui: &mut Ui2d, sel: usize, couch: bool, l: &Look) {
         _ => Item::new("Voltar"),
     });
     ui::menu(ui, 64, 42, &items[..n + 2], sel, l.t);
-    footer(ui, "A escolher   B voltar");
+    footer(ui);
 }
 
 fn seat_nicks(net: &Net, local_names: bool) -> [Line; 4] {
@@ -278,7 +281,7 @@ fn online(ui: &mut Ui2d, sel: usize, t: u32) {
         Item::new("Voltar"),
     ];
     ui::menu(ui, 128, 70, &items, sel, t);
-    footer(ui, "A escolher   B voltar");
+    footer(ui);
 }
 
 fn create(ui: &mut Ui2d, sel: usize, public: bool, relay: usize, t: u32) {
@@ -294,7 +297,7 @@ fn create(ui: &mut Ui2d, sel: usize, public: bool, relay: usize, t: u32) {
         Item::new("Voltar"),
     ];
     ui::menu(ui, 96, 64, &items, sel, t);
-    footer(ui, "A escolher   B voltar");
+    footer(ui);
 }
 
 fn rooms(ui: &mut Ui2d, sel: usize, net: &Net, t: u32) {

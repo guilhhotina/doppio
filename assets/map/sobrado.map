@@ -1,4 +1,4 @@
-[map] name="Pedra Seca — o sobrado" w=54 h=20 sky=moon fog=3,3,5 fog_near=4 fog_far=16 legend=corposeco power=off
+[map] name="Xique-Xique — o sobrado" w=54 h=20 sky=moon fog=3,3,5 fog_near=4 fog_far=16 legend=corposeco power=off
 
 [area]
 0 térreo
@@ -273,29 +273,32 @@ cortina 49.5 12.9 180
 12 10 12 10 10.4 2.3 4.4 13 0.5 10.5 62
 19 10 19 10 20.5 2.3 5 19.5 0.5 11.2 58
 19 14 19 14 19.5 0.4 17.4 19.5 1.9 12.8 60
-; corredor: long shots down the spine, moonlit window and the servico door as negative space
-1 11 5 11 15.6 1.9 11.5 0.5 1.1 11.5 42
-6 11 11 11 4.3 2.3 11.5 16.6 0.6 11.5 56
-12 11 16 11 9.6 0.4 11.5 16.8 1.6 11.5 62
+; corredor: short cuts along the spine so each side door is seen from across the corridor, stairs at the west end
+1 11 3 11 5.8 2.4 11.8 2.2 0.3 11.2 48
+4 11 4 11 2.4 2.2 11.2 7 0.8 11.5 58
+5 11 5 11 9.2 1.9 11.5 5.5 0.4 12 48
+6 11 11 11 14.2 2 11.5 10.5 0.5 11.6 56
+12 11 16 11 11.2 2 11.8 16.8 1.6 11.5 62
 ; sala: corridor door behind the abajur, then over the poltrona toward the jantar door
-1 4 4 10 8.6 2.4 4.4 3 0.5 10 62
+1 4 4 10 8.5 2.4 4.5 5 1.2 6 48
 5 4 9 9 1.6 2.3 8.6 8.9 0.8 4.6 62
 ; varanda: lengthwise along the glazing
-1 1 8 2 11.5 2.4 1.2 0.6 0.6 2.6 52
+1 1 4 2 5.8 2 1.2 2.6 0 2.5 49
+5 1 8 2 10.8 2.4 1.2 0.6 0.6 2.6 52
 9 1 15 2 7.6 0.6 2.8 16 1.4 1 60
 16 1 23 2 14.5 2.4 1.2 23.6 0.5 2.6 56
 ; jantar: sala door and relogio behind, then kitchen and corridor doors behind
 10 4 12 9 15.3 2.4 9.3 10 0.8 5 62
 13 4 15 9 10.4 2.3 4.4 15.8 0.6 9.2 62
 ; cozinha: jantar door behind the fogao, then the two alley windows
-16 4 19 9 22.6 2.4 9.6 17 0.6 4.8 64
+16 4 19 9 22.3 2.4 6.7 18.7 0.7 7.3 67
 20 4 23 9 17.3 1 5.4 23 1.2 7.4 60
 ; servico: the dark corridor through its door, then the quintal door and the disjuntor
-17 11 19 13 22.6 2.4 13.6 16.5 0.8 11.3 62
+17 11 19 13 22.2 2.4 13.5 16.5 0.8 11.3 62
 20 11 23 13 17.4 2.4 11.4 23.2 0.5 13.4 62
 ; quarto da vo: the door you came through, then the wardrobe and the window
 1 12 5 14 5.6 2.4 17.6 1.6 0.6 12.4 62
-1 15 5 17 5.4 2.4 13.4 2.2 0.4 17.8 62
+1 15 5 17 3.8 2.4 13.2 3.9 0.2 16.5 65
 7 12 10 14 10.6 2.4 17.6 7.6 0.6 12.4 62
 7 15 10 17 9.4 2.4 13.3 9 0.4 17.8 62
 ; banheiro: the door, then the mirror over the pia
@@ -305,34 +308,46 @@ cortina 49.5 12.9 180
 17 15 19 17 22.6 0.6 16.5 17 1.4 16 60
 20 15 23 17 17.4 0.5 16.5 23 1.3 16.5 60
 ; outside, above the muro: the alley's dead end, the quintal opening, the back corner
-24 1 26 5 25 3 10.6 25 0.5 0.6 48
-24 6 26 10 26.7 2.8 1.3 24 0.4 10.5 56
-24 11 26 14 25.5 3.2 18.7 24.5 0.5 10.5 56
-24 15 26 18 25 2.8 11 25.5 0.3 18.8 60
+24 1 26 1 26.8 2.4 5.8 25 0.5 0.6 48
+24 2 26 5 26.5 2.4 7.8 25.7 0.7 4.3 48
+24 6 26 10 26.5 2.4 1.8 24 0.4 10.5 56
+24 11 26 14 25.8 3.2 18.2 24.5 0.5 10.5 56
+24 15 26 18 25.2 2.4 11.2 25 1.1 15 61
 ; andar de cima: varanda lengthwise from the far corner, the railing and the night beyond
-31 1 35 2 39.6 2.4 2.6 31 0.6 1.2 56
+31 1 35 2 36.8 2.4 1.2 31 0.6 1.2 60
 36 1 39 2 31.4 2.4 2.6 39.6 0.6 1.2 56
 ; costura: the varanda door from the cutting table, then corner shots across the machine
 34 3 34 3 34.5 1.8 6.6 34.5 1.2 1 50
 35 7 35 7 35.5 2.3 4.2 35.5 0.6 9 60
-31 4 35 6 39.4 2.4 6.6 31 0.6 4.2 62
+31 4 35 6 36.8 2.4 6.2 33.5 0.2 5.6 62
 36 4 39 6 31.6 2.4 6.6 39.6 0.6 4.2 62
-; quartos: the door seen from the bed, then the room from the corner by the door
+; quartos: the door seen from the bed, then the room from the corner opposite its door so the way out is in frame
 44 7 44 7 44.5 2.3 1.6 44.5 0.6 8.4 60
-41 1 46 6 41.4 2.4 6.6 46.6 0.6 1.2 64
+41 1 41 6 43.2 2 2.2 41.3 0.6 5.4 62
+42 1 46 6 46.5 2.4 1.2 43.8 0.5 4.3 68
 50 7 50 7 50.5 2.3 1.6 50.5 0.6 8.4 60
-48 1 52 6 48.1 2.4 6.9 53 0.6 1 64
+48 1 52 1 48.1 2.4 6.9 53 0.6 1 64
+48 2 52 6 51.8 2.4 1.2 50.7 0.4 4.5 68
 37 9 37 9 37.5 2.3 12.6 37.5 0.6 7.8 60
-33 10 39 12 39.6 2.4 10.3 33 0.5 12.6 62
+33 10 33 12 39.5 2.4 10.5 33 0.5 12.6 62
+34 10 35 12 36.8 2.4 12.8 35 -0.2 10.4 65
+36 10 39 12 36.2 2.4 10.2 38.4 -0.6 11.7 67
 43 9 43 9 43.5 2.3 12.6 43.5 0.6 7.8 60
-41 10 46 12 46.6 2.4 10.3 41 0.5 12.6 62
+41 10 42 12 46.2 2.4 10.5 41 0.5 12.6 62
+43 10 43 12 42.2 2.4 12.5 44.9 -0.5 10.7 68
+44 10 46 12 43.2 2.4 11.5 46.1 -0.4 11.7 56
 50 9 50 9 50.5 2.3 12.6 50.5 0.6 7.8 60
 53 11 53 11 49.4 2.3 11.5 53.6 1.2 11.5 50
-48 10 52 12 52.8 2.4 12.8 48 0.6 10 62
-; corredor de cima: down the stairwell from the landing, then the long hall both ways
+48 10 48 12 52.8 2.4 12.8 48 0.6 10 62
+49 10 52 12 48.8 2.4 12.5 51.8 0.2 11 59
+; corredor de cima: down the stairwell from the landing, then short cuts along the hall, each facing the next side doors
 31 9 31 11 31.5 2.4 8.2 31.5 0.3 11.6 60
-31 8 41 8 46.6 2.3 8.5 30.5 1 8.5 50
-42 8 52 8 36.4 2.3 8.5 53.5 1 8.5 50
+31 8 32 8 36.8 2 8.8 33 0.7 8.4 48
+33 8 35 8 38.5 2 8.5 35 0.8 8.8 48
+36 8 40 8 44.8 2 8.2 41.9 1.2 8.5 48
+41 8 41 8 45.5 2 8.5 41.9 0.2 8.2 48
+42 8 47 8 51.2 2 8.5 47.5 0.5 8.5 57
+48 8 52 8 36.4 2.3 8.5 53.5 1 8.5 50
 
 [wake]
 0 43.5 2.5 90

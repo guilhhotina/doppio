@@ -1,6 +1,7 @@
 use super::goal::{self, Goal};
 use super::lore::character;
-use super::{BLOOD, DIM, GOLD, INK, centered, line, wrap};
+use super::{BLOOD, Body, DIM, Face, GOLD, INK, Serif, art, centered, line, wrap};
+use crate::render::rgb;
 use crate::render::Ui2d;
 use crate::sim::{Event, Focus, ItemKind, LegendKind, LegendMode, TICS_PER_SEC, World, MAX_PLAYERS};
 
@@ -222,8 +223,8 @@ impl Cues {
     }
 }
 
-fn band(ui: &mut Ui2d, r: [u16; 4], inset: i16, thick: i16, color: u16, alpha: u8) {
-    let (x, y, w, h) = (r[0] as i16 + inset, r[1] as i16 + inset, r[2] as i16 - 2 * inset, r[3] as i16 - 2 * inset);
+fn band(ui: &mut Ui2d, r: [u16; 4], thick: i16, color: u16, alpha: u8) {
+    let (x, y, w, h) = (r[0] as i16, r[1] as i16, r[2] as i16, r[3] as i16);
     ui.shade(x, y, w, thick, color, alpha);
     ui.shade(x, y + h - thick, w, thick, color, alpha);
     ui.shade(x, y + thick, thick, h - 2 * thick, color, alpha);
@@ -231,7 +232,8 @@ fn band(ui: &mut Ui2d, r: [u16; 4], inset: i16, thick: i16, color: u16, alpha: u
 }
 
 pub fn vignette(ui: &mut Ui2d, r: [u16; 4], color: u16, level: u8) {
-    [(0, 210u16), (5, 140), (10, 80), (15, 35)].iter().for_each(|&(inset, a)| band(ui, r, inset, 5, color, (a * level as u16 / 255) as u8));
+    let [cr, cg, cb, _] = rgb(color);
+    art::vignette(ui, r.map(|v| v as i16), 0, [cr, cg, cb, level]);
 }
 
 pub fn dread(world: &World, cues: &Cues, p: usize, frame: u32) -> u8 {
@@ -243,16 +245,16 @@ pub fn dread(world: &World, cues: &Cues, p: usize, frame: u32) -> u8 {
     base.max(hit).min(255.0) as u8
 }
 
-pub fn toast_line(world: &World, t: Toast) -> (super::Line, u16, u8) {
+pub fn toast_line(world: &World, t: Toast) -> (super::Line, u16, Face) {
     match t {
-        Toast::Saw => (line(format_args!("Ela te viu!")), BLOOD, 2),
-        Toast::Lost => (line(format_args!("ela te perdeu de vista")), DIM, 1),
-        Toast::Opened { open, of } => (line(format_args!("Abriu! ({open}/{of})")), GOLD, 1),
-        Toast::Exit => (line(format_args!("A saída está aberta!")), GOLD, 1),
-        Toast::Foto { got, of } => (line(format_args!("foto {got} de {of}")), GOLD, 1),
+        Toast::Saw => (line(format_args!("Ela te viu!")), BLOOD, Serif),
+        Toast::Lost => (line(format_args!("ela te perdeu de vista")), DIM, Body),
+        Toast::Opened { open, of } => (line(format_args!("Abriu! ({open}/{of})")), GOLD, Body),
+        Toast::Exit => (line(format_args!("A saída está aberta!")), GOLD, Body),
+        Toast::Foto { got, of } => (line(format_args!("foto {got} de {of}")), GOLD, Body),
         Toast::Down { player } => {
             let c = world.players().get(player as usize).map_or(0, |p| p.character);
-            (line(format_args!("{} desmaiou!", character(c).short)), BLOOD, 1)
+            (line(format_args!("{} desmaiou!", character(c).short)), BLOOD, Body)
         }
     }
 }
@@ -263,21 +265,21 @@ pub fn draw(ui: &mut Ui2d, world: &World, cues: &Cues, r: [u16; 4], p: usize, fr
         vignette(ui, r, BLOOD, level);
     }
     if cues.reward > 0 {
-        band(ui, r, 0, 2, GOLD, (cues.reward.min(SEC) as u32 * 200 / SEC as u32) as u8);
+        band(ui, r, 2, GOLD, (cues.reward.min(SEC) as u32 * 200 / SEC as u32) as u8);
     }
-    let cols = (r[2] as usize / super::GLYPH as usize).saturating_sub(2).max(8);
+    let cols = r[2] as i16 - 16;
     let mid = r[3] as i16 / 3;
     if let Some(t) = cues.toast(p) {
-        let (l, color, scale) = toast_line(world, t);
-        let scale = if super::width(l.as_str(), scale) > r[2] as i16 - 8 { 1 } else { scale };
-        centered(ui, r, mid, l.as_str(), color, scale);
+        let (l, color, face) = toast_line(world, t);
+        let face = if super::width(l.as_str(), face) > r[2] as i16 - 8 { Body } else { face };
+        centered(ui, r, mid, l.as_str(), color, face);
         if matches!(t, Toast::Opened { .. } | Toast::Exit) {
             let g = goal::say(world.map(), cues.goal());
-            wrap(g.as_str(), cols).enumerate().for_each(|(i, s)| centered(ui, r, mid + 14 + i as i16 * 10, s, INK, 1));
+            wrap(g.as_str(), cols, Body).enumerate().for_each(|(i, s)| centered(ui, r, mid + 16 + i as i16 * 11, s, INK, Body));
         }
     }
     if let Some(t) = cues.tip(p).filter(|&t| t != Tip::Move) {
-        wrap(t.text(), cols).enumerate().for_each(|(i, s)| centered(ui, r, 30 + i as i16 * 10, s, GOLD, 1));
+        wrap(t.text(), cols, Body).enumerate().for_each(|(i, s)| centered(ui, r, 30 + i as i16 * 11, s, GOLD, Body));
     }
 }
 

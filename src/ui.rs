@@ -1,3 +1,4 @@
+pub mod art;
 mod cards;
 mod credits;
 pub mod cues;
@@ -10,11 +11,14 @@ mod menu;
 mod online;
 mod overlay;
 mod party;
+#[cfg(test)]
+mod preview;
 mod title;
 
-use crate::render::{Ui2d, rgb565};
+use crate::render::{Ui2d, rgb565, text_width};
 use std::fmt;
 
+pub use crate::render::Face::{self, Body, Ink, InkSerif, Serif};
 pub use cards::{Card, INTRO_PORTRAIT, card, notice, pause};
 pub use cues::Cues;
 pub use credits::{PAGES, credits, legend_portrait};
@@ -25,13 +29,11 @@ pub use online::{RoomRow, rooms};
 pub use party::{Party, PartySeat, party, party_rects};
 pub use title::title;
 
-pub const INK: u16 = rgb565(214, 206, 186);
-pub const DIM: u16 = rgb565(112, 106, 98);
-pub const FAINT: u16 = rgb565(58, 55, 52);
-pub const BLOOD: u16 = rgb565(150, 22, 18);
-pub const GOLD: u16 = rgb565(214, 184, 96);
-pub const SHADOW: u16 = 0;
-pub const GLYPH: i16 = 8;
+pub const INK: u16 = rgb565(222, 212, 188);
+pub const DIM: u16 = rgb565(150, 140, 122);
+pub const FAINT: u16 = rgb565(96, 90, 82);
+pub const BLOOD: u16 = rgb565(176, 30, 22);
+pub const GOLD: u16 = rgb565(226, 190, 100);
 pub const SCREEN: [u16; 4] = [0, 0, crate::render::CANVAS_W, crate::render::CANVAS_H];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -42,36 +44,42 @@ pub enum Dir {
     Right,
 }
 
-pub fn width(s: &str, scale: u8) -> i16 {
-    s.chars().count() as i16 * GLYPH * scale as i16
+pub fn width(s: &str, face: Face) -> i16 {
+    text_width(s, face)
 }
 
-pub fn shadowed(ui: &mut Ui2d, x: i16, y: i16, s: &str, color: u16, scale: u8) {
-    ui.text(x + scale as i16, y + scale as i16, s, SHADOW, scale);
-    ui.text(x, y, s, color, scale);
+pub fn label(ui: &mut Ui2d, x: i16, y: i16, s: &str, color: u16, face: Face) {
+    ui.text(x, y, s, color, face);
 }
 
-pub fn centered(ui: &mut Ui2d, r: [u16; 4], y: i16, s: &str, color: u16, scale: u8) {
-    shadowed(ui, r[0] as i16 + (r[2] as i16 - width(s, scale)) / 2, r[1] as i16 + y, s, color, scale);
+pub fn centered(ui: &mut Ui2d, r: [u16; 4], y: i16, s: &str, color: u16, face: Face) {
+    label(ui, r[0] as i16 + (r[2] as i16 - width(s, face)) / 2, r[1] as i16 + y, s, color, face);
 }
 
-pub fn arrow(ui: &mut Ui2d, x: i16, y: i16, dir: Dir, color: u16) {
-    (0..4i16).for_each(|i| {
-        let (len, off) = (7 - 2 * i, i);
-        match dir {
-            Dir::Up => ui.rect(x + off, y + 4 - i, len, 1, color),
-            Dir::Down => ui.rect(x + off, y + 1 + i, len, 1, color),
-            Dir::Left => ui.rect(x + 4 - i, y + off, 1, len, color),
-            Dir::Right => ui.rect(x + 1 + i, y + off, 1, len, color),
-        }
-    });
+pub fn arrow(ui: &mut Ui2d, x: i16, y: i16, dir: Dir) {
+    let (src, fh, fv) = match dir {
+        Dir::Up => (art::KEY_UP, false, false),
+        Dir::Down => (art::KEY_UP, false, true),
+        Dir::Left => (art::KEY_LEFT, false, false),
+        Dir::Right => (art::KEY_LEFT, true, false),
+    };
+    art::sprite(ui, art::LATAO, art::flip(src, fh, fv), x, y - 2);
 }
 
-pub fn wrap(s: &str, cols: usize) -> impl Iterator<Item = &str> {
+pub fn wrap(s: &str, max: i16, face: Face) -> impl Iterator<Item = &str> {
     let mut rest = s.trim();
     std::iter::from_fn(move || {
         (!rest.is_empty()).then(|| {
-            let fits = rest.char_indices().nth(cols).map_or(rest.len(), |(i, _)| i);
+            let first = rest.chars().next().map_or(0, char::len_utf8);
+            let fits = rest
+                .char_indices()
+                .scan(0i16, |w, (i, c)| {
+                    *w += width(c.encode_utf8(&mut [0; 4]), face);
+                    Some((i + c.len_utf8(), *w))
+                })
+                .take_while(|&(_, w)| w <= max)
+                .last()
+                .map_or(first, |(i, _)| i.max(first));
             let cut = match fits == rest.len() || rest[fits..].starts_with(' ') {
                 true => fits,
                 false => rest[..fits].rfind(' ').filter(|&i| i > 0).unwrap_or(fits),
@@ -83,10 +91,10 @@ pub fn wrap(s: &str, cols: usize) -> impl Iterator<Item = &str> {
     })
 }
 
-pub fn paragraph(ui: &mut Ui2d, x: i16, y: i16, s: &str, cols: usize, color: u16) -> i16 {
-    wrap(s, cols).fold(y, |y, l| {
-        shadowed(ui, x, y, l, color, 1);
-        y + 10
+pub fn paragraph(ui: &mut Ui2d, x: i16, y: i16, s: &str, max: i16, color: u16) -> i16 {
+    wrap(s, max, Ink).fold(y, |y, l| {
+        label(ui, x, y, l, color, Ink);
+        y + Ink.line() + 1
     })
 }
 
@@ -140,20 +148,24 @@ mod tests {
     }
 
     #[test]
-    fn wraps_on_words() {
-        let w: Vec<&str> = wrap("a senha do cadeado é o ano da igreja", 12).collect();
-        assert_eq!(w, ["a senha do", "cadeado é o", "ano da", "igreja"]);
-        assert_eq!(wrap("palavragrandedemais x", 8).collect::<Vec<_>>(), ["palavrag", "randedem", "ais x"]);
-        assert_eq!(wrap("  ", 8).count(), 0);
-        assert_eq!(wrap("cabe certinho", 13).collect::<Vec<_>>(), ["cabe certinho"]);
-        assert!(wrap("ação é ótima também", 6).all(|l| l.chars().count() <= 6));
+    fn wraps_on_pixel_width() {
+        let max = width("a senha do cadeado", Body);
+        let w: Vec<&str> = wrap("a senha do cadeado é o ano da igreja", max, Body).collect();
+        assert_eq!(w[0], "a senha do cadeado");
+        assert!(w.iter().all(|l| width(l, Body) <= max));
+        assert_eq!(w.join(" "), "a senha do cadeado é o ano da igreja");
+        let hard: Vec<&str> = wrap("palavragrandedemais x", width("palavra", Body), Body).collect();
+        assert!(hard.len() >= 3 && hard.iter().all(|l| width(l, Body) <= width("palavra", Body)));
+        assert_eq!(wrap("  ", 40, Body).count(), 0);
+        assert_eq!(wrap("cabe certinho", width("cabe certinho", Body), Body).collect::<Vec<_>>(), ["cabe certinho"]);
+        assert!(wrap("ação é ótima também", 40, Serif).all(|l| width(l, Serif) <= 40 || !l.contains(' ')));
     }
 
     #[test]
-    fn arrows_are_seven_pixels() {
+    fn arrows_are_single_key_sprites() {
         let mut u = Ui2d::new();
-        arrow(&mut u, 0, 0, Dir::Left, INK);
-        assert_eq!(u.quads(), 4);
-        assert_eq!(width("Noite", 2), 80);
+        arrow(&mut u, 0, 0, Dir::Left);
+        assert_eq!(u.quads(), 1);
+        assert!(width("Noite", Serif) > width("Noite", Body));
     }
 }

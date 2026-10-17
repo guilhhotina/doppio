@@ -1,6 +1,7 @@
 use super::lore::character;
 use super::online::clip;
-use super::{DIM, FAINT, GOLD, INK, Item, Line, SCREEN, centered, menu_at, shadowed};
+use super::art::{self, PEN, PEN_FADED, PEN_RED};
+use super::{Body, DIM, GOLD, INK, Ink, Item, Line, SCREEN, Serif, centered, label, menu_at};
 use crate::render::Ui2d;
 use std::fmt::Write;
 
@@ -23,27 +24,29 @@ pub struct Party<'a> {
 
 pub fn party_rects(n: usize) -> [[u16; 4]; 4] {
     match n {
-        0 | 1 => [[224, 20, 144, 130], [0; 4], [0; 4], [0; 4]],
-        2 => [[208, 24, 84, 124], [296, 24, 84, 124], [0; 4], [0; 4]],
-        _ => std::array::from_fn(|i| [208 + (i % 2) as u16 * 88, 18 + (i / 2) as u16 * 76, 84, 60]),
+        0 | 1 => [[238, 18, 122, 124], [0; 4], [0; 4], [0; 4]],
+        2 => [[228, 22, 70, 112], [306, 22, 70, 112], [0; 4], [0; 4]],
+        _ => std::array::from_fn(|i| [228 + (i % 2) as u16 * 78, 14 + (i / 2) as u16 * 72, 72, 56]),
     }
 }
 
-fn label(r: [u16; 4], n: usize) -> i16 {
-    (r[1] + r[3]) as i16 + if n <= 2 { 4 } else { 2 }
+fn caption(r: [u16; 4], n: usize) -> i16 {
+    (r[1] + r[3]) as i16 + if n <= 2 { 3 } else { 1 }
 }
 
 pub fn party(ui: &mut Ui2d, p: &Party, tick: u32) {
     let (seats, items) = (p.seats, p.items);
-    shadowed(ui, 16, 8, p.head, INK, 1);
-    shadowed(ui, 16, 20, p.sub, DIM, 1);
-    menu_at(ui, 32, 40, 96, items, p.sel, tick);
+    label(ui, 12, 4, p.head, INK, Serif);
+    label(ui, 12, 21, p.sub, DIM, Body);
+    menu_at(ui, 32, 46, 96, items, p.sel, tick);
     let rects = party_rects(seats.len());
+    let margin = if seats.len() <= 2 { [4, 12] } else { [3, 10] };
     seats.iter().zip(rects.iter()).for_each(|(s, &r)| {
+        art::photo(ui, r, margin);
         let name = character(s.character).short;
-        centered(ui, [r[0], 0, r[2], 0], label(r, seats.len()), name, if s.here { GOLD } else { INK }, 1);
+        centered(ui, [r[0], 0, r[2], 0], caption(r, seats.len()), name, if s.here { PEN_RED } else { PEN }, Ink);
     });
-    let top = 40 + items.len() as i16 * super::menu::ROW;
+    let top = 46 + items.len() as i16 * super::menu::ROW + 4;
     if seats.len() > 1 || seats.iter().any(|s| !s.here) {
         seats.iter().enumerate().for_each(|(i, s)| {
             let mut l = Line::new();
@@ -53,14 +56,16 @@ pub fn party(ui: &mut Ui2d, p: &Party, tick: u32) {
                 (false, false) => "esperando",
             };
             let _ = write!(l, "{} {:<10} {}", i + 1, clip(s.nick, 10), mark);
-            shadowed(ui, 16, top + i as i16 * 9, l.as_str(), if s.here { GOLD } else { DIM }, 1);
+            label(ui, 16, top + i as i16 * 10, l.as_str(), if s.here { GOLD } else { DIM }, Body);
         });
     }
     let c = character(p.focus);
-    shadowed(ui, 16, 167, c.name, GOLD, 1);
-    shadowed(ui, 16, 179, c.lore, DIM, 1);
-    shadowed(ui, 16, 191, c.perk, INK, 1);
-    centered(ui, SCREEN, 205, p.footer, FAINT, 1);
+    let r = [10, 160, 364, 38];
+    art::paper(ui, r, art::PAPER);
+    label(ui, r[0] + 8, r[1] + 3, c.name, PEN_RED, Ink);
+    label(ui, r[0] + 8, r[1] + 14, c.lore, PEN_FADED, Ink);
+    label(ui, r[0] + 8, r[1] + 25, c.perk, PEN, Ink);
+    centered(ui, SCREEN, 206, p.footer, DIM, Body);
 }
 
 #[cfg(test)]
@@ -72,8 +77,8 @@ mod tests {
     fn portraits_stay_right_of_the_menu_and_above_the_details() {
         (1..=4).for_each(|n| {
             party_rects(n).iter().take(n).for_each(|&r| {
-                assert!(r[0] >= 200 && r[0] + r[2] <= CANVAS_W && r[2] > 0);
-                assert!(label(r, n) + 8 < 167 && r[1] + r[3] < CANVAS_H);
+                assert!(r[0] >= 224 && r[0] + r[2] + 4 <= CANVAS_W && r[2] > 0);
+                assert!(caption(r, n) + 8 < 160 && r[1] + r[3] < CANVAS_H);
             });
         });
         let g = party_rects(4);

@@ -129,7 +129,7 @@ mod tests {
         });
         LEGENDS.iter().map(|&k| legend(k)).for_each(|l| {
             assert!(l.line.chars().count() <= 46, "{}", l.line);
-            assert!(crate::ui::wrap(l.lore, 30).count() <= 8);
+            assert!(crate::ui::wrap(l.lore, 202, crate::ui::Body).count() <= 9);
         });
         assert!(ITEMS.iter().all(|&k| item(k).chars().count() <= 16));
         assert_eq!(character(6).short, "Jairo");

@@ -1,14 +1,16 @@
 use super::cues::{self, Cues, Tip};
+use super::art::{self, BATTERY, Button, COMPASS, LATAO};
 use super::icons::{candles, icon};
 use super::lore::{character, item};
 use super::overlay::{dial, note};
-use super::{DIM, Dir, FAINT, GLYPH, GOLD, INK, Line, arrow, centered, line, shadowed, width};
+use super::{Body, DIM, Dir, FAINT, GOLD, INK, Line, arrow, centered, label, line, width};
 use crate::map::{LockKind, Map, PortalKind};
 use crate::render::{Ui2d, rgb565};
 use crate::sim::{BATTERY_FULL, DESMAIOS, Focus, ItemKind, ItemState, Player, PlayerState, TICS_PER_SEC, World};
 
 const LOW: u16 = rgb565(176, 48, 40);
-const FRAME: u16 = rgb565(40, 38, 36);
+const CHARGE: u16 = rgb565(232, 196, 96);
+const IDLE: u16 = rgb565(120, 112, 90);
 const SENSE_M: f32 = 12.0;
 const JAIRO: u8 = 2;
 const BENEDITA: u8 = 0;
@@ -86,13 +88,10 @@ fn bearing(dx: f32, dy: f32, heading: f32, r: f32) -> (i16, i16) {
     ((-rel.sin() * r).round() as i16, (-rel.cos() * r).round() as i16)
 }
 
-fn dial_ring(ui: &mut Ui2d, x: i16, y: i16, r: f32, to: (i16, i16), color: u16, size: i16) {
-    (0..12).for_each(|k| {
-        let a = k as f32 * std::f32::consts::TAU / 12.0;
-        ui.rect(x + (a.sin() * r).round() as i16, y + (a.cos() * r).round() as i16, 1, 1, FAINT);
-    });
-    arrow(ui, x - 3, y - r as i16 - 7, Dir::Up, FAINT);
-    (1..3).for_each(|s| ui.rect(x + to.0 * s / 3, y + to.1 * s / 3, 1, 1, color));
+fn dial_ring(ui: &mut Ui2d, x: i16, y: i16, to: (i16, i16), color: u16, size: i16) {
+    let c = COMPASS[2] as i16;
+    art::sprite(ui, LATAO, COMPASS, x - c / 2, y - c / 2);
+    (1..4).for_each(|s| ui.rect(x + to.0 * s / 4, y + to.1 * s / 4, 1, 1, color));
     ui.rect(x + to.0 - size / 2, y + to.1 - size / 2, size, size, color);
 }
 
@@ -105,7 +104,7 @@ fn sense(ui: &mut Ui2d, world: &World, p: &Player, x: i16, y: i16, tick: u32) {
     }
     let period = (6.0 + d * 2.0) as u32;
     let size = if tick % period < period / 2 { 4 } else { 3 };
-    dial_ring(ui, x, y, 11.0, bearing(dx, dy, p.heading.to_rad(), 11.0), super::BLOOD, size);
+    dial_ring(ui, x, y, bearing(dx, dy, p.heading.to_rad(), 9.0), super::BLOOD, size);
 }
 
 fn rescue(ui: &mut Ui2d, world: &World, me: usize, r: [u16; 4], tick: u32) {
@@ -113,62 +112,76 @@ fn rescue(ui: &mut Ui2d, world: &World, me: usize, r: [u16; 4], tick: u32) {
     let down = world.players().iter().enumerate().filter(|&(q, f)| q != me && matches!(f.state, PlayerState::Fainted { .. } | PlayerState::Grabbed));
     let Some((_, f)) = down.min_by_key(|(_, f)| (f.pos - p.pos).len_sq()) else { return };
     let (dx, dy) = ((f.pos.x - p.pos.x).to_f32(), (f.pos.y - p.pos.y).to_f32());
-    let (x, y) = (r[0] as i16 + r[2] as i16 - 16, r[1] as i16 + 52);
+    let (x, y) = (r[0] as i16 + r[2] as i16 - 20, r[1] as i16 + 60);
     let same = f.area == p.area;
-    let to = if same { bearing(dx, dy, p.heading.to_rad(), 11.0) } else { (0, 0) };
-    dial_ring(ui, x, y, 11.0, to, GOLD, if tick % 30 < 15 { 4 } else { 3 });
+    let to = if same { bearing(dx, dy, p.heading.to_rad(), 9.0) } else { (0, 0) };
+    dial_ring(ui, x, y, to, GOLD, if tick % 30 < 15 { 4 } else { 3 });
     let msg = match same {
         true => line(format_args!("acorde {} {} m", character(f.character).short, (dx * dx + dy * dy).sqrt().round() as i32)),
         false => line(format_args!("acorde {}: outro andar", character(f.character).short)),
     };
-    shadowed(ui, r[0] as i16 + r[2] as i16 - 4 - width(msg.as_str(), 1), y + 16, msg.as_str(), GOLD, 1);
+    label(ui, r[0] as i16 + r[2] as i16 - 4 - width(msg.as_str(), Body), y + 18, msg.as_str(), GOLD, Body);
 }
 
-fn held(ui: &mut Ui2d, world: &World, p: &Player, x: i16, bottom: i16) {
+fn held(ui: &mut Ui2d, world: &World, p: &Player, x: i16, bottom: i16, size: i16) {
     p.hands.iter().flatten().filter_map(|&i| world.items().get(i as usize)).enumerate().for_each(|(row, s)| {
-        let y = bottom - 12 - row as i16 * 12;
-        icon(ui, x, y, s.kind, 1);
-        shadowed(ui, x + 12, y, item(s.kind), INK, 1);
+        let y = bottom - size - row as i16 * (size + 2);
+        icon(ui, x, y, s.kind, size);
+        label(ui, x + size + 2, y + (size - 8) / 2, item(s.kind), INK, Body);
     });
 }
 
 fn battery(ui: &mut Ui2d, p: &Player, x: i16, y: i16) {
-    let level = (p.battery.min(BATTERY_FULL) as u32 * 28 / BATTERY_FULL as u32) as i16;
-    ui.rect(x, y, 32, 5, FRAME);
-    ui.rect(x + 2, y + 1, level, 3, if level < 6 { LOW } else if p.lantern { GOLD } else { DIM });
+    art::sprite(ui, LATAO, BATTERY, x, y);
+    let cells = (p.battery.min(BATTERY_FULL) as u32 * 5).div_ceil(BATTERY_FULL as u32) as i16;
+    let color = match (cells, p.lantern) {
+        (0..=1, _) => LOW,
+        (_, true) => CHARGE,
+        (_, false) => IDLE,
+    };
+    (0..cells).for_each(|i| ui.rect(x + 3 + i * 4, y + 3, 3, 6, color));
+}
+
+pub fn prompt_line(ui: &mut Ui2d, r: [u16; 4], y: i16, l: &str) {
+    match l.strip_prefix("A: ") {
+        Some(rest) => {
+            let w = 16 + width(rest, Body);
+            art::key_hint(ui, r[0] as i16 + (r[2] as i16 - w) / 2, r[1] as i16 + y, Button::A, rest, INK);
+        }
+        None => centered(ui, r, y, l, DIM, Body),
+    }
 }
 
 fn hint(ui: &mut Ui2d, rect: [u16; 4]) {
-    let text = 2 * GLYPH + 6;
-    let w = text + width("pegar/usar/lanterna", 1);
+    let w = 28 + width("pegar/usar/lanterna", Body);
     let x = rect[0] as i16 + (rect[2] as i16 - w) / 2;
     let y = rect[1] as i16 + rect[3] as i16 / 6;
-    arrow(ui, x, y, Dir::Up, INK);
-    arrow(ui, x + GLYPH + 1, y, Dir::Down, INK);
-    shadowed(ui, x + text, y, "andar", INK, 1);
-    arrow(ui, x, y + 11, Dir::Left, INK);
-    arrow(ui, x + GLYPH + 1, y + 11, Dir::Right, INK);
-    shadowed(ui, x + text, y + 11, "virar", INK, 1);
-    shadowed(ui, x + 4, y + 22, "A", GOLD, 1);
-    shadowed(ui, x + text, y + 22, "pegar/usar/lanterna", INK, 1);
-    arrow(ui, x, y + 33, Dir::Up, INK);
-    arrow(ui, x + GLYPH + 1, y + 33, Dir::Up, INK);
-    shadowed(ui, x + text, y + 33, "2x: correr (ou B)", INK, 1);
-    shadowed(ui, x + text, y + 44, "segure A: pausa", DIM, 1);
+    let tx = x + 28;
+    arrow(ui, x, y, Dir::Up);
+    arrow(ui, x + 12, y, Dir::Down);
+    label(ui, tx, y, "andar", INK, Body);
+    arrow(ui, x, y + 14, Dir::Left);
+    arrow(ui, x + 12, y + 14, Dir::Right);
+    label(ui, tx, y + 14, "virar", INK, Body);
+    art::button(ui, x + 5, y + 26, Button::A);
+    label(ui, tx, y + 28, "pegar/usar/lanterna", INK, Body);
+    art::button(ui, x + 5, y + 40, Button::B);
+    label(ui, tx, y + 42, "correr (ou cima 2x)", INK, Body);
+    label(ui, tx, y + 56, "segure A: pausa", DIM, Body);
 }
 
 fn state(ui: &mut Ui2d, rect: [u16; 4], p: &Player) -> bool {
     let mid = rect[3] as i16 / 2;
     match p.state {
         PlayerState::Fainted { tics_left } => {
-            centered(ui, rect, mid - 10, "desmaiado...", DIM, 1);
+            centered(ui, rect, mid - 10, "desmaiado...", DIM, Body);
             let secs = (tics_left as u32).div_ceil(TICS_PER_SEC);
-            centered(ui, rect, mid + 4, line(format_args!("acordando em {secs} s")).as_str(), FAINT, 1);
+            centered(ui, rect, mid + 4, line(format_args!("acordando em {secs} s")).as_str(), FAINT, Body);
             true
         }
         PlayerState::Escaped => {
-            centered(ui, rect, mid - 10, "Você saiu.", INK, 1);
-            centered(ui, rect, mid + 4, "esperando os outros", DIM, 1);
+            centered(ui, rect, mid - 10, "Você saiu.", INK, Body);
+            centered(ui, rect, mid + 4, "esperando os outros", DIM, Body);
             true
         }
         _ => false,
@@ -180,15 +193,16 @@ pub fn hud(ui: &mut Ui2d, world: &World, cues: &Cues, rect: [u16; 4], player: us
     let (x, y) = (rect[0] as i16 + 6, rect[1] as i16 + 5);
     let bottom = rect[1] as i16 + rect[3] as i16;
     candles(ui, x, y, world.desmaios_left(), DESMAIOS, tick);
-    battery(ui, p, x, y + 13);
+    battery(ui, p, x, y + 21);
     if p.character == BENEDITA {
-        sense(ui, world, p, rect[0] as i16 + rect[2] as i16 - 16, y + 16, tick);
+        sense(ui, world, p, rect[0] as i16 + rect[2] as i16 - 20, y + 16, tick);
     }
     if state(ui, rect, p) {
         return;
     }
     rescue(ui, world, player, rect, tick);
-    held(ui, world, p, x, bottom - 2);
+    let size = if rect[3] >= 200 { 32 } else { 16 };
+    held(ui, world, p, x, bottom - 4, size);
     let reading = world.reading(player).and_then(|n| world.map().notes.get(n as usize));
     let dialing = world.dial(player);
     let overlay = dialing.is_some() || reading.is_some();
@@ -202,11 +216,9 @@ pub fn hud(ui: &mut Ui2d, world: &World, cues: &Cues, rect: [u16; 4], player: us
         (Some(d), _) => dial(ui, rect, d),
         (None, Some(n)) => note(ui, rect, n.text),
         (None, None) => {
-            let hands = p.hands.iter().flatten().count().max(1) as i16;
-            prompt(world, player).iter().for_each(|l| {
-                let dim = !l.as_str().starts_with("A:");
-                centered(ui, rect, rect[3] as i16 - 16 - hands * 12, l.as_str(), if dim { DIM } else { INK }, 1);
-            });
+            let hands = p.hands.iter().flatten().count() as i16;
+            let lift = if size == 32 && hands > 0 { 6 } else { hands * (size + 2) };
+            prompt(world, player).iter().for_each(|l| prompt_line(ui, rect, rect[3] as i16 - 16 - lift, l.as_str()));
         }
     }
 }

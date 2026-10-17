@@ -1,5 +1,5 @@
-; Pedra Seca, fase 4: a mata da beira do rio. Matinta Perera assobia; a canoa do Zé do Remo é a única saída.
-[map] name="Pedra Seca — a mata do rio" w=64 h=56 sky=moon fog=26,32,36 fog_near=4 fog_far=16 legend=matinta power=on
+; Xique-Xique, fase 4: a mata da beira do rio. Matinta Perera assobia; a canoa do Zé do Remo é a única saída.
+[map] name="Xique-Xique — a mata do rio" w=64 h=56 sky=moon fog=26,32,36 fog_near=4 fog_far=16 legend=matinta power=on
 
 [solid]
 ################################################################
@@ -183,7 +183,7 @@ foto1 foto 52.5 9.5
 50 27 mesa "Fumo de rolo pra Matinta. Ela vai pro oco da sumaúma, a oeste, e esquece da gente um tempo."
 30 48 placa "A ponte caiu na cheia de 77. Pro outro lado só de canoa."
 54 43 parede "Barracão da canoa do Zé. Corrente no portão: só cortando. Remo na canoa e vamos embora."
-57 5 placa "PEDRA SECA 6 KM. A ponte do rio caiu: travessia só de canoa, no barracão do Zé."
+57 5 placa "XIQUE-XIQUE 6 KM. A ponte do rio caiu: travessia só de canoa, no barracão do Zé."
 5 17 oratorio "Vela pra Rosa e pro Pe. Anselmo: que a Mula descanse. Quem fugiu da matriz pela estrada se abriga aqui. — Zefa"
 58 42 pedra "Riscado na pedra: do outro lado do rio fica o cemitério velho. É lá que o Coronel Tibúrcio volta pra cova."
 
@@ -740,8 +740,9 @@ bambu 34.5 18.5 120
 52.3 44.3 0.3 255,170,90 4 flicker
 
 [cam]
-; casa de farinha (indoor, h 3): eye under the sape across the room, forno glow and lamparina in frame
-4 13 9 23 14 2.5 18.5 7.6 0.5 18.5 67
+; casa de farinha (indoor, h 3): eye under the sape across the room, forno glow and lamparina in frame; the wake spots look back west at the trilha door
+4 13 9 23 13.8 2.5 18.5 7.6 0.5 18.5 67
+10 16 12 20 14.2 2.5 18.2 6 0.8 18.3 60
 10 13 15 23 6 2.5 17.5 12.5 0.5 18.2 67
 ; estrada: above the trail, along the road so it bends away into the fog
 3 2 9 6 11.5 3.6 3.5 6.5 0.5 3.5 58
@@ -749,14 +750,15 @@ bambu 34.5 18.5 120
 17 2 23 6 15.5 3.6 3.5 20.5 0.5 3.5 58
 24 2 30 6 22 3.6 4 27.3 0.5 3.9 50
 31 2 37 6 29.5 3.6 3.5 34.5 0.5 3.5 58
-38 2 44 6 36.5 3.6 4.5 41.5 0.5 4.3 58
+38 2 44 6 37.5 2.4 2.8 41.5 0.5 4.3 58
 45 2 51 6 43.5 3.6 3.5 48.5 0.5 3.5 58
 52 2 56 6 59.5 3.6 3 54.6 0.5 4 50
 57 2 60 6 54 3.6 3.5 59 0.5 3.5 50
 ; rancho (indoor): door first, then each half from the opposite wall, bau and oratorio candle across the room
 41 7 41 7 41.5 2.3 3.5 41.5 0.5 7.5 50
-37 8 41 12 44.5 2.3 9 40.2 0.5 10.2 50
-42 8 45 12 38.5 2.3 11.5 43.3 0.5 10.2 50
+37 8 38 12 41.8 2.4 8.2 38.9 0.8 10.4 65
+39 8 41 12 41.8 2.3 8.2 40.2 0.5 10.2 58
+42 8 45 12 38.2 2.3 11.5 43.3 0.5 10.2 50
 ; cemiterio: low-ish from the road side, cruz and candles against the fence
 49 7 54 12 58 2.2 7.5 52.4 0.5 9.7 50
 55 7 60 12 52.5 2.2 13 57.4 0.5 9.5 50
@@ -768,7 +770,8 @@ bambu 34.5 18.5 120
 26 7 34 13 28.5 3.6 16.5 30.1 0.5 11 70
 26 14 34 19 27.5 3.6 11.5 30 0.5 16.5 62
 ; quintal do rancho
-35 13 43 14 32.5 3.4 14 39.5 0.5 14 50
+35 13 38 14 42.2 3.6 14.8 39.5 0.5 14 50
+39 13 43 14 32.5 3.4 14 39.5 0.5 14 50
 ; trilha do cemiterio and its bend
 43 13 47 17 41.5 3.6 14 45.5 0.5 17 50
 48 13 52 17 55.5 3.6 17.5 51.1 0.5 16.1 50
@@ -780,7 +783,7 @@ bambu 34.5 18.5 120
 49 20 52 28 55.5 3 22 51 0.5 24.5 52
 53 20 56 28 50.5 3 21.5 54.4 0.5 24.6 50
 ; junction toward the tapera door
-40 22 47 26 38.5 3.6 26.5 43.1 0.5 24.6 62
+40 22 47 26 40.2 3.6 26.8 43.1 0.5 24.6 66
 ; terreiro: the casa de farinha from outside, the poco, the gap into the roca
 16 19 22 23 19.5 3.6 17 19.5 0.5 22 54
 16 24 22 28 17 3.6 22 19.3 0.5 26.5 58
@@ -795,7 +798,8 @@ bambu 34.5 18.5 120
 54 30 58 31 50.5 3.4 31 56.5 0.5 31 50
 49 30 53 31 58 3.4 31 52 0.5 31 50
 ; trilha dos fundos: narrow path behind the casa de farinha
-1 16 3 24 3 3.6 26.5 3 0.5 21 63
+1 16 3 19 2.2 2.4 20.8 3.5 0 17.9 48
+1 20 3 24 3 3.6 26.5 3 0.5 21 63
 1 25 3 31 5.5 3.6 33 3 0.5 28.5 52
 ; clareira da sumauma: the hollow tree and its candles from above, then the south half
 4 29 14 33 12.5 3.6 25.5 9.9 0.5 32 50
@@ -815,12 +819,13 @@ bambu 34.5 18.5 120
 51 43 55 47 52 2 48.5 53.5 0.5 44.9 50
 ; river: low over the water, the bank and the forest wall, the broken bridge
 29 42 30 48 24 1.1 46 30 0.5 45.3 50
-0 42 9 44 7 1.2 50.5 7 0.5 43.5 50
+0 42 9 44 10.8 1.2 44.8 7.2 0.4 43.3 49
 10 42 19 44 15.5 1.2 50.5 15.1 0.5 43.5 50
 20 42 28 44 29.5 1.2 49.5 25.6 0.5 43.7 50
 31 42 39 44 35 1.2 50.5 35.5 0.5 43.5 50
 40 42 49 44 47.5 1.2 50.5 46 0.5 43.6 50
-50 42 55 44 59 1.5 42.5 53 0.5 42.5 50
+50 42 50 44 54.8 1.5 42.2 53 0.3 42.6 58
+51 42 55 44 57.2 1.5 42.2 53 0.3 42.6 58
 56 42 63 44 63 1.2 48 58.8 0.5 43.5 50
 
 [wake]

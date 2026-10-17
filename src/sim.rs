@@ -21,6 +21,7 @@ mod tank;
 mod tests;
 
 pub use crate::map::{ItemKind, LegendKind};
+pub use player::HIDE_TICS;
 pub use tank::DROP;
 
 use field::Heap;
@@ -410,6 +411,10 @@ impl World {
 
     pub fn reading(&self, player: usize) -> Option<u16> {
         self.ctl.get(player).filter(|_| player < self.count).and_then(|c| c.reading)
+    }
+
+    pub fn hiding(&self, player: usize) -> Option<(u8, u8)> {
+        self.ctl.get(player).filter(|c| player < self.count && c.hide_t > 0).map(|c| (c.spot, c.hide_t))
     }
 
     pub fn power(&self) -> bool {

@@ -20,7 +20,6 @@ pub const WHITE: u8 = 3;
 pub const SKIN_DARK: u8 = 4;
 pub const SKIN_TAN: u8 = 5;
 pub const SKIN_FAIR: u8 = 6;
-pub const SKIN_PALE: u8 = 7;
 pub const BLUE: u8 = 8;
 pub const OLIVE: u8 = 9;
 pub const GREY: u8 = 10;
@@ -59,17 +58,24 @@ pub struct Kit<'a> {
     pub hi: bool,
     seg: u8,
     tile: [u8; 4],
+    glow: u8,
     tiles: &'a dyn Fn(&str) -> [u8; 4],
 }
 
 impl<'a> Kit<'a> {
     pub fn new(hi: bool, tiles: &'a dyn Fn(&str) -> [u8; 4]) -> Kit<'a> {
-        Kit { mesh: Mesh::default(), rank: Vec::new(), xf: mat::IDENTITY, hi, seg: 0, tile: [0; 4], tiles }
+        Kit { mesh: Mesh::default(), rank: Vec::new(), xf: mat::IDENTITY, hi, seg: 0, tile: [0; 4], glow: 0, tiles }
     }
 
     pub fn seg(&mut self, seg: usize) -> &mut Self {
         self.seg = seg as u8;
         self.xf = mat::IDENTITY;
+        self.glow = 0;
+        self
+    }
+
+    pub fn glow(&mut self, k: f32) -> &mut Self {
+        self.glow = (k.clamp(0.0, 1.0) * 255.0) as u8;
         self
     }
 
@@ -89,12 +95,12 @@ impl<'a> Kit<'a> {
 
     pub fn poly(&mut self, p: &[V3], uv: &[[f32; 2]]) {
         let w: Vec<V3> = p.iter().map(|&v| mat::point(&self.xf, v)).collect();
-        let n = mat::norm(mat::cross(mat::sub(w[1], w[0]), mat::sub(w[2], w[0])));
+        let n = mat::norm(mat::cross(mat::sub(w[2], w[0]), mat::sub(w[w.len() - 1], w[1])));
         let base = self.mesh.verts.len();
         self.mesh.face(&w, uv, n);
-        let (seg, tile) = (self.seg as i8, self.tile);
+        let (seg, tile, glow) = (self.seg as i8, self.tile, self.glow);
         self.mesh.verts[base..].iter_mut().for_each(|v| {
-            *v = v.with_tile(tile);
+            *v = v.with_tile(tile).with_lit([0, 0, 0, glow]);
             v.nrm[3] = seg;
         });
         let rank = (base as u32).wrapping_mul(2654435761).rotate_right(13) as u8;
@@ -135,7 +141,7 @@ impl<'a> Kit<'a> {
     pub fn lod(&self, rings: &[Ring]) -> Vec<Ring> {
         match (self.hi, rings.len()) {
             (true, _) | (false, 0..=2) => rings.to_vec(),
-            (false, 3) => vec![rings[0], rings[2]],
+            (false, 3..=4) => vec![rings[0], rings[rings.len() - 1]],
             (false, n) => vec![rings[0], rings[n / 2], rings[n - 1]],
         }
     }

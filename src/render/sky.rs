@@ -7,10 +7,9 @@ use std::f32::consts::TAU;
 
 const R: f32 = 10.0;
 const SEGS: usize = 12;
-const WRAPS: f32 = 6.0;
-const RINGS: [(f32, f32, f32); 5] = [(-0.35, 0.985, 1.0), (0.0, 0.985, 0.85), (0.22, 0.75, 0.35), (0.6, 0.4, 0.05), (1.1, 0.12, 0.0)];
-const MOON_SIZE: f32 = 0.75;
-
+const WRAPS: f32 = 3.0;
+const RINGS: [(f32, f32, f32); 5] = [(-0.35, 0.985, 1.0), (0.0, 0.94, 0.72), (0.26, 0.62, 0.24), (0.62, 0.3, 0.04), (1.1, 0.08, 0.0)];
+const MOON_SIZE: f32 = 1.05;
 fn vert(p: V3, uv: [f32; 2], fog: f32, tile: [u8; 4]) -> Vert {
     Vert::new(p, uv, [0.0, 1.0, 0.0]).with_light(fog).with_tile(tile)
 }
@@ -40,7 +39,7 @@ pub fn mesh(sky: Sky, tiles: &[[u8; 4]]) -> Option<Mesh> {
     (0..SEGS as u16).for_each(|i| m.idx.extend([last + i, apex, last + i + 1]));
     if sky == Sky::Moon {
         let moon = tiles[texture::id("lua_a") as usize];
-        let d = mat::norm([-MOON_DIR[0], MOON_DIR[1] * 0.7, -MOON_DIR[2]]);
+        let d = mat::norm([-MOON_DIR[0], MOON_DIR[1] * 0.42, -MOON_DIR[2]]);
         let c = mat::scale(d, R * 0.9);
         let r = mat::scale(mat::norm(mat::cross(d, [0.0, 1.0, 0.0])), MOON_SIZE);
         let u = mat::scale(mat::norm(mat::cross(r, d)), MOON_SIZE);
@@ -54,7 +53,7 @@ pub fn mesh(sky: Sky, tiles: &[[u8; 4]]) -> Option<Mesh> {
 
 #[cfg(test)]
 pub fn moon_dir() -> V3 {
-    mat::norm([-MOON_DIR[0], MOON_DIR[1] * 0.7, -MOON_DIR[2]])
+    mat::norm([-MOON_DIR[0], MOON_DIR[1] * 0.42, -MOON_DIR[2]])
 }
 
 #[cfg(test)]

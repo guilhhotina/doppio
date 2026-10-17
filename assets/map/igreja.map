@@ -1,4 +1,4 @@
-[map] name="Pedra Seca — a igreja matriz" w=56 h=48 sky=moon fog=8,8,14 fog_near=6 fog_far=22 legend=mula
+[map] name="Xique-Xique — a igreja matriz" w=56 h=48 sky=moon fog=8,8,14 fog_near=6 fog_far=22 legend=mula
 ; fase 3: igreja matriz, escola paroquial, pátio e casa paroquial. Lenda: Mula sem cabeça.
 ; acordam na sala 2 da escola. Freio no altar -> sino no alto da torre (coro -> corrente -> escada) -> janela da torre -> rua.
 [area]
@@ -209,7 +209,7 @@ foto_coro foto 51.5 2.5
 44 40 oratorio "Guardei a chave do coro no baú do quarto. Que ninguém suba à torre enquanto ela corre."
 8 28 cartaz "Aviso da escola: ouviu galope? Entre numa sala e se esconda no armário até passar."
 0 37 parede "Expedito: o ônibus das 23h40 parou na matriz, a procissão fechou a rua. Veio um galope do adro. Fujam pela torre!"
-49 17 parede "Da torre se vê o rio. A ponte caiu na cheia de 77: pra sair de Pedra Seca, só na canoa do Zé do Remo."
+49 17 parede "Da torre se vê o rio. A ponte caiu na cheia de 77: pra sair de Xique-Xique, só na canoa do Zé do Remo."
 [hide]
 1 13 confessionario 90
 25 1 confessionario 0
@@ -438,9 +438,9 @@ quadro_negro 31.5 5.1 0
 26.5 22.5 1.3 255,160,70 4 flicker
 [cam]
 ; quadro de hinos: de frente pro quadro, no corredor norte da nave
-30 5 32 6 31.5 3 12.5 31.5 1.5 4.6 52
+30 5 32 6 30.8 3 7.8 31.5 1.5 4.6 52
 ; altar de perto: o freio em cima do altar tem que aparecer na TV
-39 10 40 14 36.6 2.6 12 41.4 1 12 52
+39 10 40 14 35.2 2.4 13.8 37.6 1.3 12.6 68
 ; sino: canto sudoeste, o sino e quem poe o freio debaixo dele
 50 19 52 21 49.3 2.6 22.6 51.6 1.7 20.2 60
 ; baú do quarto do padre (chave do coro)
@@ -453,7 +453,7 @@ quadro_negro 31.5 5.1 0
 ; do altar: o olhar dela descendo a nave
 23 7 23 15 37.6 3.2 12.3 10 1 11.9 54
 26 7 27 16 37.6 3.2 12.3 10 1 11.9 54
-30 7 31 16 37.6 3.2 12.3 10 1 11.9 54
+30 7 31 16 26.5 3.2 12.2 30 1.2 12.1 67
 24 8 33 15 37.6 3.2 12.3 10 1 11.9 54
 ; nave lateral norte: colunata vista do fundo, para a entrada
 7 5 22 6 32.6 3.6 5.3 6 1 6.3 46
@@ -464,7 +464,7 @@ quadro_negro 31.5 5.1 0
 22 16 22 18 32.6 3.6 18.7 6 1 17.6 46
 7 17 22 18 32.6 3.6 18.7 6 1 17.6 46
 ; nave lateral sul: para a porta da sacristia
-23 17 32 18 15.5 3.6 17.4 34 1 18.6 50
+23 17 32 18 19.8 2.4 17.5 23.7 1.4 17.8 48
 33 18 33 18 15.5 3.6 17.4 34 1 18.6 50
 ; fundo da nave: do meio dos bancos para o nartex e a escuridao
 7 7 7 16 17.6 5.2 11.5 5 1.4 11.5 58
@@ -504,8 +504,8 @@ quadro_negro 31.5 5.1 0
 28 1 28 4 27.5 4.5 5.5 27.5 1.2 1 64
 25 2 29 4 27.5 4.5 5.5 27.5 1.2 1 64
 ; batisterio: a pia, a porta emperrada e a porta da escola
-8 19 10 23 9.5 4.5 18.5 9.5 0.8 21.5 64
-7 20 11 23 9.5 4.5 18.5 9.5 0.8 21.5 64
+8 19 10 23 10.8 3 19.2 9.3 0 21.3 67
+7 20 11 23 7.2 2.4 20.2 9.5 -0.5 21.6 65
 6 21 10 23 9.5 4.5 18.5 9.5 0.8 21.5 64
 ; confessionarios: as cortinas
 14 19 16 22 15.5 4.5 18.5 15.5 1 22.5 64
@@ -525,20 +525,23 @@ quadro_negro 31.5 5.1 0
 35 8 35 15 40.6 5 10.4 33 1.5 12 60
 34 9 35 15 40.6 5 10.4 33 1.5 12 60
 ; corredor da escola: do fundo, o corredor ate a porta da igreja
-8 24 9 36 9.7 2.8 46.6 8.5 1 24 40
+8 24 9 26 9.2 2.4 28.8 9 0.3 25.4 57
+8 27 9 29 9.2 2 30.5 9 0.4 27.1 56
+8 30 9 36 9.5 2 37.5 9 0.3 33.9 67
 ; corredor da escola: da porta da igreja, o corredor ate o armario do fundo
-8 37 9 46 8.3 2.8 24.4 9.5 1 46 40
+8 37 9 41 8.8 2.4 44.8 9 0.9 41.1 60
+8 42 9 46 8.8 2 40.2 9.5 1 46 40
 ; escada do coro: o pe da escada e a porta emperrada
-1 17 4 22 5.9 3.6 22.9 1.5 1.2 19.5 64
+1 17 4 22 1.5 3.6 22.8 3.7 1 20.7 67
 5 18 5 22 5.9 3.6 22.9 1.5 1.2 19.5 64
 ; presbiterio: da entrada do arco, o altar dourado e o freio sobre ele
 36 8 40 15 32.3 4.5 8.3 41.5 1.1 12 52
 41 10 41 13 32.3 4.5 8.3 41.5 1.1 12 52
 ; capela do Santissimo: o sacrario, a lampada vermelha, as portas
-35 1 38 7 43.7 4.5 1.3 37.4 0.6 4.3 52
+35 1 38 7 41.2 4.5 2.2 38.4 1.9 3.4 48
 34 2 40 7 43.7 4.5 1.3 37.4 0.6 4.3 52
 ; capela do Santissimo: o sacrario, a lampada vermelha, as portas
-42 1 45 7 38.3 4.5 1.3 44.1 0.6 4.3 52
+42 1 45 7 40.2 2.4 2.2 43.5 0.8 3.7 53
 41 2 46 7 38.3 4.5 1.3 44.1 0.6 4.3 52
 ; camarim atras do retabulo: corredor estreito, imagens velhas
 43 8 45 12 46.7 3.6 15.7 44.9 0.6 10.5 52
@@ -546,29 +549,30 @@ quadro_negro 31.5 5.1 0
 ; camarim atras do retabulo: corredor estreito, imagens velhas
 43 13 46 16 43.3 3.6 9.3 45.1 0.6 14.6 52
 ; sacristia: a mesa, o lavabo, o cofre na parede do fundo
-37 16 37 19 43.7 3.6 22.7 37.2 0.6 18.4 52
+37 16 37 19 41.5 3.6 22.5 37.2 0.6 18.4 52
 34 17 39 19 43.7 3.6 22.7 37.2 0.6 18.4 52
 40 18 40 22 43.7 3.6 22.7 37.2 0.6 18.4 52
-38 20 40 22 43.7 3.6 22.7 37.2 0.6 18.4 52
+38 20 40 22 39.8 2 19.5 38.2 -0.6 22.6 65
 ; sacristia: a mesa, o lavabo, o cofre na parede do fundo
-41 17 45 23 38.3 3.6 17.3 46.5 1 20.5 52
-46 18 46 22 38.3 3.6 17.3 46.5 1 20.5 52
+41 17 45 17 41.5 3.6 20.2 43.5 1.1 17.8 52
+41 18 45 23 39.5 3.6 18.5 46.5 1 20.5 64
+46 18 46 22 42.8 3.6 17.2 45.5 1.3 19.1 59
 ; sala 1: as carteiras vazias viradas para o quadro
-1 24 5 30 1.3 2.8 24.3 4 0.6 27.6 64
+1 24 5 30 6.7 2.8 30.7 4 0.6 27.6 64
 6 25 6 30 1.3 2.8 24.3 4 0.6 27.6 64
 7 27 7 27 1.3 2.8 24.3 4 0.6 27.6 64
 ; sala 2 (onde acordam): as carteiras e a porta
-2 32 4 38 6.7 2.8 32.3 3 0.6 35.6 52
+2 32 4 38 1.2 2.4 38.8 3.3 0.4 36 68
 1 33 4 38 6.7 2.8 32.3 3 0.6 35.6 52
 ; sala 2 (onde acordam): as carteiras e a porta
 5 32 6 38 1.3 2.8 38.7 7 1 35.5 52
 7 35 7 35 1.3 2.8 38.7 7 1 35.5 52
 ; secretaria: a mesa, o calendario parado
 1 40 5 46 1.1 2.8 40.1 4.1 0.6 43.5 58
-6 41 6 45 1.1 2.8 40.1 4.1 0.6 43.5 58
+6 41 6 45 2.2 2.8 40.2 5.4 1.3 42.1 48
 7 43 7 43 1.1 2.8 40.1 4.1 0.6 43.5 58
 ; refeitorio: as mesas compridas, as duas portas
-12 24 14 31 17.7 2.8 31.7 12.9 0.6 28 52
+12 24 14 31 17.5 2.8 31.5 12.9 0.6 28 52
 11 25 14 31 17.7 2.8 31.7 12.9 0.6 28 52
 10 27 14 31 17.7 2.8 31.7 12.9 0.6 28 52
 ; refeitorio: as mesas compridas, as duas portas
@@ -583,26 +587,31 @@ quadro_negro 31.5 5.1 0
 15 33 17 39 11.3 2.8 39.7 16.9 1.4 36 52
 18 36 18 36 11.3 2.8 39.7 16.9 1.4 36 52
 ; banheiros: as pias em fila
-11 41 16 46 17.7 2.8 46.7 14.3 0.6 43.9 64
+11 41 16 46 17.5 2.8 46.8 14.8 0.9 44.5 58
 17 42 17 46 17.7 2.8 46.7 14.3 0.6 43.9 64
 10 43 17 46 17.7 2.8 46.7 14.3 0.6 43.9 64
 ; sacristia: a porta dos fundos para o patio
 34 20 37 23 43 3.6 17 35.8 0.6 21.6 52
 ; galeria: da porta da sacristia, as arcadas ate a escola
-20 24 30 25 37.6 3 24.4 19 1 25.2 46
-19 25 30 25 37.6 3 24.4 19 1 25.2 46
+20 24 30 25 19.2 2 25.8 22.9 0.8 25.1 66
+19 25 30 25 27.8 2.4 25.8 19 1 25.2 46
 ; galeria: do cesto de roupa, as arcadas ate a sacristia
-31 24 37 25 19.4 3 25.6 37 1 24.4 46
+31 24 33 25 37.8 2 24.8 37 1 24.4 62
+34 24 37 25 30.2 2 25.8 37 1 24.4 46
 ; patio: do canto do fundo, o poco e as arcadas da igreja escura
-19 26 37 33 22.5 5 41.6 28.5 0.8 28 58
+19 26 19 33 25.2 3 32.5 21.2 1.7 32.1 52
+20 26 27 33 23.2 3.6 40.2 23.3 2.4 36.4 65
+28 26 30 33 27.8 3 36.8 30.1 1.8 33.8 48
+31 26 37 26 30.5 3 32.5 32.8 1.8 29.5 48
+31 27 37 33 28.5 3 34.2 31.6 1.6 32.1 48
 ; patio: da porta da casa paroquial, o poco e o muro do fundo
-19 34 37 41 37.5 5 27.4 28.5 0.8 38 58
+19 34 37 41 36.8 3.6 28.2 34.5 2.6 31.3 68
 ; casa paroquial, sala: o radio, o oratorio, as tres portas
-39 24 45 30 46.9 2.6 30.9 42.9 0.6 27.6 64
-46 25 46 29 46.9 2.6 30.9 42.9 0.6 27.6 64
+39 24 45 30 45.8 2.6 24.5 42.9 0.6 27.6 64
+46 25 46 29 44.5 2.6 30.2 46.4 0.7 27.3 60
 38 27 46 30 46.9 2.6 30.9 42.9 0.6 27.6 64
 ; escritorio do padre: a mesa e as estantes
-49 24 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
+49 24 54 30 54.8 2.6 24.5 51.4 0.6 27.5 62
 48 25 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
 47 27 54 30 54.7 2.6 30.7 51.4 0.6 27.5 58
 ; corredor da casa: o relogio, as portas dos quartos
@@ -614,31 +623,32 @@ quadro_negro 31.5 5.1 0
 51 31 51 34 50.1 2.6 32.9 52.7 0.6 33 64
 52 32 54 33 50.1 2.6 32.9 52.7 0.6 33 64
 ; quarto do padre: a cama, o bau aos pes, o oratorio
-39 35 45 41 39.1 2.6 35.1 43.2 0.6 38.1 70
+39 35 45 41 45.2 2.4 35.2 42.7 0.7 37.8 66
 46 36 46 40 39.1 2.6 35.1 43.2 0.6 38.1 70
 47 38 47 38 39.1 2.6 35.1 43.2 0.6 38.1 70
 ; cozinha: o fogao a lenha, o pilao
-49 35 53 41 54.9 2.6 35.1 51.4 0.6 38.2 58
-48 36 53 41 54.9 2.6 35.1 51.4 0.6 38.2 58
+49 35 53 41 53.7 2.6 35.3 51.4 0.6 38.2 66
+48 36 53 41 52.8 2 38.8 50.4 1.2 37.2 58
 54 37 54 39 54.9 2.6 35.1 51.4 0.6 38.2 58
 ; quarto de Rosa: a maquina de costura, o espelho
-39 42 42 46 46.7 2.6 42.3 41.2 0.6 44.4 52
+39 42 42 46 46.3 2.4 44.3 42.2 0.8 44.1 65
 ; quarto de Rosa: a maquina de costura, o espelho
 43 42 45 46 39.3 2.6 42.3 44.8 0.6 44.5 52
 46 43 46 45 39.3 2.6 42.3 44.8 0.6 44.5 52
 ; banheiro da casa: a banheira
-48 42 53 46 48.1 2.6 46.9 51.5 0.6 44.5 70
+48 42 53 46 54.8 2.6 46.8 51.9 0.7 44.8 66
 54 43 54 46 48.1 2.6 46.9 51.5 0.6 44.5 70
 ; coro: do parapeito, as cadeiras e a porta da torre
 50 1 54 6 54.7 3.6 10.7 52.4 0.6 4 52
 ; coro: do parapeito, as cadeiras e a porta da torre
-50 7 54 11 54.7 3.6 1.3 51.5 1 11 52
+50 7 54 11 50.8 3.6 6.2 52.1 0.9 8.8 62
 ; escada da torre: a escada de madeira subindo no escuro
 51 12 52 16 50.1 4.5 16.9 53.5 1.5 13 58
 50 13 52 16 50.1 4.5 16.9 53.5 1.5 13 58
 53 14 53 16 50.1 4.5 16.9 53.5 1.5 13 58
 ; sala do sino: o sino de bronze, os arcos para a noite
-49 18 53 22 49.1 3.6 18.1 51.5 0.6 20.5 52
+49 18 49 22 53.5 3.6 18.2 50.5 1.5 19.7 48
+50 18 53 22 53.5 3.6 18.2 51.5 0.6 20.5 60
 ; lado de fora: o portao e a rua
 23 43 28 46 34.7 4.5 43.3 22.5 1.2 44.5 52
 22 44 28 46 34.7 4.5 43.3 22.5 1.2 44.5 52

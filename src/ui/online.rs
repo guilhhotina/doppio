@@ -1,4 +1,5 @@
-use super::{DIM, Dir, FAINT, INK, Item, Line, SCREEN, arrow, centered, menu, shadowed};
+use super::art::{self, Button, PEN, PEN_FADED, PEN_RED};
+use super::{Body, DIM, INK, Ink, Item, Line, SCREEN, Serif, centered, label, menu, width};
 use crate::render::Ui2d;
 use std::fmt::Write;
 
@@ -9,30 +10,36 @@ pub struct RoomRow<'a> {
 }
 
 const VISIBLE: usize = 7;
+const SHEET: [i16; 4] = [36, 34, 312, 110];
 
 pub fn rooms(ui: &mut Ui2d, rows: &[RoomRow], sel: usize, status: Option<&str>, tick: u32) {
-    centered(ui, SCREEN, 14, "Salas abertas", INK, 2);
-    let x = 56i16;
-    shadowed(ui, x, 42, "quem abriu", FAINT, 1);
-    shadowed(ui, x + 184, 42, "pessoas", FAINT, 1);
-    shadowed(ui, x + 264, 42, "país", FAINT, 1);
+    centered(ui, SCREEN, 8, "Salas abertas", INK, Serif);
+    art::paper(ui, SHEET, art::PAPER);
+    art::pins(ui, SHEET, false);
+    let x = SHEET[0] + 20;
+    label(ui, x, SHEET[1] + 6, "quem abriu", PEN_FADED, Ink);
+    label(ui, x + 184, SHEET[1] + 6, "pessoas", PEN_FADED, Ink);
+    label(ui, x + 248, SHEET[1] + 6, "país", PEN_FADED, Ink);
     let first = sel.saturating_sub(VISIBLE - 1).min(rows.len().saturating_sub(VISIBLE));
     rows.iter().enumerate().skip(first).take(VISIBLE).for_each(|(i, r)| {
-        let y = 56 + (i - first) as i16 * 14;
-        let color = if i == sel { INK } else { DIM };
-        if i == sel && tick / 20 % 4 != 3 {
-            arrow(ui, x - 12, y, Dir::Right, color);
+        let y = SHEET[1] + 20 + (i - first) as i16 * 12;
+        let color = if i == sel { PEN_RED } else { PEN };
+        if i == sel {
+            art::pointer(ui, x - 16, y - 1, tick);
         }
-        shadowed(ui, x, y, clip(r.nick, 22), color, 1);
+        label(ui, x, y, clip(r.nick, 22), color, Ink);
         let mut n = Line::new();
         let _ = write!(n, "{}/4", r.players.min(4));
-        shadowed(ui, x + 184, y, n.as_str(), color, 1);
-        shadowed(ui, x + 264, y, r.country, color, 1);
+        label(ui, x + 184, y, n.as_str(), color, Ink);
+        label(ui, x + 248, y, r.country, color, Ink);
     });
-    status.iter().for_each(|s| centered(ui, SCREEN, 100, s, DIM, 1));
+    status.iter().for_each(|s| label(ui, SHEET[0] + (SHEET[2] - width(s, Body)) / 2, SHEET[1] + 52, s, PEN_FADED, Ink));
     let extra = [Item::new("Atualizar a lista"), Item::new("Voltar")];
-    menu(ui, x, 160, &extra, sel.wrapping_sub(rows.len()), tick);
-    centered(ui, SCREEN, 200, "A entrar   Y atualizar   B voltar", FAINT, 1);
+    menu(ui, 140, 160, &extra, sel.wrapping_sub(rows.len()), tick);
+    let w = 16 + width("entrar", Body) + 10 + 16 + width("atualizar", Body) + 10 + 16 + width("voltar", Body);
+    let x = art::key_hint(ui, (SCREEN[2] as i16 - w) / 2, 204, Button::A, "entrar", DIM);
+    let x = art::key_hint(ui, x, 204, Button::Y, "atualizar", DIM);
+    art::key_hint(ui, x, 204, Button::B, "voltar", DIM);
 }
 
 pub fn clip(s: &str, n: usize) -> &str {

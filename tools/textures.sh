@@ -424,7 +424,7 @@ t_cartaz_festa() {
         -fill '#a01818' -font "$fontcb" -pointsize 84 -annotate +0+18 'PROCISSÃO' \
         -fill '#181410' -font "$fontsb" -pointsize 40 -annotate +0+104 'DO SENHOR MORTO' \
         -fill '#a01818' -font "$fontcb" -pointsize 38 -annotate +0+410 'SEXTA-FEIRA SANTA 19H' \
-        -fill '#181410' -font "$fontc" -pointsize 28 -annotate +0+460 'IGREJA MATRIZ DE PEDRA SECA' \
+        -fill '#181410' -font "$fontc" -pointsize 28 -annotate +0+460 'IGREJA MATRIZ DE XIQUE-XIQUE' \
         -gravity northwest -fill '#7c766a' -draw 'polygon 512,512 512,446 488,456 470,486 446,500 430,512' -draw 'polygon 0,0 70,0 52,22 30,26 0,48' \
         "$syn/cartaz.png"
     "$tex" "$syn/cartaz.png" cartaz_festa 64 noseam grime=0.35 streaks=0.3 dither=30
@@ -615,7 +615,7 @@ t_item_cruz_a() {
 
 t_item_bilhete_onibus_a() {
     item bilhete_onibus -fill '#e6d6a6' -draw 'rectangle 22,66 234,190' -fill '#b02a20' -draw 'rectangle 22,66 234,100' \
-        -fill '#f0e8d0' -font "$fontcb" -pointsize 26 -draw "text 34,93 'PEDRA SECA'" \
+        -fill '#f0e8d0' -font "$fontcb" -pointsize 26 -draw "text 34,93 'XIQUE-XIQUE'" \
         -fill '#3a3028' -draw 'rectangle 38,114 180,123' -draw 'rectangle 38,136 204,145' -draw 'rectangle 38,158 150,167' -fill '#201810' -draw 'circle 206,164 206,152' \
         -virtual-pixel transparent -distort SRT -12
 }
@@ -645,6 +645,15 @@ t_item_foto_a() {
         -virtual-pixel transparent -distort SRT -10
 }
 
+t_ui_papel() {
+    "$tex" "$(ph rough_plaster_03)" ui_papel 64 grime=0.2 streaks=0.12 dither=50 -colorspace gray -auto-level -level 0%,90% -colorspace sRGB +level-colors '#a08a64','#efe6c8'
+}
+
+t_ui() {
+    t_ui_papel
+    python3 "$here/uiart.py"
+}
+
 v1="taco lajota azulejo ceramica reboco reboco_mofo papel_floral madeira_porta madeira_escura forro tijolo concreto grama terra tecido_sofa colcha croche metal ceramica_barro vidro_noite quadro_santo relogio papel_jornal"
 casa="assoalho papel_listrado forro_pintado calendario quadro_fusivel bilhete"
 cidade="asfalto paralelepipedo calcada_portuguesa meio_fio fachada_rosa fachada_amarela fachada_azul muro_chapiscado grade_a portao_a placa_rua letreiro_padaria letreiro_bar letreiro_farmacia letreiro_rodoviaria cartaz_festa telha vitrine onibus_lataria onibus_janela fusca_lataria kombi_lataria madeira_crua ferrugem"
@@ -653,7 +662,8 @@ mata="folhas_a bananeira_a bambu_a casca folhas_chao barro agua_rio madeira_pont
 cemiterio="lapide_granito marmore_sujo terra_cova cruz_ferro_a musgo azulejo_capela"
 ceu="ceu_noite ceu_nublado lua_a agua"
 items="chave alicate martelo pe_de_cabra chave_de_fenda fusivel sal vela fosforo tabaco balde freio ossos cruz bilhete_onibus manivela remo lanterna_pilha foto"
-all="$v1 $casa $cidade $igreja $mata $cemiterio $ceu $(for i in $items; do printf 'item_%s_a ' "$i"; done)"
+ui="ui"
+all="$v1 $casa $cidade $igreja $mata $cemiterio $ceu $(for i in $items; do printf 'item_%s_a ' "$i"; done) $ui"
 for n in ${*:-$all}; do
     "t_$n"
 done

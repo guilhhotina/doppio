@@ -66,10 +66,12 @@ fn fogao_lenha(s: &mut Sink) {
     s.pen("tijolo").cuboid([-0.6, 0.0, -0.3], [0.6, 0.78, 0.3], SIDES);
     s.pen("ferrugem").cuboid([-0.62, 0.78, -0.32], [0.62, 0.82, 0.32], Faces::NO_BOTTOM);
     s.pen("ferrugem").cylinder([0.0, 0.82, 0.05], 0.12, 0.1, 0.02, 6, true);
+    s.pen("ceramica_barro").cylinder([0.0, 0.84, 0.05], 0.1, 0.12, 0.16, 6, true);
     s.pen("ferrugem").cylinder([0.45, 0.82, -0.2], 0.07, 0.07, 1.9, 5, false);
     s.pen("metal").panel([-0.4, 0.25, 0.0], [-0.05, 0.6, 0.302]);
     s.pen("concreto").panel([0.05, 0.12, 0.0], [0.45, 0.4, 0.301]);
-    s.mark(MarkKind::Flame, [0.25, 0.18, 0.28]);
+    s.pen("casca").cuboid([0.1, 0.13, 0.22], [0.38, 0.2, 0.33], Faces::NO_BOTTOM);
+    s.mark(MarkKind::Flame, [0.25, 0.22, 0.28]);
 }
 
 fn pilao(s: &mut Sink) {
@@ -97,7 +99,12 @@ fn oratorio(s: &mut Sink) {
     w.cuboid([0.21, 1.12, 0.0], [0.24, 1.6, 0.13], Faces(0x17));
     w.tri([[-0.26, 1.6, 0.14], [0.26, 1.6, 0.14], [0.0, 1.78, 0.14]], [[0.0, 0.3], [1.0, 0.3], [0.5, 0.0]]);
     w.cuboid([-0.26, 1.6, 0.0], [0.26, 1.63, 0.14], Faces::ALL);
-    s.pen("dourado").panel([-0.21, 1.12, 0.0], [0.21, 1.6, 0.01]);
+    w.cuboid([-0.24, 0.0, 0.04], [0.24, 0.14, 0.36], Faces::NO_BOTTOM);
+    s.pen("colcha").cuboid([-0.22, 0.14, 0.06], [0.22, 0.18, 0.34], Faces::NO_BOTTOM);
+    let mut g = s.pen("dourado");
+    g.panel([-0.21, 1.12, 0.0], [0.21, 1.6, 0.01]);
+    g.cuboid([-0.012, 1.76, 0.11], [0.012, 1.9, 0.135], Faces::NO_BOTTOM);
+    g.cuboid([-0.05, 1.82, 0.11], [0.05, 1.845, 0.135], Faces::ALL);
     let mut f = s.pen("cal");
     f.cylinder([0.0, 1.12, 0.06], 0.05, 0.035, 0.26, 5, false);
     f.cylinder([0.0, 1.38, 0.06], 0.03, 0.025, 0.07, 5, true);

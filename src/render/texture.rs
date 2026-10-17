@@ -96,25 +96,39 @@ pub struct Atlas {
     pub tiles: Vec<[u8; 4]>,
 }
 
-pub fn atlas() -> Atlas {
-    let decoded: Vec<(i32, i32, Vec<u16>)> = TEXTURES.iter().map(|(n, t)| decode_rgba(n, t)).collect();
-    let mut order: Vec<usize> = (0..decoded.len()).collect();
-    order.sort_by_key(|&i| (-decoded[i].1, -decoded[i].0));
-    let mut px = vec![0u16; (ATLAS_W * ATLAS_H) as usize];
-    let mut tiles = vec![[0u8; 4]; decoded.len()];
-    let (mut x, mut y, mut shelf) = (0, 0, 0);
+fn size(tex: &[u8]) -> (i32, i32) {
+    (1i32 << tex[0], 1i32 << tex[1])
+}
+
+pub fn layout() -> Vec<[u8; 4]> {
+    let cells: Vec<(usize, usize)> = TEXTURES.iter().map(|(_, t)| size(t)).map(|(w, h)| ((w / CELL) as usize, (h / CELL) as usize)).collect();
+    let mut order: Vec<usize> = (0..cells.len()).collect();
+    order.sort_by_key(|&i| (std::cmp::Reverse(cells[i].1), std::cmp::Reverse(cells[i].0)));
+    let (cols, rows) = ((ATLAS_W / CELL) as usize, (ATLAS_H / CELL) as usize);
+    let mut sky = vec![0usize; cols];
+    let mut tiles = vec![[0u8; 4]; cells.len()];
     order.iter().for_each(|&i| {
-        let (w, h, src) = &decoded[i];
-        if x + w > ATLAS_W {
-            (x, y, shelf) = (0, y + shelf, 0);
-        }
-        assert!(y + h <= ATLAS_H, "texture atlas overflow");
-        src.chunks(*w as usize).enumerate().for_each(|(row, line)| {
+        let (w, h) = cells[i];
+        let top = |sky: &[usize], x: usize| sky[x..x + w].iter().copied().max().unwrap_or(0);
+        let x = (0..=cols - w).min_by_key(|&x| (top(&sky, x), x)).unwrap_or(0);
+        let y = top(&sky, x);
+        assert!(y + h <= rows, "texture atlas overflow");
+        sky[x..x + w].iter_mut().for_each(|s| *s = y + h);
+        tiles[i] = [x, y, w, h].map(|v| v as u8);
+    });
+    tiles
+}
+
+pub fn atlas() -> Atlas {
+    let tiles = layout();
+    let mut px = vec![0u16; (ATLAS_W * ATLAS_H) as usize];
+    TEXTURES.iter().zip(&tiles).for_each(|((n, t), tile)| {
+        let (w, _, src) = decode_rgba(n, t);
+        let (x, y) = (tile[0] as i32 * CELL, tile[1] as i32 * CELL);
+        src.chunks(w as usize).enumerate().for_each(|(row, line)| {
             let at = ((y + row as i32) * ATLAS_W + x) as usize;
-            px[at..at + *w as usize].copy_from_slice(line);
+            px[at..at + w as usize].copy_from_slice(line);
         });
-        tiles[i] = [x / CELL, y / CELL, w / CELL, h / CELL].map(|v| v as u8);
-        (x, shelf) = (x + w, shelf.max(*h));
     });
     Atlas { px, tiles }
 }

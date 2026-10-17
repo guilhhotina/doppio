@@ -1,5 +1,5 @@
 use super::super::mat::{self, M4, V3};
-use super::{ARM_L, ARM_R, FOOT_L, FOOT_R, FORE_L, FORE_R, HEAD, LAMP, PELVIS, SEGS, SHIN_L, SHIN_R, SKIRT, THIGH_L, THIGH_R, TORSO, X};
+use super::{ARM_L, ARM_R, FOOT_L, FOOT_R, FORE_L, FORE_R, FX, HEAD, LAMP, PELVIS, SEGS, SHIN_L, SHIN_R, SKIRT, THIGH_L, THIGH_R, TORSO, X};
 
 #[derive(Clone, Copy)]
 pub struct Frame {
@@ -99,6 +99,7 @@ pub fn biped(f: &Frame, p: &Pose, x: f32, z: f32, heading: f32) -> [M4; SEGS] {
         (FOOT_L, foot_l),
         (FOOT_R, foot_r),
         (X, xseg),
+        (FX, hidden(&pelvis)),
     ]
     .iter()
     .for_each(|&(s, v)| m[s] = v);
@@ -134,6 +135,12 @@ pub fn lift(m: &mut [M4], dy: f32) {
 
 pub fn hide(m: &mut M4) {
     m[..12].fill(0.0);
+}
+
+pub fn hidden(m: &M4) -> M4 {
+    let mut m = *m;
+    hide(&mut m);
+    m
 }
 
 pub fn noise(i: i32) -> f32 {

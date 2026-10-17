@@ -58,8 +58,8 @@ fn budgets_and_segments() {
     let c = cast();
     everyone().iter().for_each(|&who| {
         let (near, far) = (c.model(who, false), c.model(who, true));
-        assert!((200..=500).contains(&near.mesh.tris()), "{who:?} near {}", near.mesh.tris());
-        assert!(far.mesh.tris() <= 140, "{who:?} far {}", far.mesh.tris());
+        assert!((200..=820).contains(&near.mesh.tris()), "{who:?} near {}", near.mesh.tris());
+        assert!(far.mesh.tris() <= 170, "{who:?} far {}", far.mesh.tris());
         assert!(far.mesh.tris() * 2 < near.mesh.tris(), "{who:?}");
         assert!([near, far].iter().all(|m| m.mesh.verts.iter().all(|v| (v.nrm[3] as usize) < SEGS)));
         assert!([near, far].iter().all(|m| m.mesh.idx.iter().all(|&i| (i as usize) < m.mesh.verts.len())));

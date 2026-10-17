@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import math
 import os
 import re
@@ -28,6 +29,23 @@ HINT_MAX = 44
 MAX_ITEMS = 64
 MAX_DOORS = 96
 MAX_ROOMS = 128
+NEAR_EYE = 0.5
+DOOR_NEAR = 3
+VIEW_INSET = 0.85
+FOG_SEEN = 0.5
+LEAF = tuple(i * 0.11 for i in range(-4, 5))
+DOOR_H = 1.2
+DOOR_MIN_W = 0.03
+PLAYER_R = 0.25
+PLAYER_H = 1.6
+NOTE_H = 1.45
+PORTAL_H = {"escada": (0.8, 1.8), "escada_mao": (1.2, 2.0), "bueiro": (0.05,), "portao": (1.1,), "janela_alta": (1.7,)}
+HIDE_H = {"cama": 0.4, "guarda_roupa": 1.0, "armario": 0.9, "tumulo": 0.5, "caixa_dagua": 0.8, "confessionario": 1.1,
+          "carro": 0.7, "cesto": 0.4, "mesa": 0.4}
+PROP_H = {"bau": 0.3, "cofre": 0.4, "criado_mudo": 0.3, "cristaleira": 0.9, "estante": 0.9, "oratorio": 1.2, "pilao": 0.4,
+          "tumulo": 0.5, "balcao": 0.5, "armario": 0.9, "guarda_roupa": 1.0, "caixa_correio": 1.1, "quadro_fusivel": 1.4,
+          "disjuntor": 1.4, "geladeira": 0.9, "geladeira_bar": 0.9}
+FACES = ((0, -1), (0, 1), (1, 0), (-1, 0))
 
 
 class Bad(Exception):
@@ -123,6 +141,7 @@ def load(path, texdir):
     if not re.fullmatch(r"\d+,\d+,\d+", kv.get("fog", "")) or any(int(c) > 255 for c in kv.get("fog", "0,0,0").split(",")):
         errors.append("line %d: fog= must be r,g,b" % hn)
     fn, ff = (float(kv.get(k, d)) for k, d in (("fog_near", 4), ("fog_far", 16)))
+    m.fog_seen = fn + (ff - fn) * FOG_SEEN
     if not 0 <= fn < ff:
         errors.append("line %d: fog_near must be < fog_far" % hn)
 
@@ -587,14 +606,10 @@ def cam_checks(m):
         if len(areas) > 1:
             errors.append("line %d: cam covers tiles of several areas %s" % (c["line"], sorted(a for a in areas if a is not None)))
 
-    def cells(ax, az, bx, bz):
-        steps = int(math.hypot(bx - ax, bz - az) * 10) + 1
-        return [(int(math.floor(ax + (bx - ax) * s / steps)), int(math.floor(az + (bz - az) * s / steps))) for s in range(0, steps)]
-
     for (x, y), i in sorted(owner.items()):
         v = m.cams[i]["v"]
         line = m.cams[i]["line"]
-        path = cells(v[0], v[2], x + 0.5, y + 0.5)
+        path = los_cells(v[0], v[2], x + 0.5, y + 0.5)[:-1]
         area = m.area_of(x, y)
         blocked = [c for c in path[1:] if m.tile(*c) in LOS_BLOCK]
         if blocked:
@@ -610,6 +625,162 @@ def cam_checks(m):
         if abs(math.degrees(math.atan2(vx * dz - vz * dx, vx * dx + vz * dz))) > half:
             errors.append("line %d: cam tile %d,%d outside the 16:9 view" % (line, x, y))
     return owner
+
+
+def los_cells(ax, az, bx, bz):
+    steps = int(math.hypot(bx - ax, bz - az) * 10) + 1
+    return [(int(math.floor(ax + (bx - ax) * s / steps)), int(math.floor(az + (bz - az) * s / steps))) for s in range(0, steps + 1)]
+
+
+@functools.lru_cache(maxsize=4096)
+def view_basis(v):
+    f = tuple(v[3 + k] - v[k] for k in range(3))
+    fl = math.sqrt(sum(c * c for c in f))
+    f = tuple(c / fl for c in f)
+    rl = math.hypot(f[2], f[0])
+    if rl < 1e-6:
+        return None
+    r = (-f[2] / rl, 0.0, f[0] / rl)
+    u = (r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0])
+    ty = math.tan(math.radians(v[6] / 2))
+    return f, r, u, ty * 16 / 9, ty
+
+
+def project(v, p):
+    b = view_basis(tuple(v))
+    if b is None:
+        return None
+    f, r, u, tx, ty = b
+    d = (p[0] - v[0], p[1] - v[1], p[2] - v[2])
+    z = d[0] * f[0] + d[1] * f[1] + d[2] * f[2]
+    if z <= 0:
+        return None
+    return (d[0] * r[0] + d[2] * r[2]) / (z * tx), (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / (z * ty)
+
+
+def body_blocks(v, p, stand):
+    cx, cz = stand[0] + 0.5, stand[1] + 0.5
+    ax, az, dx, dz = v[0] - cx, v[2] - cz, p[0] - v[0], p[2] - v[2]
+    a, b, c = dx * dx + dz * dz, 2 * (ax * dx + az * dz), ax * ax + az * az - PLAYER_R * PLAYER_R
+    disc = b * b - 4 * a * c
+    if a < 1e-9 or disc <= 0:
+        return False
+    t0, t1 = max(0.0, (-b - math.sqrt(disc)) / (2 * a)), min(1.0, (-b + math.sqrt(disc)) / (2 * a))
+    return t0 < t1 and min(v[1] + (p[1] - v[1]) * t for t in (t0, t1)) < PLAYER_H
+
+
+def cam_shows(m, cam, p, target, stand=None):
+    v = cam["v"]
+    if not NEAR_EYE <= math.dist(p, v[:3]) <= m.fog_seen:
+        return False
+    s = project(v, p)
+    if s is None or abs(s[0]) > VIEW_INSET or abs(s[1]) > VIEW_INSET:
+        return False
+    if stand is not None and body_blocks(v, p, stand):
+        return False
+    path = los_cells(v[0], v[2], p[0], p[2])
+    return not any(c not in target and (m.tile(*c) in LOS_BLOCK or m.tile(*c) == "D") for c in path[1:])
+
+
+def wall_faces(m, x, y, h):
+    return [(x + 0.5 + dx * 0.48, h, y + 0.5 + dy * 0.48) for dx, dy in FACES if (x + dx, y + dy) in m.walk]
+
+
+def spot_points(m, x, y, floor_h, raised_h):
+    t = m.tile(x, y)
+    if t in "#W":
+        return wall_faces(m, x, y, raised_h)
+    return [(x + 0.5, raised_h if t == "B" else floor_h, y + 0.5)]
+
+
+def note_points(m, x, y):
+    if m.tile(x, y) in "#W":
+        face = next(((dx, dy) for dx, dy in FACES if (x + dx, y + dy) in m.walk or m.tile(x + dx, y + dy) in "~|D"), (0, 1))
+        return [(x + 0.5 + face[0] * 0.48, NOTE_H, y + 0.5 + face[1] * 0.48)]
+    return [(x + 0.5, 0.8 if m.tile(x, y) == "B" else 0.05, y + 0.5)]
+
+
+def around(m, c):
+    x, y = c
+    return [q for q in ((x, y), (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q in m.walk and q not in m.portals]
+
+
+def near_room(m, c, room):
+    x, y = c
+    return [(a, b) for a in range(x - DOOR_NEAR, x + DOOR_NEAR + 1) for b in range(y - DOOR_NEAR, y + DOOR_NEAR + 1)
+            if (a, b) in m.walk and (a, b) not in m.doors and (a, b) not in m.portals and m.room_of(a, b) == room]
+
+
+def door_thing(m, c):
+    ax, az = (1.0, 0.0) if m.doors[c]["axis"] == "h" else (0.0, 1.0)
+    leaf = [(c[0] + 0.5 + ax * s, DOOR_H, c[1] + 0.5 + az * s) for s in LEAF]
+
+    def seen(cam, stand):
+        xs = [project(cam["v"], p)[0] for p in leaf if cam_shows(m, cam, p, {c}, stand)]
+        return len(xs) >= 2 and (max(xs) - min(xs)) / 2 >= DOOR_MIN_W
+    return [leaf[len(leaf) // 2]], seen
+
+
+def point_thing(m, c, points):
+    return points, lambda cam, stand: any(cam_shows(m, cam, p, {c}, stand) for p in points)
+
+
+def shows(m, cam, thing, stand=None):
+    return thing["seen"](cam, stand)
+
+
+def sight_things(m):
+    def thing(label, line, c, made, reqs, exit_of=()):
+        return {"label": label, "line": line, "aim": made[0], "seen": made[1], "reqs": reqs, "exit_of": set(exit_of)}
+    out = []
+    for c, st in sorted(m.doors.items()):
+        rooms = [r for r in st["rooms"] if r in m.room_defs]
+        out.append(thing("door %d,%d" % c, st["line"], c, door_thing(m, c), [(r, near_room(m, c, r)) for r in rooms], rooms))
+    for c, pt in sorted(m.portals.items()):
+        rooms = sorted({m.room_of(*q) for q in around(m, c) if q not in m.doors} - {None})
+        out.append(thing("portal %d,%d (%s)" % (c[0], c[1], pt["kind"]), pt["line"], c,
+                         point_thing(m, c, [(c[0] + 0.5, h, c[1] + 0.5) for h in PORTAL_H[pt["kind"]]]), [(r, near_room(m, c, r)) for r in rooms], rooms))
+    for p in m.props:
+        if p["item"] or p["lock"]:
+            c = (int(p["x"]), int(p["y"]))
+            out.append(thing("container %s at %g,%g" % (p["kind"], p["x"], p["y"]), p["line"], c,
+                             point_thing(m, c, [(p["x"], PROP_H.get(p["kind"], 0.5), p["y"])]), [(None, around(m, c))]))
+    for iid, it in sorted(m.items.items()):
+        if it["inside"] is None:
+            c = (int(it["x"]), int(it["y"]))
+            out.append(thing("item %s at %g,%g" % (iid, it["x"], it["y"]), it["line"], c,
+                             point_thing(m, c, [(it["x"], 0.8 if m.tile(*c) == "B" else 0.05, it["y"])]), [(None, around(m, c))]))
+    for lid, lk in sorted(m.locks.items()):
+        if lk["kind"] == "place":
+            c = lk["at"]
+            out.append(thing("place spot %s at %d,%d" % (lid, c[0], c[1]), lk["line"], c, point_thing(m, c, spot_points(m, c[0], c[1], 0.1, 0.8)),
+                             [(None, around(m, c))]))
+    for nt in m.notes:
+        c = (nt["x"], nt["y"])
+        out.append(thing("note at %d,%d" % c, nt["line"], c, point_thing(m, c, note_points(m, *c)), [(None, around(m, c))]))
+    for c, hd in sorted(m.hides.items()):
+        out.append(thing("hide %s at %d,%d" % (hd["kind"], c[0], c[1]), hd["line"], c,
+                         point_thing(m, c, [(c[0] + 0.5, HIDE_H[hd["kind"]], c[1] + 0.5)]), [(None, around(m, c))]))
+    return out
+
+
+def sight_checks(m, owner):
+    things = sight_things(m)
+    for t in things:
+        for room, tiles in t["reqs"]:
+            if not any(shows(m, m.cams[owner[q]], t, q) for q in tiles if q in owner):
+                cams = sorted({m.cams[owner[q]]["line"] for q in tiles if q in owner})
+                where = "from room %s (tiles within %d)" % (room, DOOR_NEAR) if room else "from the tiles it is used from"
+                m.errors.append("line %d: %s is not shown by the selected camera %s; cams there: %s" % (
+                    t["line"], t["label"], where, ",".join(map(str, cams)) or "none"))
+    for ch, w in sorted(m.wakes.items()):
+        if w not in owner:
+            continue
+        room = m.room_of(*w)
+        exits = [t for t in things if room in t["exit_of"]]
+        cam = m.cams[owner[w]]
+        if exits and not any(shows(m, cam, t, w) for t in exits):
+            m.warnings.append("wake %d at %d,%d: camera line %d shows none of room %s's %d exits" % (ch, w[0], w[1], cam["line"], room, len(exits)))
 
 
 def step_graph(m, passable_door, portal_ok):
@@ -843,6 +1014,7 @@ def main(argv):
         print("ERROR " + str(e))
         return 1
     owner = cam_checks(m)
+    sight_checks(m, owner)
     legend_checks(m)
     order = solvability(m)
     nloops = loops(m)

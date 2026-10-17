@@ -15,7 +15,7 @@ use crate::map::LegendKind;
 use crate::sim::{Anim, LegendAnim};
 
 pub use locomotion::Travel;
-pub const SEGS: usize = 16;
+pub const SEGS: usize = 17;
 pub const PELVIS: usize = 0;
 pub const TORSO: usize = 1;
 pub const HEAD: usize = 2;
@@ -32,6 +32,7 @@ pub const SKIRT: usize = 12;
 pub const FOOT_L: usize = 13;
 pub const FOOT_R: usize = 14;
 pub const X: usize = 15;
+pub const FX: usize = 16;
 
 pub const HEROES: u8 = 4;
 const LEGENDS: [LegendKind; 4] = [LegendKind::CorpoSeco, LegendKind::Cabra, LegendKind::Mula, LegendKind::Matinta];
@@ -56,6 +57,7 @@ pub struct Model {
     rest: Vec<V3>,
     rank: Vec<u8>,
     cloth: Option<cloth::Cloth>,
+    legend: bool,
 }
 
 impl Model {
@@ -67,12 +69,13 @@ impl Model {
             Who::Legend(LegendKind::Matinta) => Some(cloth::SKIRTS),
             _ => None,
         };
-        Model { mesh: kit.mesh, rest, rank: kit.rank, cloth }
+        Model { mesh: kit.mesh, rest, rank: kit.rank, cloth, legend: matches!(who, Who::Legend(_)) }
     }
 
     pub fn skin(&self, mats: &[M4; SEGS], light: impl Fn(V3) -> f32, fade: f32, out: &mut [Vert]) {
         let q = |v: f32| (v * 127.0).round().clamp(-127.0, 127.0) as i8;
         let cut = (fade.clamp(0.0, 1.0) * 256.0) as u32;
+        let rim_gain = if self.legend { 165.0 } else { 75.0 };
         out.iter_mut().zip(&self.mesh.verts).zip(self.rest.iter().zip(&self.rank)).for_each(|((o, v), (&n, &r))| {
             let m = &mats[v.nrm[3] as usize];
             let n = mat::dir(m, n);
@@ -80,7 +83,11 @@ impl Model {
                 true => [m[12], m[13], m[14]],
                 false => mat::point(m, v.pos),
             };
-            *o = Vert { pos, nrm: [q(n[0]), q(n[1]), q(n[2]), q(light(n).clamp(0.0, 1.0))], ..*v };
+            let rim = (1.0 - n[2].abs()).clamp(0.0, 1.0).powi(2);
+            let shade = (light(n).clamp(0.0, 1.0) + rim * 0.55).clamp(0.0, 1.0);
+            let mut lit = v.lit;
+            lit[3] = lit[3].saturating_add((rim * rim_gain) as u8);
+            *o = Vert { pos, nrm: [q(n[0]), q(n[1]), q(n[2]), q(shade)], lit, ..*v };
         });
         if let Some(cloth) = self.cloth {
             cloth.drape(mats, &self.mesh.verts, out, &self.rank, cut);
@@ -168,8 +175,8 @@ pub fn extent(who: Who) -> V3 {
         Who::Hero(2) => [0.55, 0.98, 0.55],
         Who::Hero(_) => [0.65, 0.87, 0.65],
         Who::Legend(LegendKind::CorpoSeco) => [0.5, 1.0, 0.5],
-        Who::Legend(LegendKind::Cabra) => [0.8, 1.2, 1.0],
-        Who::Legend(LegendKind::Mula) => [0.9, 1.1, 1.4],
+        Who::Legend(LegendKind::Cabra) => [0.8, 1.3, 1.0],
+        Who::Legend(LegendKind::Mula) => [0.9, 1.25, 1.4],
         Who::Legend(LegendKind::Matinta) => [0.5, 0.8, 0.5],
     }
 }

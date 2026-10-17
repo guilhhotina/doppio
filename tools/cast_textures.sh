@@ -182,7 +182,7 @@ t_jeans() {
 
 t_moletom() {
     noise 128x128 31 0.8 "$work/mo_n.png"
-    magick "$work/mo_n.png" -virtual-pixel tile -motion-blur 0x3+90 -auto-level -level 15%,85% +level-colors '#8a6414','#dcae3a' "$work/moletom.png"
+    magick "$work/mo_n.png" -virtual-pixel tile -motion-blur 0x3+90 -auto-level -level 15%,85% +level-colors '#5e4814','#ae8a34' "$work/moletom.png"
     "$tex" "$work/moletom.png" cast_moletom 32 noseam dither=30
 }
 
@@ -200,8 +200,42 @@ t_couro() {
 
 t_preto() {
     noise 128x128 33 0.6 "$work/pr_n.png"
-    magick "$work/pr_n.png" -virtual-pixel tile -motion-blur 0x10+90 -auto-level +level-colors '#060508','#3c3644' "$work/preto.png"
+    noise 128x128 34 6 "$work/pr_f.png"
+    magick "$work/pr_n.png" -virtual-pixel tile -motion-blur 0x10+90 -auto-level "$work/pr_s.png"
+    magick "$work/pr_f.png" -virtual-pixel tile -motion-blur 0x40+90 -auto-level "$work/pr_g.png"
+    magick "$work/pr_s.png" "$work/pr_g.png" -compose multiply -composite -auto-level +level-colors '#030303','#3a342c' "$work/preto.png"
     "$tex" "$work/preto.png" cast_preto 32 noseam grime=0.3 dither=30
+}
+
+t_chita() {
+    noise 128x128 37 3 "$work/ch_n.png"
+    magick "$work/ch_n.png" -level 25%,75% +level-colors '#110c0a','#2a201a' "$work/ch_base.png"
+    draw=$(python3 - <<'EOF'
+import random
+random.seed(11)
+out = []
+for i in range(14):
+    cx, cy = random.uniform(0, 128), random.uniform(0, 128)
+    col = random.choice(['#4e443a', '#3e3438', '#4a4636'])
+    for dx in (-128, 0, 128):
+        for dy in (-128, 0, 128):
+            x, y = cx + dx, cy + dy
+            if -10 < x < 138 and -10 < y < 138:
+                out.append(f"fill '{col}' circle {x:.1f},{y:.1f} {x + 4.5:.1f},{y:.1f}")
+                out.append(f"fill '#161210' circle {x:.1f},{y:.1f} {x + 1.6:.1f},{y:.1f}")
+print(' '.join(out))
+EOF
+)
+    eval magick "$work/ch_base.png" -draw "\"$draw\"" "$work/chita.png"
+    "$tex" "$work/chita.png" cast_chita 32 noseam grime=0.4 dither=30
+}
+
+t_pele() {
+    noise 128x128 39 1.2 "$work/pl_n.png"
+    noise 128x128 40 0.5 "$work/pl_w.png"
+    magick "$work/pl_w.png" -virtual-pixel tile -motion-blur 0x8+0 -auto-level "$work/pl_s.png"
+    magick "$work/pl_n.png" "$work/pl_s.png" -compose multiply -composite -auto-level -level 10%,90% +level-colors '#140e0a','#5e4636' "$work/pele.png"
+    "$tex" "$work/pele.png" cast_pele 32 noseam dither=30
 }
 
 t_pelo() {
@@ -210,10 +244,45 @@ t_pelo() {
     "$tex" "$work/pelo.png" cast_pelo 32 noseam dither=30
 }
 
+t_bode() {
+    noise 128x128 41 1.0 "$work/bo_n.png"
+    noise 128x128 42 4 "$work/bo_c.png"
+    magick "$work/bo_n.png" -virtual-pixel tile -motion-blur 0x6+100 -auto-level -sigmoidal-contrast 5x55% "$work/bo_s.png"
+    magick "$work/bo_c.png" -virtual-pixel tile -auto-level -level 0%,80% "$work/bo_k.png"
+    magick "$work/bo_s.png" "$work/bo_k.png" -compose multiply -composite -auto-level +level-colors '#020202','#342e2a' "$work/bode.png"
+    "$tex" "$work/bode.png" cast_bode 32 noseam dither=30
+}
+
+t_costela() {
+    p=$(commons corpo.png "Ahmose-mummy-head.png")
+    magick "$p" -crop "$(crop 0.36 0.22 0.62 0.34 "$p")" +repage -colorspace gray -normalize -resize 256x128! -level 10%,90% +level-colors '#1a120a','#5e4e36' "$work/co_base.png"
+    draw=$(python3 - <<'EOF'
+out = []
+def line(pts, col, w):
+    out.append(f"stroke '{col}' stroke-width {w} fill none polyline " + ' '.join(f"{x:.0f},{y:.0f}" for x, y in pts))
+for s in (-1, 1):
+    line([(128 + s * 6, 14), (128 + s * 40, 10), (128 + s * 72, 8)], '#140c06', 5)
+    line([(128 + s * 6, 10), (128 + s * 40, 6), (128 + s * 72, 4)], '#9a8664', 4)
+    for i in range(6):
+        y = 24 + i * 11
+        pts = [(128 + s * 9, y), (128 + s * 38, y + 4), (128 + s * 70, y + 12), (128 + s * 98, y + 24)]
+        line([(x, yy + 4) for x, yy in pts], '#0a0603', 4)
+        line(pts, '#7c6a4c', 3)
+line([(128, 16), (128, 64)], '#7c6a4c', 5)
+line([(0, 4), (0, 124)], '#120a05', 6)
+line([(256, 4), (256, 124)], '#120a05', 6)
+out.append("stroke none fill '#140c06' ellipse 128,108 46,16 0,360")
+print(' '.join(out))
+EOF
+)
+    eval magick "$work/co_base.png" -draw "\"$draw\"" -blur 0x0.8 "$work/costela.png"
+    "$tex" "$work/costela.png" cast_costela 64x32 noseam dither=25
+}
+
 t_misc() {
     draw=$(python3 - <<'EOF'
 cols = ['#141414', '#4a2c18', '#b02020', '#e8e4d8', '#6b4630', '#a87454', '#d8a888', '#8c8c7c',
-        '#2c3c6c', '#3c4030', '#303034', '#c8b060', '#6c4a2a', '#d8ccb0', '#ff6010', '#282420']
+        '#2c3c6c', '#3c4030', '#303034', '#c8b060', '#6c4a2a', '#b09c78', '#ff6010', '#282420']
 print(' '.join(f"fill '{c}' rectangle {i % 4 * 32},{i // 4 * 32} {i % 4 * 32 + 31},{i // 4 * 32 + 31}" for i, c in enumerate(cols)))
 EOF
 )
@@ -221,7 +290,7 @@ EOF
     "$tex" "$work/misc.png" cast_misc 32 noseam dither=0
 }
 
-all="benedita tonho jairo bia corpo matinta cabra florido xale alva xadrez jeans moletom trapo couro preto pelo misc"
+all="benedita tonho jairo bia corpo matinta cabra florido xale alva xadrez jeans moletom trapo couro costela preto chita pele pelo bode misc"
 for t in ${*:-$all}; do
     "t_$t"
 done

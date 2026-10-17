@@ -9,11 +9,30 @@ const SWING: f32 = 1.62;
 pub fn mesh(tile: [u8; 4]) -> Mesh {
     let mut m = Mesh::default();
     let mut p = Pen { mesh: &mut m, xf: mat::IDENTITY, density: 1.0 };
-    p.cuboid([0.03, 0.0, -0.025], [0.97, HEAD - 0.02, 0.025], Faces(0x0f));
+    p.cuboid([0.03, 0.0, -0.025], [0.97, HEAD - 0.02, 0.025], Faces(0x07));
     p.panel([0.03, 0.0, 0.0], [0.97, HEAD - 0.02, 0.025]);
     p.xf = mat::rot_y(std::f32::consts::PI);
     p.panel([-0.97, 0.0, 0.0], [-0.03, HEAD - 0.02, 0.025]);
-    m.verts.iter_mut().for_each(|v| *v = v.with_tile(tile));
+    m.verts.iter_mut().for_each(|v| {
+        let leak = if v.pos[1] < 0.1 { 96 } else { 36 };
+        *v = v.with_tile(tile).with_lit([42, 36, 30, leak]);
+    });
+    m
+}
+
+pub fn knob(brass: [u8; 4], plate: [u8; 4]) -> Mesh {
+    let mut m = Mesh::default();
+    [(-0.028f32, Faces(0x20)), (0.028, Faces(0x10))].iter().for_each(|&(z, f)| {
+        Pen { mesh: &mut m, xf: mat::IDENTITY, density: 6.0 }.cuboid([0.77, 0.86, z - 0.002], [0.83, 1.02, z + 0.002], f);
+    });
+    let plates = m.verts.len();
+    [(-0.048f32, Faces(0x27)), (0.048, Faces(0x17))].iter().for_each(|&(z, f)| {
+        Pen { mesh: &mut m, xf: mat::IDENTITY, density: 8.0 }.cuboid([0.775, 0.94, z - 0.018], [0.825, 0.99, z + 0.018], f);
+    });
+    m.verts.iter_mut().enumerate().for_each(|(i, v)| {
+        let (t, l) = if i < plates { (plate, [40, 35, 30, 65]) } else { (brass, [245, 215, 145, 225]) };
+        *v = v.with_tile(t).with_lit(l);
+    });
     m
 }
 
@@ -59,7 +78,8 @@ pub fn emit(mesh: &Mesh, model: &M4, moon: f32, lit: [u8; 4], out: &mut Vec<Vert
     let q = |v: f32| (v * 127.0) as i8;
     out.extend(mesh.verts.iter().map(|v| {
         let n = mat::dir(model, v.normal());
-        Vert { pos: mat::point(model, v.pos), uv: v.uv, nrm: [q(n[0]), q(n[1]), q(n[2]), q(moon)], tile: v.tile, lit }
+        let l = std::array::from_fn(|k| lit[k].saturating_add(v.lit[k]));
+        Vert { pos: mat::point(model, v.pos), uv: v.uv, nrm: [q(n[0]), q(n[1]), q(n[2]), q(moon)], tile: v.tile, lit: l }
     }));
 }
 

@@ -193,7 +193,7 @@ uniform vec2 u_scale;
 varying vec2 v_uv;
 varying vec4 v_col;
 void main() {
-    v_uv = a_uv * (1.0 / 128.0);
+    v_uv = a_uv * vec2(1.0 / 512.0, 1.0 / 1024.0);
     v_col = a_col;
     gl_Position = vec4(a_pos * u_scale + vec2(-1.0, 1.0), 0.0, 1.0);
 }
@@ -204,7 +204,7 @@ uniform sampler2D u_tex;
 varying vec2 v_uv;
 varying vec4 v_col;
 void main() {
-    gl_FragColor = vec4(v_col.rgb, v_col.a * texture2D(u_tex, v_uv).r);
+    gl_FragColor = v_col * texture2D(u_tex, v_uv);
 }
 ";
 

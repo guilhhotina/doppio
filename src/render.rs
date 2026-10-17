@@ -21,7 +21,7 @@ mod zones;
 
 use crate::gl::{self, Gl};
 use crate::map::{LegendKind, LightMode, LockKind, Map, Sky};
-use crate::sim::{Anim, DoorState, ItemPlace, ItemState, Legend, LegendAnim, LegendMode, LockState, Player, PlayerState, PropState, World};
+use crate::sim::{Anim, DoorState, ItemPlace, ItemState, Legend, LegendAnim, LegendMode, LockState, MAX_PLAYERS, Player, PlayerState, PropState, World};
 use camera::Camera;
 use cast::{Cast, Rig, Who};
 use eye::Eye;
@@ -35,15 +35,21 @@ use std::time::Instant;
 use texture::Textures;
 use zones::{Mask, Zones};
 
-pub use ui2d::{Ui2d, rgb565};
+pub use font::{Face, width as text_width};
+pub use ui2d::{MAX_QUADS as MAX_UI_QUADS, Ui2d, UiVert, WHITE, rgb, rgb565};
+
+#[cfg(test)]
+pub fn atlas_pixels() -> Vec<u16> {
+    texture::atlas().px
+}
 
 pub const CANVAS_W: u16 = 384;
 pub const CANVAS_H: u16 = 216;
 pub const MAX_VIEWS: usize = 10;
 
-const AMBIENT: V3 = [0.045, 0.05, 0.075];
-const DARK: V3 = [0.05, 0.054, 0.08];
-const BODY_FLOOR: V3 = [0.07, 0.075, 0.11];
+const AMBIENT: V3 = [0.052, 0.058, 0.085];
+const DARK: V3 = [0.058, 0.064, 0.095];
+const BODY_FLOOR: V3 = [0.11, 0.115, 0.16];
 const MOON: V3 = [0.55, 0.68, 1.0];
 const CLOUD: V3 = [0.6, 0.64, 0.74];
 const FLICKER: [u8; 24] = [1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1];
@@ -60,6 +66,8 @@ const MAX_FX: usize = ui2d::MAX_QUADS;
 const DYN_VERTS: usize = 16384;
 const ATTRIBS: [u32; 5] = [0, 1, 2, 3, 4];
 const GATE_EASE: f32 = 0.08;
+const HIDE_EASE: f32 = 0.45;
+const PEEK_FOV: f32 = 66.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct View {
@@ -85,6 +93,7 @@ struct Scene<'a> {
     locks: &'a [LockState],
     power: bool,
     tic: u32,
+    hiding: [Option<(u8, u8)>; MAX_PLAYERS],
 }
 
 #[derive(Clone, Copy, Default)]
@@ -165,7 +174,6 @@ struct Target {
     fbo: u32,
     color: u32,
     depth: u32,
-    font: u32,
 }
 
 #[derive(Default)]
@@ -199,6 +207,7 @@ pub struct Renderer {
     cast: Cast,
     items: Vec<Mesh>,
     door: Mesh,
+    knob: Mesh,
     gate: Mesh,
     padlock: Mesh,
     cone: Mesh,
@@ -208,6 +217,7 @@ pub struct Renderer {
     body_idx: Vec<u16>,
     look: [f32; BODIES],
     travel: [cast::Travel; BODIES],
+    hides: [(hide::Track, hide::Phase); MAX_PLAYERS],
     lanterns: [Option<Light>; BODIES],
     opaque: Stream,
     alpha: Stream,
@@ -334,9 +344,13 @@ impl Stage {
                 DoorInfo { gate: doors::outdoor(map, &zones, d), rooms, moon: s.moon, lit }
             })
             .collect();
-        let lamp_glows = lamps.lamps.iter().enumerate().filter(|(_, l)| l.open && l.mode != LightMode::Dead).map(|(i, l)| {
+        let lamp_glows = lamps.lamps.iter().enumerate().filter(|(_, l)| l.mode != LightMode::Dead).map(|(i, l)| {
             let color = hue(l.rgb).map(|c| (c * 255.0) as u8);
-            let size = if l.source == Source::Flame { 0.0 } else { 0.25 + l.radius * 0.06 };
+            let size = match (l.source, l.open) {
+                (Source::Flame, _) => 0.0,
+                (Source::Electric, true) => 0.25 + l.radius * 0.06,
+                (Source::Electric, false) => 0.24,
+            };
             Glow { pos: l.pos, color, size, rooms: 1 << l.room, lamp: Some(i) }
         });
         let marks = level.marks.iter().filter(|m| m.kind == props::MarkKind::Abajur).map(|m| Glow { pos: m.pos, color: sparks::WARM, size: 0.34, rooms: 1 << m.room, lamp: None });
@@ -370,6 +384,7 @@ impl Renderer {
         let cast = Cast::new(|n| textures.tile(n));
         let items = items::meshes(&textures.tiles);
         let door = doors::mesh(textures.tile("madeira_porta"));
+        let knob = doors::knob(textures.tile("dourado"), textures.tile("ferrugem"));
         let gate = doors::gate(textures.tile("portao_a"));
         let padlock = doors::padlock(textures.tile("bronze"), textures.tile("metal"));
         let cone = glow::cone();
@@ -391,7 +406,6 @@ impl Renderer {
         };
         gl.bind_buffer(gl::ARRAY_BUFFER, 0);
         gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, 0);
-        let font = texture::upload_luminance(gl, font::ATLAS as i32, font::ATLAS as i32, &font::atlas());
         let color = texture::target(gl, CANVAS_W as i32, CANVAS_H as i32);
         let depth = gl.gen_renderbuffer(gl::DEPTH_COMPONENT16, CANVAS_W as i32, CANVAS_H as i32);
         let fbo = gl.gen_framebuffer();
@@ -409,10 +423,11 @@ impl Renderer {
             shaders,
             textures,
             buf,
-            target: Target { fbo, color, depth, font },
+            target: Target { fbo, color, depth },
             cast,
             items,
             door,
+            knob,
             gate,
             padlock,
             cone,
@@ -422,6 +437,7 @@ impl Renderer {
             body_idx: Vec::with_capacity(max_idx * BODIES),
             look: [0.0; BODIES],
             travel: [cast::Travel::default(); BODIES],
+            hides: [(hide::Track::default(), hide::Phase::Out); MAX_PLAYERS],
             lanterns: [None; BODIES],
             opaque: Stream { verts: Vec::with_capacity(DYN_VERTS), idx: Vec::with_capacity(DYN_VERTS * 2) },
             alpha: Stream { verts: Vec::with_capacity(DYN_VERTS), idx: Vec::with_capacity(DYN_VERTS * 2) },
@@ -463,7 +479,7 @@ impl Renderer {
     }
 
     pub fn texture_bytes(&self) -> usize {
-        self.textures.bytes + font::ATLAS * font::ATLAS + CANVAS_W as usize * CANVAS_H as usize * 4
+        self.textures.bytes + CANVAS_W as usize * CANVAS_H as usize * 4
     }
 
     pub fn delete(&self, gl: &Gl) {
@@ -483,7 +499,6 @@ impl Renderer {
             .for_each(|&x| gl.delete_buffer(x));
         gl.delete_framebuffer(self.target.fbo);
         gl.delete_texture(self.target.color);
-        gl.delete_texture(self.target.font);
         gl.delete_renderbuffer(self.target.depth);
     }
 
@@ -531,9 +546,16 @@ impl Renderer {
                 return;
             }
             let (x, z) = v2(p.pos);
+            let phase = self.hides.get(i).map_or(hide::Phase::Out, |h| h.1);
+            let spot = match phase {
+                hide::Phase::Entering { spot, .. } | hide::Phase::Emerging { spot, .. } => scene.map.hides.get(spot as usize),
+                _ => None,
+            };
+            let acting = spot.and_then(|h| hide::pose(h, phase, [x, z], p.heading.to_rad()));
+            let (x, z, heading, anim, anim_tic) = acting.map_or((x, z, p.heading.to_rad(), p.anim, p.anim_tic), |a| (a.at[0], a.at[1], a.heading, a.anim, a.tic));
             self.look[i] = turn(self.look[i] * (1.0 - LOOK_EASE));
-            let travel = self.travel[i].sample(scene.tic, p.area, [x, z, p.heading.to_rad()]);
-            let rig = cast::hero(p.character, x, z, p.heading.to_rad(), p.anim, p.anim_tic, p.lantern, self.look[i], travel);
+            let travel = self.travel[i].sample(scene.tic, p.area, [x, z, heading]);
+            let rig = cast::hero(p.character, x, z, heading, anim, anim_tic, p.lantern, self.look[i], travel);
             let who = Who::Hero(p.character);
             let half = cast::extent(who);
             let centre = [x, half[1], z];
@@ -634,6 +656,7 @@ impl Renderer {
             locks: world.locks(),
             power: world.power(),
             tic: world.tic(),
+            hiding: std::array::from_fn(|i| world.hiding(i)),
         };
         self.render(gl, [fbo, width, height], &scene, views, ui);
     }
@@ -647,8 +670,11 @@ impl Renderer {
             PlayerState::Hidden { spot } => scene.map.hides.get(spot as usize),
             _ => None,
         };
-        let follow = hidden.map_or((x, z), |h| (h.x as f32 + 0.5, h.y as f32 + 0.5));
-        let cam = close.or_else(|| Camera::follow(scene.map, follow.0, follow.1, aspect, st.far)).unwrap_or_else(|| {
+        let peek = hidden.map(|h| {
+            let (eye, target) = hide::peek(h, [x, z], (self.time * 1.3).sin());
+            Camera::look(eye, target, PEEK_FOV, aspect, st.far)
+        });
+        let cam = close.or(peek).or_else(|| Camera::follow(scene.map, x, z, aspect, st.far)).unwrap_or_else(|| {
             let h = p.heading.to_rad();
             Camera::look([x - h.sin() * 2.5, 2.2, z - h.cos() * 2.5], [x, 1.0, z], 57.0, aspect, st.far)
         });
@@ -681,6 +707,7 @@ impl Renderer {
         self.time = self.start.elapsed().as_secs_f32();
         self.stats = Stats::default();
         let lamp = self.lamp_level(scene.power);
+        self.track_hides(scene);
         self.pose(scene, lamp);
         self.ease_gates(scene);
         let views = &views[..views.len().min(MAX_VIEWS)];
@@ -739,7 +766,12 @@ impl Renderer {
         gl.use_program(0);
     }
 
+    fn track_hides(&mut self, scene: &Scene) {
+        self.hides.iter_mut().zip(scene.players).zip(scene.hiding).for_each(|((h, p), hiding)| *h = hide::step(h.0, p.state, hiding, scene.tic));
+    }
+
     fn ease_gates(&mut self, scene: &Scene) {
+        let hides = self.hides;
         let st = &mut self.stage;
         st.level.movers.iter().zip(st.gates.iter_mut()).for_each(|(m, g)| {
             let target = match m.drive {
@@ -748,8 +780,14 @@ impl Renderer {
                     _ => scene.map.props.get(i as usize).and_then(|p| p.lock).filter(|&l| scene.map.props[i as usize].item.is_none() && scene.locks.get(l as usize).is_some_and(|s| s.open)).map_or(0.0, |_| 1.0),
                 },
                 Drive::Lock(l) => scene.locks.get(l as usize).map_or(0.0, |s| s.open as u8 as f32),
+                Drive::Hide(spot) => hides.iter().filter_map(|h| hide::door(h.1)).filter(|d| d.0 == spot).map(|d| d.1).fold(0.0, f32::max),
             };
-            *g += (target - *g) * GATE_EASE.max(if matches!(m.drive, Drive::Prop(_)) { 1.0 } else { 0.0 });
+            let ease = match m.drive {
+                Drive::Prop(_) => 1.0,
+                Drive::Hide(_) => HIDE_EASE,
+                Drive::Lock(_) => GATE_EASE,
+            };
+            *g += (target - *g) * ease;
         });
     }
 
@@ -840,7 +878,14 @@ impl Renderer {
             let xf = doors::model(scene.map, d, s.open, eye);
             match info.gate {
                 true => self.alpha.add(&self.gate, &xf, info.moon, info.lit),
-                false => self.opaque.add(&self.door, &xf, info.moon, info.lit),
+                false => {
+                    self.opaque.add(&self.door, &xf, info.moon, info.lit);
+                    self.opaque.add(&self.knob, &xf, info.moon, info.lit);
+                    if self.fx.len() < MAX_FX * 4 - 64 {
+                        let kp = mat::point(&xf, [0.8, 0.96, 0.0]);
+                        sparks::glint(&mut self.fx, kp, eye, self.time, (d.x * 13 + d.y * 7) as f32 * 0.41, 0.52);
+                    }
+                }
             }
             if s.locked {
                 self.opaque.add(&self.padlock, &xf, info.moon, info.lit);
@@ -1117,7 +1162,8 @@ impl Renderer {
         tris += self.draw_glow(gl, slot, e, area);
         if let PlayerState::Hidden { spot } = viewer.state {
             if let Some(hd) = scene.map.hides.get(spot as usize) {
-                hide::overlay(hd.kind, e.rect, self.time, &mut self.overlay);
+                let phase = self.hides.get(view.follow as usize).map_or(hide::Phase::Out, |h| h.1);
+                hide::overlay(hd.kind, phase, e.rect, self.time, &mut self.overlay);
             }
         }
         if slot < MAX_VIEWS {
@@ -1211,13 +1257,13 @@ impl Renderer {
         let p = &self.shaders.ui;
         gl.use_program(p.id);
         gl.uniform2f(p.loc[shader::ui::SCALE], 2.0 / CANVAS_W as f32, -2.0 / CANVAS_H as f32);
-        gl.bind_texture(0, self.target.font);
+        gl.bind_texture(0, self.textures.atlas);
         gl.bind_buffer(gl::ARRAY_BUFFER, vbo);
         gl.buffer_data(gl::ARRAY_BUFFER, ui.verts(), gl::STREAM_DRAW);
         gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, self.buf.ui_ibo);
         let stride = size_of::<ui2d::UiVert>();
         gl.attrib_pointer(0, 2, gl::SHORT, false, stride, 0);
-        gl.attrib_pointer(1, 2, gl::UNSIGNED_BYTE, false, stride, 4);
+        gl.attrib_pointer(1, 2, gl::UNSIGNED_SHORT, false, stride, 4);
         gl.attrib_pointer(2, 4, gl::UNSIGNED_BYTE, true, stride, 8);
         gl.enable_attrib(1);
         gl.enable_attrib(2);

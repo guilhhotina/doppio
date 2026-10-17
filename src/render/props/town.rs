@@ -63,6 +63,8 @@ fn poste(s: &mut Sink) {
     let mut m = s.pen("metal");
     m.cylinder([0.0, 3.95, 0.8], 0.06, 0.24, 0.17, 6, false);
     m.cylinder([0.0, 4.12, 0.8], 0.24, 0.05, 0.08, 6, true);
+    s.pen("cal").cylinder([0.0, 3.84, 0.8], 0.05, 0.08, 0.12, 5, true);
+    s.mark(super::MarkKind::Abajur, [0.0, 3.86, 0.8]);
 }
 
 fn orelhao(s: &mut Sink) {
@@ -172,6 +174,10 @@ fn fusca(s: &mut Sink) {
     wheels(s, 0.86, &[-1.15, 1.15], 0.3);
     s.pen("metal").cuboid([-0.8, 0.3, 1.75], [0.8, 0.4, 1.82], Faces::NO_BACK);
     s.pen("metal").cuboid([-0.8, 0.3, -1.82], [0.8, 0.4, -1.75], Faces(0x2c));
+    [-0.54f32, 0.42].iter().for_each(|&x| {
+        s.pen("cal").cuboid([x, 0.52, 1.74], [x + 0.12, 0.64, 1.78], Faces::NO_BACK);
+        s.pen("ceramica_barro").cuboid([x, 0.5, -1.78], [x + 0.1, 0.6, -1.74], Faces(0x2c));
+    });
 }
 
 fn kombi(s: &mut Sink) {
@@ -183,6 +189,8 @@ fn kombi(s: &mut Sink) {
         let (z0, z1) = if x < 0.0 { (1.9, -1.9) } else { (-1.9, 1.9) };
         g.quad([[x, 1.2, z0], [x, 1.2, z1], [x, 1.75, z1], [x, 1.75, z0]], [[0.0, 1.0], [4.0, 1.0], [4.0, 0.0], [0.0, 0.0]]);
     });
+    s.pen("metal").cuboid([-0.86, 0.3, 2.04], [0.86, 0.42, 2.12], Faces::NO_BACK);
+    [-0.62f32, 0.48].iter().for_each(|&x| s.pen("cal").cuboid([x, 0.62, 2.04], [x + 0.14, 0.76, 2.08], Faces::NO_BACK));
     wheels(s, 0.93, &[-1.35, 1.4], 0.32);
 }
 
@@ -197,6 +205,8 @@ fn onibus(s: &mut Sink) {
     });
     s.pen("letreiro_rodoviaria").panel([-0.7, 2.38, 0.0], [0.7, 2.55, 3.012]);
     s.pen("metal").cuboid([-1.02, 0.35, 2.95], [1.02, 0.55, 3.08], Faces::NO_BOTTOM_BACK);
+    s.pen("metal").cuboid([-1.02, 0.35, -3.08], [1.02, 0.55, -2.95], Faces(0x2c));
+    [-0.78f32, 0.58].iter().for_each(|&x| s.pen("cal").cuboid([x, 0.68, 2.99], [x + 0.2, 0.84, 3.04], Faces::NO_BACK));
     wheels(s, 1.08, &[-2.0, 2.0], 0.45);
 }
 

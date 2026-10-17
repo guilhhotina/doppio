@@ -84,17 +84,25 @@ pub fn biped(m: &mut [M4; SEGS], f: &Frame, place: V3, t: f32, gait: Gait, trave
         let lame = (side < 0.0) as u8 as f32 * limp;
         let step = footfall(time, period, duty, travel[0], clearance * (1.0 - lame));
         let yaw = footfall(time, period, duty, travel[1], 0.0)[1];
+        let phase = (time / period).rem_euclid(1.0);
+        let swing_pitch = match phase >= duty {
+            true => {
+                let u = (phase - duty) / (1.0 - duty);
+                0.38 * (PI * 2.0 * u).cos() * (PI * u).sin() * (travel[0] / 1.3).clamp(-1.0, 1.6) * (1.0 - lame * 0.5)
+            }
+            false => 0.0,
+        };
         let lateral = side * f.hip_x * yaw.cos();
         let longitudinal = step[1] - side * f.hip_x * yaw.sin();
         let position = mat::point(&root, [lateral, f.sole + f.meta * 0.94 + step[0], longitudinal - f.meta * 0.34]);
-        (thigh, shin, foot, yaw - lame * 0.5, [lateral, step[0], longitudinal], position)
+        (thigh, shin, foot, yaw - lame * 0.5, swing_pitch, [lateral, step[0], longitudinal], position)
     });
-    let dy = legs.iter().map(|&(thigh, _, _, _, _, target)| {
+    let dy = legs.iter().map(|&(thigh, _, _, _, _, _, target)| {
         let h = (target[0] - m[thigh][12]).hypot(target[2] - m[thigh][14]);
         target[1] + (reach * reach - h * h).max(reach * reach * 0.5).sqrt() - m[thigh][13]
     }).fold(f32::MAX, f32::min);
     lift(m, dy);
-    legs.into_iter().for_each(|(thigh, shin, foot, yaw, [lateral, raise, longitudinal], position)| {
+    legs.into_iter().for_each(|(thigh, shin, foot, yaw, swing_pitch, [lateral, raise, longitudinal], position)| {
         let origin = [m[thigh][12], m[thigh][13], m[thigh][14]];
         let [upper, lower] = chain(origin, position, f.thigh, f.shin, forward, 1.0);
         m[thigh] = upper;
@@ -102,7 +110,7 @@ pub fn biped(m: &mut [M4; SEGS], f: &Frame, place: V3, t: f32, gait: Gait, trave
         m[foot] = if f.meta > 0.0 {
             bone(position, mat::point(&root, [lateral, f.sole + raise, longitudinal]), forward)
         } else {
-            at(&root, [lateral, f.sole + raise, longitudinal], &mat::rot_y(yaw))
+            at(&root, [lateral, f.sole + raise, longitudinal], &mat::mul(&mat::rot_y(yaw), &mat::rot_x(swing_pitch)))
         };
     });
 }

@@ -20,27 +20,32 @@ pub fn reach(world: &World) -> Vec<bool> {
     let (w, h) = (map.w, map.h);
     let jairo = world.players().iter().any(|p| p.character == JAIRO);
     let index = |x: i32, y: i32| ((0..w).contains(&x) && (0..h).contains(&y)).then(|| (y * w + x) as usize);
-    let open = |x: i32, y: i32| match (map.tile(x, y), map.door_at(x, y).and_then(|d| world.doors().get(d))) {
-        (Tile::Door, Some(d)) => !d.locked && (!d.stuck || jairo || d.open > 0),
-        (t, _) => t.walkable(),
+    let open = |x: i32, y: i32| match map.tile(x, y) {
+        Tile::Door => map.door_at(x, y).and_then(|d| world.doors().get(d)).map_or(Tile::Door.walkable(), |d| !d.locked && (!d.stuck || jairo || d.open > 0)),
+        t => t.walkable(),
     };
     let mut seen = vec![false; (w * h) as usize];
-    let mut todo = world
+    let mut todo = Vec::with_capacity(seen.len());
+    let visit = |x: i32, y: i32, seen: &mut [bool], todo: &mut Vec<(i32, i32)>| {
+        if let Some(i) = index(x, y).filter(|&i| !seen[i]) {
+            seen[i] = true;
+            todo.push((x, y));
+        }
+    };
+    world
         .players()
         .iter()
         .filter(|p| matches!(p.state, PlayerState::Free | PlayerState::Hidden { .. } | PlayerState::Grabbed | PlayerState::Fainted { .. }))
-        .map(|p| tile_of(p.pos))
-        .collect::<Vec<_>>();
+        .for_each(|p| {
+            let (x, y) = tile_of(p.pos);
+            visit(x, y, &mut seen, &mut todo);
+        });
     while let Some((x, y)) = todo.pop() {
-        let Some(i) = index(x, y).filter(|&i| !seen[i]) else { continue };
-        seen[i] = true;
-        let hop = map
-            .portals
+        map.portals
             .iter()
             .filter(|p| (p.x, p.y) == (x, y) && p.lock.is_none_or(|l| world.locks().get(l as usize).is_some_and(|s| s.open)))
-            .map(|p| (p.to_x, p.to_y));
-        let steps = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)].into_iter().filter(|&(a, b)| open(a, b));
-        todo.extend(hop.chain(steps).filter(|&(a, b)| index(a, b).is_some_and(|j| !seen[j])));
+            .for_each(|p| visit(p.to_x, p.to_y, &mut seen, &mut todo));
+        [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)].into_iter().filter(|&(a, b)| open(a, b)).for_each(|(a, b)| visit(a, b, &mut seen, &mut todo));
     }
     seen
 }
@@ -183,5 +188,24 @@ mod tests {
         assert!(site(&w, &reached, l), "first objective {} is out of reach", w.map().locks[l as usize].id);
         assert!(rank(&w, &reached, l).is_some_and(|r| r <= 1));
         assert_eq!(fotos(&w), (0, 1));
+    }
+
+    #[test]
+    fn reach_is_closed_and_only_crosses_open_tiles() {
+        campaign().iter().enumerate().for_each(|(i, m)| {
+            let w = world(i);
+            let reached = reach(&w);
+            let at = |x: i32, y: i32| (0..m.w).contains(&x) && (0..m.h).contains(&y) && reached[(y * m.w + x) as usize];
+            let open = |x: i32, y: i32| match m.tile(x, y) {
+                Tile::Door => m.door_at(x, y).and_then(|d| w.doors().get(d)).map_or(Tile::Door.walkable(), |d| !d.locked && (!d.stuck || d.open > 0)),
+                t => t.walkable(),
+            };
+            let starts: Vec<(i32, i32)> = w.players().iter().map(|p| tile_of(p.pos)).chain(m.portals.iter().map(|p| (p.to_x, p.to_y))).collect();
+            (0..m.h).flat_map(|y| (0..m.w).map(move |x| (x, y))).filter(|&(x, y)| at(x, y)).for_each(|(x, y)| {
+                assert!(open(x, y) || starts.contains(&(x, y)), "{}: reached closed tile {x},{y}", m.name);
+                [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)].iter().for_each(|&(a, b)| assert!(at(a, b) || !open(a, b), "{}: open tile {a},{b} next to {x},{y} not reached", m.name));
+            });
+            assert!(starts.iter().take(w.players().len()).all(|&(x, y)| at(x, y)));
+        });
     }
 }
