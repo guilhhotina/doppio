@@ -107,6 +107,13 @@ impl Sink<'_> {
     }
 }
 
+pub fn sits_on_furniture(kind: &str) -> bool {
+    matches!(
+        kind,
+        "abajur" | "radio_antigo" | "tv_tubo" | "moringa" | "filtro_barro" | "vela_castical" | "vela_chao" | "caixa_registradora" | "santo_estatua" | "engradado" | "cesto"
+    )
+}
+
 pub fn surface(kind: &str) -> Option<([f32; 2], f32)> {
     match kind {
         "rack" => Some(([0.6, 0.2], 0.5)),

@@ -101,6 +101,7 @@ pub struct Support {
     pub half: [f32; 2],
     pub top: f32,
     pub prop: Option<u16>,
+    pub owner: u16,
 }
 
 impl Support {
@@ -519,7 +520,7 @@ impl Level {
         map.props.iter().enumerate().for_each(|(i, p)| {
             let (x, zz) = (p.pos.x.to_f32(), p.pos.y.to_f32());
             let Some(room) = z.at([x, 0.0, zz]) else { return };
-            let base = supports.iter().filter(|s| s.prop != Some(i as u16) && s.holds(x, zz)).map(|s| s.top).fold(None, |a: Option<f32>, t| Some(a.map_or(t, |a| a.max(t))));
+            let base = resting_on(&supports, i, p.kind, x, zz);
             let xf = prop_xf(x, base.unwrap_or(0.0), zz, p.rot.to_rad());
             let screens = b.screens.verts.len();
             let mut sink = Sink { parts: &mut b.parts, screens: &mut b.screens, marks: &mut b.marks, room, xf };
@@ -653,6 +654,12 @@ fn mover(parts: Parts, drive: Drive, hinge: Hinge, xf: M4, room: u8, lamps: &Lam
     Mover { drive, hinge, xf, opaque, alpha, rooms: 1 << room, lo, hi }
 }
 
+fn resting_on(supports: &[Support], i: usize, kind: &str, x: f32, z: f32) -> Option<f32> {
+    props::sits_on_furniture(kind)
+        .then(|| supports.iter().filter(|s| s.owner != i as u16 && s.holds(x, z)).map(|s| s.top).reduce(f32::max))
+        .flatten()
+}
+
 fn supports(map: &Map) -> Vec<Support> {
     map.props
         .iter()
@@ -660,8 +667,9 @@ fn supports(map: &Map) -> Vec<Support> {
         .flat_map(|(i, p)| {
             let c = [p.pos.x.to_f32(), p.pos.y.to_f32()];
             let rot = p.rot.to_rad();
-            let surface = props::surface(p.kind).map(|(half, top)| Support { c, rot, half, top, prop: None });
-            let inside = (props::content(p.kind) > 0.0 && p.item.is_some()).then(|| Support { c, rot, half: [0.2, 0.2], top: props::content(p.kind), prop: Some(i as u16) });
+            let owner = i as u16;
+            let surface = props::surface(p.kind).map(|(half, top)| Support { c, rot, half, top, prop: None, owner });
+            let inside = (props::content(p.kind) > 0.0 && p.item.is_some()).then(|| Support { c, rot, half: [0.2, 0.2], top: props::content(p.kind), prop: Some(owner), owner });
             surface.into_iter().chain(inside)
         })
         .collect()
@@ -719,7 +727,22 @@ mod tests {
 
     #[test]
     fn supports_hold_inside_their_footprint() {
-        let s = Support { c: [2.0, 2.0], rot: std::f32::consts::FRAC_PI_2, half: [1.0, 0.2], top: 0.8, prop: None };
+        let s = Support { c: [2.0, 2.0], rot: std::f32::consts::FRAC_PI_2, half: [1.0, 0.2], top: 0.8, prop: None, owner: 0 };
         assert!(s.holds(2.0, 2.9) && !s.holds(2.9, 2.0));
+    }
+
+    #[test]
+    fn furniture_stands_on_the_floor_and_small_things_sit_on_it() {
+        let rests: Vec<(&str, Option<f32>)> = map::campaign()
+            .iter()
+            .flat_map(|m| {
+                let s = supports(m);
+                m.props.iter().enumerate().map(move |(i, p)| (p.kind, resting_on(&s, i, p.kind, p.pos.x.to_f32(), p.pos.y.to_f32()))).collect::<Vec<_>>()
+            })
+            .collect();
+        let floating: Vec<_> = rests.iter().filter(|(k, r)| r.is_some() && props::surface(k).is_some() || r.is_some() && *k == "cadeira").collect();
+        assert!(floating.is_empty(), "{floating:?}");
+        assert!(rests.iter().any(|&(k, r)| k == "vela_castical" && r == Some(0.78)));
+        assert!(rests.iter().any(|&(k, r)| k == "caixa_registradora" && r == Some(1.0)));
     }
 }
