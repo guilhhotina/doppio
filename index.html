@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>as lendas de Xique-Xique</title>
+  <style>
+    :root { --bg: #0d0b0a; --panel: #1a1513; --line: #3a2d27; --text: #e9e0d6; --muted: #9a8a7e; --accent: #d6402b; --ok: #e8b04a; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1000px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 36px; letter-spacing: 0.02em; }
+    .lead { margin: 0 0 20px; color: var(--muted); }
+    .screen { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; }
+    #canvas { display: block; width: 100%; aspect-ratio: 16 / 9; outline: none; }
+    #status { position: absolute; inset: auto 0 0; margin: 0; padding: 12px 16px; text-align: center; color: var(--muted); }
+    #status.error { color: var(--ok); }
+    .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); list-style: none; }
+    kbd { display: inline-block; min-width: 1.6em; padding: 0 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; font: 14px/1.6 ui-monospace, monospace; text-align: center; }
+    footer { color: var(--muted); font-size: 14px; }
+    a { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>as lendas de Xique-Xique</h1>
+    <p class="lead">Uma noite numa cidadezinha do sertão: ache os itens, abra as trancas e fuja da Mula sem cabeça, da Matinta Perera e das outras lendas.</p>
+
+    <div class="screen">
+      <canvas id="canvas" tabindex="0"></canvas>
+      <p id="status">Carregando…</p>
+    </div>
+
+    <ul class="keys">
+      <li><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> andar e virar</li>
+      <li><kbd>Z</kbd> ou <kbd>Enter</kbd> A: pegar, usar, abrir</li>
+      <li><kbd>X</kbd> B: segurar para correr</li>
+      <li><kbd>C</kbd> / <kbd>V</kbd> X / Y: lanterna, meia-volta</li>
+      <li><kbd>Esc</kbd> START: pausa</li>
+      <li><kbd>F</kbd> tela cheia</li>
+    </ul>
+
+    <footer>
+      <p>Clique na tela para jogar e ouvir o som; o progresso fica salvo neste navegador. Online indisponível no navegador.</p>
+      <p>Texturas de <a href="https://polyhaven.com">Poly Haven</a> (CC0) e <a href="https://commons.wikimedia.org">Wikimedia Commons</a> (domínio público), letras Not Jam (CC0), IM Fell (OFL) e kbd (GPL); multiplayer e frontend ZaperOS por <a href="https://github.com/RodrigoDornelles">Rodrigo Dornelles</a>; roda no <a href="https://github.com/libretro/RetroArch">RetroArch</a>. <a href="https://github.com/guilhhotina/doppio">Código-fonte</a> (GPL-3.0).</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    import start from './doppio_libretro.js';
+
+    const home = '/home/web_user/retroarch';
+    const data = `${home}/userdata`;
+    const config = `${data}/retroarch.cfg`;
+    const game = `${home}/doppio.game`;
+    const settings = {
+      savefile_directory: `${data}/saves`,
+      system_directory: `${data}/system`,
+      config_save_on_exit: 'false',
+      pause_nonactive: 'false',
+      input_player1_a: 'z',
+      input_player1_b: 'x',
+      input_player1_x: 'c',
+      input_player1_y: 'v',
+      input_player1_start: 'escape',
+      input_exit_emulator: 'nul',
+      input_toggle_fast_forward: 'nul',
+      input_hold_fast_forward: 'nul',
+      input_hold_slowmotion: 'nul',
+      input_reset: 'nul',
+    };
+
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+
+    for (const type of ['keydown', 'keyup'])
+      addEventListener(type, (e) => {
+        if (!e.isTrusted || e.code !== 'Enter') return;
+        e.stopImmediatePropagation();
+        canvas.dispatchEvent(new KeyboardEvent(type, { code: 'KeyZ', key: 'z', bubbles: true, cancelable: true }));
+      }, true);
+
+    const sync = (FS, populate) => new Promise((done) => FS.syncfs(populate, (e) => {
+      if (e) console.warn('syncfs', e);
+      done();
+    }));
+
+    try {
+      const [module, content] = await Promise.all([
+        start({ canvas, noInitialRun: true, print: console.log, printErr: console.warn }),
+        fetch('doppio.game').then((r) => r.arrayBuffer()),
+      ]);
+      const { FS } = module;
+      FS.mkdirTree(data);
+      FS.mount(FS.filesystems.IDBFS, {}, data);
+      await sync(FS, true);
+      for (const dir of ['saves', 'system']) FS.mkdirTree(`${data}/${dir}`);
+      FS.writeFile(config, Object.entries(settings).map(([k, v]) => `${k} = "${v}"\n`).join(''));
+      FS.writeFile(game, new Uint8Array(content));
+      const save = () => sync(FS, false);
+      setInterval(save, 5000);
+      addEventListener('pagehide', save);
+      status.remove();
+      canvas.focus();
+      module.callMain(['-v', game, '-c', config]);
+    } catch (e) {
+      console.error(e);
+      status.classList.add('error');
+      status.textContent = `Não deu para começar: ${e.message ?? e}`;
+    }
+  </script>
+</body>
+</html>
