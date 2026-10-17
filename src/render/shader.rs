@@ -66,12 +66,12 @@ void main() {
 #else
 #ifdef WATER
     vec2 w = uv + vec2(sin(uv.y * 5.0 + u_fx.z) * 0.06, cos(uv.x * 4.0 + u_fx.z * 0.8) * 0.06);
-    vec3 a = texture2D(u_tex, v_tile.xy + fract(w + u_fx.xy) * v_tile.zw).rgb;
-    vec3 b = texture2D(u_tex, v_tile.xy + fract(w.yx * 0.7 - u_fx.xy) * v_tile.zw).rgb;
+    vec3 a = texture2D(u_tex, v_tile.xy + clamp(fract(w + u_fx.xy), 0.02, 0.98) * v_tile.zw).rgb;
+    vec3 b = texture2D(u_tex, v_tile.xy + clamp(fract(w.yx * 0.7 - u_fx.xy), 0.02, 0.98) * v_tile.zw).rgb;
     vec3 m = (a + b) * 0.5;
     vec3 c = m * v_col + vec3(0.55, 0.65, 0.8) * u_fx.w * max(a.g * b.g * 4.0 - 1.6, 0.0);
 #else
-    vec4 t = texture2D(u_tex, v_tile.xy + clamp(fract(uv), 0.004, 0.996) * v_tile.zw);
+    vec4 t = texture2D(u_tex, v_tile.xy + clamp(fract(uv), 0.02, 0.98) * v_tile.zw);
 #ifdef ALPHA
     if (t.a < 0.5) discard;
 #endif
@@ -334,5 +334,19 @@ mod tests {
         let scale = format!("vec4({}, {}, {}, {})", CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32, CELL as f32 / ATLAS_W as f32, CELL as f32 / ATLAS_H as f32);
         assert!(WORLD_VS.contains(&scale), "{scale}");
         assert!(SKY_VS.contains(&scale), "{scale}");
+    }
+
+    #[test]
+    fn atlas_lookups_stay_inside_their_tile_at_mediump() {
+        let ulp = 2f32.powi(-11);
+        [WORLD_FS, SKY_FS].iter().for_each(|src| {
+            assert!(!src.contains("+ fract("), "unclamped atlas lookup");
+            src.match_indices("clamp(fract(").for_each(|(i, _)| {
+                let tail = &src[i..];
+                let args = &tail[tail.find("), ").expect("clamp args") + 3..tail.find(") *").expect("clamp end")];
+                let lo: f32 = args.split(", ").next().and_then(|v| v.parse().ok()).expect("margin");
+                assert!(lo * CELL as f32 / ATLAS_H as f32 > ulp, "margin {lo} under one fp16 ulp of the atlas");
+            });
+        });
     }
 }

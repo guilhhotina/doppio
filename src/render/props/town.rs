@@ -201,26 +201,40 @@ fn onibus(s: &mut Sink) {
 }
 
 fn bicicleta(s: &mut Sink) {
-    let disc = |s: &mut Sink, z: f32| {
-        let mut p = s.pen("asfalto");
-        let rim = |i: usize| {
-            let a = i as f32 / 8.0 * TAU;
-            [0.0, 0.34 + a.cos() * 0.33, z + a.sin() * 0.33]
+    const SEG: usize = 12;
+    let wheel = |s: &mut Sink, z: f32| {
+        let at = |i: usize, r: f32, x: f32| {
+            let a = i as f32 / SEG as f32 * TAU;
+            [x, 0.34 + a.cos() * r, z + a.sin() * r]
         };
-        (1..7).for_each(|i| {
-            p.tri([rim(0), rim(i), rim(i + 1)], [[0.5, 0.0], [0.0, 1.0], [1.0, 1.0]]);
-            p.tri([rim(0), rim(i + 1), rim(i)], [[0.5, 0.0], [1.0, 1.0], [0.0, 1.0]]);
+        let mut t = s.pen("asfalto");
+        (0..SEG).for_each(|i| {
+            let (j, uv) = (i + 1, [[0.0, 0.0], [1.0, 0.0], [1.0, 0.2], [0.0, 0.2]]);
+            t.quad([at(i, 0.33, 0.025), at(j, 0.33, 0.025), at(j, 0.33, -0.025), at(i, 0.33, -0.025)], uv);
+            t.quad([at(i, 0.29, 0.02), at(j, 0.29, 0.02), at(j, 0.33, 0.02), at(i, 0.33, 0.02)], uv);
+            t.quad([at(j, 0.29, -0.02), at(i, 0.29, -0.02), at(i, 0.33, -0.02), at(j, 0.33, -0.02)], uv);
         });
+        let mut m = s.pen("metal");
+        (0..SEG / 2).for_each(|i| {
+            let (a, b) = (at(i, 0.29, 0.0), at(i + SEG / 2, 0.29, 0.0));
+            let a_ = i as f32 / SEG as f32 * TAU;
+            let w = [0.0, -a_.sin() * 0.008, a_.cos() * 0.008];
+            let q = [mat::sub(a, w), mat::sub(b, w), mat::add(b, w), mat::add(a, w)];
+            m.quad(q, [[0.0, 0.0], [1.0, 0.0], [1.0, 0.05], [0.0, 0.05]]);
+            m.quad([q[3], q[2], q[1], q[0]], [[0.0, 0.0], [1.0, 0.0], [1.0, 0.05], [0.0, 0.05]]);
+        });
+        m.cuboid([-0.05, 0.31, z - 0.03], [0.05, 0.37, z + 0.03], Faces::ALL);
     };
-    disc(s, -0.52);
-    disc(s, 0.52);
+    wheel(s, -0.52);
+    wheel(s, 0.52);
     let mut f = s.pen("ferrugem");
-    f.cuboid([-0.02, 0.34, -0.5], [0.02, 0.38, 0.0], Faces(0x33));
-    f.cuboid([-0.02, 0.36, -0.02], [0.02, 0.8, 0.02], Faces(0x33));
-    f.cuboid([-0.02, 0.76, -0.4], [0.02, 0.8, 0.45], Faces(0x33));
-    f.cuboid([-0.02, 0.36, 0.45], [0.02, 0.98, 0.49], Faces(0x33));
+    f.cuboid([-0.02, 0.33, -0.52], [0.02, 0.37, -0.02], Faces(0x33));
+    f.cuboid([-0.02, 0.34, -0.03], [0.02, 0.82, 0.01], Faces(0x33));
+    f.cuboid([-0.02, 0.74, -0.08], [0.02, 0.78, 0.46], Faces(0x33));
+    f.cuboid([-0.02, 0.36, -0.03], [0.02, 0.4, 0.44], Faces(0x33));
+    f.cuboid([-0.02, 0.34, 0.44], [0.02, 0.98, 0.48], Faces(0x33));
     f.cuboid([-0.25, 0.96, 0.43], [0.25, 0.99, 0.47], Faces(0x3c));
-    s.pen("madeira_escura").cuboid([-0.07, 0.82, -0.12], [0.07, 0.86, 0.08], Faces::NO_BOTTOM);
+    s.pen("madeira_escura").cuboid([-0.07, 0.82, -0.14], [0.07, 0.86, 0.06], Faces::NO_BOTTOM);
 }
 
 fn carroca(s: &mut Sink) {

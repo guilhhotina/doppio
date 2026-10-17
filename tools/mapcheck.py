@@ -24,6 +24,7 @@ PROPS = set(re.findall(r'"([a-z_]+)"', re.search(
     open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "render", "props.rs")).read(),
     re.S).group(1)))
 NOTE_MAX = 120
+HINT_MAX = 44
 MAX_ITEMS = 64
 MAX_DOORS = 96
 MAX_ROOMS = 128
@@ -239,6 +240,13 @@ def load(path, texdir):
     lock_ids = [tokens(l)[0] for _, l in sec["lock"] if tokens(l)]
     for n, l in sec["lock"]:
         t = tokens(l)
+        hint = None
+        if t and t[-1].startswith("hint="):
+            hint = t.pop()[5:]
+            if len(hint) < 2 or hint[0] != '"' or hint[-1] != '"':
+                errors.append("line %d: hint must be a \"quoted string\"" % n)
+            elif not 1 <= len(unquote(hint)) <= HINT_MAX:
+                errors.append("line %d: hint is %d chars (1..%d)" % (n, len(unquote(hint)), HINT_MAX))
         if len(t) < 3:
             errors.append("line %d: [lock] needs '<id> <kind> ...'" % n)
             continue

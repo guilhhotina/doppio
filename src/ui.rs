@@ -1,5 +1,7 @@
 mod cards;
 mod credits;
+pub mod cues;
+pub mod goal;
 mod howto;
 mod hud;
 mod icons;
@@ -14,6 +16,7 @@ use crate::render::{Ui2d, rgb565};
 use std::fmt;
 
 pub use cards::{Card, INTRO_PORTRAIT, card, notice, pause};
+pub use cues::Cues;
 pub use credits::{PAGES, credits, legend_portrait};
 pub use howto::howto;
 pub use hud::hud;

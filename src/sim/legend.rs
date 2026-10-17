@@ -30,6 +30,14 @@ const TURN_RATE: i32 = 2731;
 const WALK_STEP: u8 = 18;
 const RUN_STEP: u8 = 10;
 const GALLOP_STEP: u8 = 7;
+pub const ALERT_TICS: u8 = 15;
+pub const LUNGE_TICS: u8 = 8;
+pub const CALM_TICS: u32 = 45 * TICS_PER_SEC;
+const HEAT_PACE: [i32; 4] = [-1, 0, 1, 2];
+const HEAT_HEAR: [i32; 4] = [2, 4, 5, 6];
+const HEAT_SNIFF: [u16; 4] = [SNIFF_TICS, SNIFF_TICS, 30, 20];
+const HEAT_SEARCH: [u16; 4] = [0, 0, 3 * SEC, 6 * SEC];
+const HEAT_UNLOCK: [u8; 4] = [0, 40, 60, 90];
 
 const fn sq(f: Fx) -> i64 {
     f.0 as i64 * f.0 as i64
@@ -40,6 +48,8 @@ const fn mps(tenths: i32) -> Fx {
 }
 
 const GRAB_REACH: i64 = sq(Fx::ratio(7, 10));
+const LUNGE_REACH: i64 = sq(Fx::ratio(8, 10));
+const SNATCH_REACH: i64 = sq(Fx::ONE);
 const PULL_REACH: i64 = sq(Fx::ONE);
 const ARRIVE: i64 = sq(Fx::ratio(3, 10));
 const ON_PORTAL: i64 = sq(Fx::ratio(3, 10));
@@ -91,6 +101,8 @@ pub struct Brain {
     pub stall: u16,
     pub best: u16,
     pub portal_wait: u8,
+    pub alert: u8,
+    pub lunge: u8,
 }
 
 fn nearest_waypoint(map: &Map, at: Vec2) -> u8 {
@@ -133,6 +145,8 @@ impl Brain {
             stall: 0,
             best: FAR,
             portal_wait: 0,
+            alert: 0,
+            lunge: 0,
         }
     }
 }
@@ -162,6 +176,22 @@ enum Steer {
 }
 
 impl World {
+    pub fn heat(&self) -> u8 {
+        let opened = self.locks.iter().filter(|l| l.open).count();
+        match opened {
+            0 if self.tic < CALM_TICS => 0,
+            _ => 1 + (opened * 3 / self.locks.len().max(1)).min(2) as u8,
+        }
+    }
+
+    pub(super) fn unlock_noise(&self) -> u8 {
+        HEAT_UNLOCK[self.heat() as usize]
+    }
+
+    fn pace(&self, base: Fx) -> Fx {
+        base + mps(HEAT_PACE[self.heat() as usize])
+    }
+
     pub(super) fn legend_tic(&mut self) {
         let before = self.legend.anim;
         self.cries();
@@ -232,6 +262,8 @@ impl World {
         self.legend.target = None;
         self.brain.charge = 0;
         self.brain.special = 0;
+        self.brain.alert = 0;
+        self.brain.lunge = 0;
         self.brain.seen_hide = false;
         self.events.push(Event::Stunned);
     }
@@ -242,6 +274,8 @@ impl World {
         self.brain.timer = tics;
         self.brain.charge = 0;
         self.brain.special = 0;
+        self.brain.alert = 0;
+        self.brain.lunge = 0;
         self.brain.pause = 0;
         self.brain.seen_hide = false;
         self.reset_progress();
@@ -252,7 +286,7 @@ impl World {
         self.legend.target = None;
         self.brain.origin = at;
         self.brain.goal = at;
-        self.brain.timer = SEARCH_TICS;
+        self.brain.timer = SEARCH_TICS + HEAT_SEARCH[self.heat() as usize];
         self.brain.seen_hide = false;
         self.reset_progress();
     }
@@ -310,6 +344,9 @@ impl World {
     }
 
     fn chase(&mut self, p: usize) {
+        if self.legend.mode != LegendMode::Chase {
+            self.brain.alert = ALERT_TICS;
+        }
         if self.legend.mode != LegendMode::Chase || self.legend.target != Some(p as u8) {
             self.events.push(Event::LegendSaw { player: p as u8 });
             self.reset_progress();
@@ -325,8 +362,13 @@ impl World {
         let seen = self.spot_player();
         if let Some(p) = seen {
             self.chase(p);
-            self.breathe(p);
-            self.start_charge(p);
+            if self.brain.alert == 0 {
+                self.breathe(p);
+                self.start_charge(p);
+            }
+        }
+        if self.brain.alert > 0 {
+            return self.alert_tic();
         }
         if self.brain.charge > 0 {
             return self.charge_tic();
@@ -346,7 +388,20 @@ impl World {
             _ => self.patrol_tic(),
         };
         self.grab_near();
-        anim
+        match self.brain.lunge {
+            0 => anim,
+            _ => LegendAnim::Grab,
+        }
+    }
+
+    fn alert_tic(&mut self) -> LegendAnim {
+        self.brain.alert -= 1;
+        let toward = self.legend.target.map(|t| self.players[t as usize].pos - self.legend.pos);
+        if let Some(d) = toward.filter(|d| d.len_sq() > 0) {
+            let turn = ((d.ang() - self.legend.heading).0 as i16 as i32).clamp(-2 * TURN_RATE, 2 * TURN_RATE);
+            self.legend.heading = self.legend.heading + Ang(turn as u16);
+        }
+        LegendAnim::Alert
     }
 
     fn paused(&mut self) -> bool {
@@ -359,10 +414,10 @@ impl World {
             return LegendAnim::Sniff;
         }
         let (x, y) = self.map.patrol[self.brain.waypoint as usize % self.map.patrol.len()];
-        match self.go(super::centre(x, y), speeds(self.legend.kind).patrol) {
+        match self.go(super::centre(x, y), self.pace(speeds(self.legend.kind).patrol)) {
             true => {
                 self.brain.waypoint = ((self.brain.waypoint as usize + 1) % self.map.patrol.len()) as u8;
-                self.brain.pause = SNIFF_TICS;
+                self.brain.pause = HEAT_SNIFF[self.heat() as usize];
                 self.reset_progress();
                 LegendAnim::Sniff
             }
@@ -372,7 +427,7 @@ impl World {
 
     fn investigate_tic(&mut self) -> LegendAnim {
         self.brain.timer = self.brain.timer.saturating_sub(1);
-        let arrived = self.go(self.brain.origin, speeds(self.legend.kind).investigate);
+        let arrived = self.go(self.brain.origin, self.pace(speeds(self.legend.kind).investigate));
         if arrived || self.brain.timer == 0 {
             self.search_from(self.legend.pos);
             self.brain.pause = SNIFF_TICS;
@@ -390,7 +445,7 @@ impl World {
         if self.paused() {
             return LegendAnim::Sniff;
         }
-        match self.go(self.brain.goal, speeds(self.legend.kind).patrol) {
+        match self.go(self.brain.goal, self.pace(speeds(self.legend.kind).patrol)) {
             true => {
                 self.pick_search_point();
                 LegendAnim::Sniff
@@ -446,11 +501,12 @@ impl World {
             self.brain.hear_cell = here as u16;
             self.brain.hear_age = 0;
         }
+        let hear = HEAT_HEAR[self.heat() as usize];
         let heard = self
             .events
             .iter()
             .filter_map(|e| match *e {
-                Event::Noise { pos, loud, .. } => self.grid.cell_of(pos).map(|c| (pos, loud as i32 - self.hear[c] as i32)),
+                Event::Noise { pos, loud, .. } => self.grid.cell_of(pos).map(|c| (pos, loud as i32 * hear / 4 - self.hear[c] as i32)),
                 _ => None,
             })
             .filter(|&(_, margin)| margin >= 0)
@@ -514,15 +570,35 @@ impl World {
         let pull = self.legend.target.map(|t| t as usize).filter(|&t| {
             self.brain.seen_hide && matches!(self.players[t].state, PlayerState::Hidden { .. }) && (self.players[t].pos - at).len_sq() <= PULL_REACH
         });
-        let caught = pull.or_else(|| {
+        let near = |reach: i64| {
             (0..self.count)
                 .filter(|&p| self.players[p].state == PlayerState::Free)
                 .map(|p| (p, (self.players[p].pos - at).len_sq()))
-                .filter(|&(_, d)| d <= GRAB_REACH)
+                .filter(|&(_, d)| d <= reach)
                 .min_by_key(|&(p, d)| (d, p))
                 .map(|(p, _)| p)
-        });
+        };
+        let caught = match (pull, self.brain.charge > 0, self.brain.lunge) {
+            (Some(p), _, _) => Some(p),
+            (None, true, _) => near(GRAB_REACH),
+            (None, false, 0) => {
+                if let Some(p) = near(LUNGE_REACH) {
+                    self.brain.lunge = 1;
+                    self.events.push(Event::Lunge { player: p as u8 });
+                }
+                None
+            }
+            (None, false, n) if n >= LUNGE_TICS => {
+                self.brain.lunge = 0;
+                near(SNATCH_REACH)
+            }
+            (None, false, n) => {
+                self.brain.lunge = n + 1;
+                None
+            }
+        };
         if let Some(p) = caught {
+            self.brain.lunge = 0;
             self.seize(p);
         }
     }
@@ -657,6 +733,10 @@ impl World {
         if len.0 == 0 {
             return;
         }
+        let speed = match self.brain.lunge {
+            0 => speed,
+            _ => Fx(speed.0 / 2),
+        };
         let step = match len <= speed {
             true => d,
             false => d.norm().scale(speed),
@@ -666,7 +746,7 @@ impl World {
         self.legend.heading = lg.heading + Ang(turn as u16);
         self.legend.pos = next;
         if next != lg.pos {
-            let chase = speed > speeds(lg.kind).investigate;
+            let chase = lg.mode == LegendMode::Chase;
             let interval = match (chase, lg.kind) {
                 (true, LegendKind::Mula) => GALLOP_STEP,
                 (true, _) => RUN_STEP,

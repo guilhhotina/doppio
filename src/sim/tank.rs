@@ -15,6 +15,7 @@ pub const BACK: Fx = Fx::ratio(8, 300);
 pub const RUN: Fx = Fx::ratio(26, 300);
 pub const TURN: u16 = 910;
 pub const QUICK_TICS: u8 = 12;
+pub const DASH_WINDOW: u8 = 8;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Gait {
@@ -30,6 +31,8 @@ pub struct Tank {
     pub prev: u16,
     pub quick: u8,
     pub quick_from: Ang,
+    pub dash: u8,
+    pub sprint: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -44,15 +47,16 @@ pub fn pressed(prev: u16, input: u16, bit: u16) -> bool {
 }
 
 impl Tank {
-    pub const REST: Tank = Tank { prev: 0, quick: 0, quick_from: Ang::ZERO };
+    pub const REST: Tank = Tank { prev: 0, quick: 0, quick_from: Ang::ZERO, dash: 0, sprint: false };
 
     pub fn drive(&mut self, heading: Ang, input: u16) -> Motion {
+        let sprint = self.sprint(input);
         if self.quick == 0 && pressed(self.prev, input, Y) {
             self.quick = QUICK_TICS;
             self.quick_from = heading;
         }
         match self.quick {
-            0 => walk(heading, input),
+            0 => walk(heading, input, sprint),
             q => {
                 self.quick = q - 1;
                 let done = (QUICK_TICS - self.quick) as u32;
@@ -61,9 +65,23 @@ impl Tank {
             }
         }
     }
+
+    fn sprint(&mut self, input: u16) -> bool {
+        let (up, steer, side) = (input & UP != 0, input & (LEFT | RIGHT | DOWN) != 0, input & (LEFT | RIGHT) != 0);
+        let (sprint, dash) = match (up, pressed(self.prev, input, UP)) {
+            (true, true) => (self.dash > 0 && !side, 0),
+            (true, false) => (self.sprint, 0),
+            (false, _) if steer => (false, 0),
+            (false, _) if self.prev & UP != 0 => (false, DASH_WINDOW),
+            (false, _) => (false, self.dash.saturating_sub(1)),
+        };
+        self.sprint = sprint;
+        self.dash = dash;
+        sprint
+    }
 }
 
-fn walk(heading: Ang, input: u16) -> Motion {
+fn walk(heading: Ang, input: u16, sprint: bool) -> Motion {
     let held = |bit: u16| input & bit != 0;
     let turn = match (held(LEFT), held(RIGHT)) {
         (true, false) => Ang(TURN),
@@ -71,7 +89,7 @@ fn walk(heading: Ang, input: u16) -> Motion {
         _ => Ang::ZERO,
     };
     let heading = heading + turn;
-    let (speed, gait) = match (held(UP), held(DOWN), held(B)) {
+    let (speed, gait) = match (held(UP), held(DOWN), held(B) || sprint) {
         (true, false, true) => (RUN, Gait::Run),
         (true, false, false) => (WALK, Gait::Walk),
         (false, true, _) => (-BACK, Gait::Walk),
@@ -107,5 +125,30 @@ mod tests {
         });
         assert_eq!(end, Ang(1000) + Ang::HALF);
         assert_eq!(t.drive(end, Y).gait, Gait::Still);
+    }
+
+    fn gaits(inputs: &[u16]) -> Vec<Gait> {
+        let mut t = Tank::REST;
+        inputs
+            .iter()
+            .map(|&i| {
+                let g = t.drive(Ang::ZERO, i).gait;
+                t.prev = i;
+                g
+            })
+            .collect()
+    }
+
+    #[test]
+    fn double_tap_up_runs_until_released() {
+        let g = gaits(&[UP, UP, 0, 0, UP, UP | LEFT, UP, 0]);
+        assert_eq!(&g[4..7], &[Gait::Run, Gait::Run, Gait::Run]);
+        assert_eq!(g[7], Gait::Still);
+        assert_eq!(gaits(&[UP, 0, 0, 0, 0, 0, 0, 0, 0, 0, UP])[10], Gait::Walk);
+        assert_eq!(gaits(&[UP, 0, 0, 0, 0, 0, 0, 0, 0, UP])[9], Gait::Run);
+        assert_eq!(gaits(&[UP, LEFT, UP])[2], Gait::Walk);
+        assert_eq!(gaits(&[UP, 0, DOWN, 0, UP])[4], Gait::Walk);
+        assert_eq!(gaits(&[UP, 0, UP | RIGHT])[2], Gait::Walk);
+        assert_eq!(gaits(&[UP, UP, UP])[2], Gait::Walk);
     }
 }

@@ -27,11 +27,11 @@ fio alicate 6.5 3.5
 fus fusivel 1 3
 cr cruz 12 3
 [lock]
-bau_l key chavinha
+bau_l key chavinha hint=\"Ache a chavinha do baú\"
 cofre_l code 317
 corrente tool alicate
 luz place fus 2 1
-saida all corrente luz
+saida all corrente luz hint=\"Corte a corrente e ligue a luz\"
 [door]
 3 1 v locked:bau_l
 [portal]
@@ -130,6 +130,13 @@ fn resolves_locks_items_and_containers() {
     assert_eq!(m.props[1].lock, Some(1));
     assert_eq!(m.exit, Exit { rect: Rect { x0: 6, y0: 2, x1: 7, y1: 3 }, lock: 4 });
     assert_eq!(m.lock_index("nada"), None);
+    let hints = m.locks.iter().map(|l| l.hint).collect::<Vec<_>>();
+    assert_eq!(hints, [Some("Ache a chavinha do baú"), None, None, None, Some("Corte a corrente e ligue a luz")]);
+    let bau = line_of("bau_l key chavinha hint=\"Ache a chavinha do baú\"");
+    assert_eq!(fails_at(bau, "bau_l key chavinha hint=sem_aspas"), bau);
+    assert_eq!(fails_at(bau, "bau_l key chavinha hint=\"\""), bau);
+    assert_eq!(fails_at(bau, &format!("bau_l key chavinha hint=\"{}\"", "x".repeat(parse::HINT_MAX_CHARS + 1))), bau);
+    assert_eq!(fails_at(bau, "bau_l key hint=\"sem chave\""), bau);
 }
 
 #[test]
@@ -180,7 +187,8 @@ fn errors_carry_line_numbers() {
     assert_eq!(fails_at(lock, "cofre_l code 31a"), lock);
     assert_eq!(fails_at(lock, "cofre_l tool serrote"), lock);
     assert_eq!(fails_at(lock, "corrente tool alicate"), line_of("corrente tool alicate"));
-    assert_eq!(fails_at(line_of("saida all corrente luz"), "saida all saida"), line_of("saida all corrente luz"));
+    let saida = line_of("saida all corrente luz hint=\"Corte a corrente e ligue a luz\"");
+    assert_eq!(fails_at(saida, "saida all saida"), saida);
     let note = line_of("1 2 calendario \"Dia 17: 3-1-7 \\o/\"");
     assert_eq!(fails_at(note, &format!("1 2 parede \"{}\"", "a".repeat(121))), note);
     assert_eq!(fails_at(note, "1 2 parede \"sem fim"), note);

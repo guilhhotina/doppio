@@ -79,7 +79,7 @@ w oficina do Tião floor=concreto wall=tijolo ceil=madeira_crua ext=tijolo h=4 l
 #...#H.....#H.....#...................................#....B..WH.#..B..#
 #...###############..............B....................D.......#..#.....#
 #H..#.H...#B......#......BBBBB...........BBBB.........#.......#........#
-#...WB....#.......W......BBBBB...........BBBB.........###D##D##..#.....#
+#...WB....#.......W......BBBBB...........BBBB........H###D##D##..#.....#
 #...#.....D....B..#......BBBBB...........BBBB.........#B...#.B#..#.....#
 #...#.....#.......D...................................#H...#..#.B#.B...#
 #...D.....#.......#B...........BB.............BB.....BW....#..D..#.....#
@@ -88,7 +88,7 @@ w oficina do Tião floor=concreto wall=tijolo ceil=madeira_crua ext=tijolo h=4 l
 #......................................................................#
 #......................................................................#
 #......................................................................#
-#......B...........B..............B...........B............B...........#
+#......B...........B..............B.....H.....B............B...........#
 #...###W##D##W###.....###W#W##D##W#W######W##W######W##D##W####........#
 #...#BB....B...B#.....#B.............B#..B.....H#....BB..B..B.#........#
 #...#.........B.#.B...#...............#..B......#BB.....B....B#...B....#
@@ -198,12 +198,12 @@ w oficina do Tião floor=concreto wall=tijolo ceil=madeira_crua ext=tijolo h=4 l
 27 51 v open
 
 [lock]
-energia place fusivel 47 10
-gaveta code 1907
-portao key manivela
-bilhete_catraca place bilhete 31 47
-catraca all energia bilhete_catraca
-cabine key chave_cabine
+energia place fusivel 47 10 hint="Leve o fusível ao quadro de força do adro"
+gaveta code 1907 hint="Ache o segredo da gaveta do Bar do Zé"
+portao key manivela hint="A manivela abre o portão da rodoviária"
+bilhete_catraca place bilhete 31 47 hint="Ache a passagem e valide na catraca"
+catraca all energia bilhete_catraca hint="A catraca precisa de luz e da passagem"
+cabine key chave_cabine hint="Ache a chave da cabine e pegue o ônibus!"
 
 [item]
 fusivel fusivel 9.5 25.5
@@ -495,6 +495,10 @@ cadeira 58.6 51.4 0
 70 53 caixa_dagua 270
 50 45 carro 90
 50 46 carro 90
+35 28 mesa 0
+47 35 armario 0
+53 32 cesto 270
+40 41 cesto 180
 
 [note]
 7 20 mesa "A luz da rua caiu. Tem fusível novo no estoque, mas a porta emperra: só com muita força. Ou dá a volta pelo beco."
@@ -514,6 +518,8 @@ cadeira 58.6 51.4 0
 58 52 mesa "Tião, devolve a manivela do portão da rodoviária! O ônibus das 23h40 não espera. — Lurdes"
 61 28 oratorio "A Cabra Cabriola entra pela janela atrás de menino. Fica quieto debaixo da cama até ela ir embora."
 15 43 oratorio "Se ouvir o berro, não corre: se esconde. Ela é ligeira, mas não acha quem fica quieto."
+14 19 balcao "Dona Benedita: fiquem aqui com o menino. O Corpo-seco saiu do sobrado, a Cabra tá na praça. Só o ônibus das 23h40 salva."
+41 43 balcao "Itinerário: Rodoviária, parada na Matriz, estrada do rio, capital. Sexta da Paixão o ônibus espera a procissão passar."
 
 [light]
 ; casa rosa: sala
@@ -618,6 +624,12 @@ cadeira 58.6 51.4 0
 61.5 50.5 1.3 255,150,60 6 flicker
 
 [cam]
+; quadro de força no adro: de perto, o quadro e quem põe o fusível
+44 10 47 11 42.6 2.2 11.6 47.6 1 10.2 56
+; banca de jornal (recado da passagem) vista da rua Direita, de frente
+44 34 49 37 45.5 3.2 40.8 46.5 0.6 34.5 60
+; catraca da plataforma: validador e portinhola de perto
+29 45 33 47 35.6 2.4 43.6 30.6 0.8 47.8 58
 ; doorway casa rosa quarto: seen from the side you walk into
 5 7 5 7 5.5 2.3 10.1 5.5 0.9 6 62
 ; doorway casa rosa cozinha: seen from the side you walk into

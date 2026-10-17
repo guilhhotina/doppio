@@ -190,6 +190,39 @@ impl<'a> Builder<'a> {
         });
     }
 
+    fn wall_point(a: [f32; 2], f: [f32; 2], top: f32) -> impl Fn(f32, f32) -> (V3, [f32; 2]) {
+        let r = [f[1], -f[0]];
+        let u0 = (a[0] * r[0] + a[1] * r[1]).rem_euclid(1.0);
+        move |k, h| ([a[0] + r[0] * k, h, a[1] + r[1] * k], [u0 + k, top - h])
+    }
+
+    fn fan(&mut self, room: u8, tex: &str, pts: &[(V3, [f32; 2])], n: V3) {
+        let c = mat::cross(mat::sub(pts[1].0, pts[0].0), mat::sub(pts[2].0, pts[0].0));
+        let order: Vec<(V3, [f32; 2])> = match mat::dot(c, n) >= 0.0 {
+            true => pts.to_vec(),
+            false => pts[..1].iter().chain(pts[1..].iter().rev()).copied().collect(),
+        };
+        let (p, uv): (Vec<V3>, Vec<[f32; 2]>) = order.into_iter().unzip();
+        self.part(room, tex).face(&p, &uv, n);
+    }
+
+    fn frame(&mut self, room: u8, tex: &str, a: [f32; 2], f: [f32; 2], y0: f32, hole: [f32; 4], top: f32) {
+        let at = Self::wall_point(a, f, top);
+        let outer = [at(0.0, y0), at(1.0, y0), at(1.0, top), at(0.0, top)];
+        let inner = [at(hole[0], hole[2]), at(hole[1], hole[2]), at(hole[1], hole[3]), at(hole[0], hole[3])];
+        let touching = [false, hole[1] >= 1.0, false, hole[0] <= 0.0];
+        (0..4).filter(|&i| !touching[i]).for_each(|i| {
+            let j = (i + 1) % 4;
+            self.fan(room, tex, &[outer[i], outer[j], inner[j], inner[i]], [f[0], 0.0, f[1]]);
+        });
+    }
+
+    fn notched(&mut self, room: u8, tex: &str, a: [f32; 2], f: [f32; 2], side: f32, h: [f32; 3]) {
+        let at = Self::wall_point(a, f, h[2]);
+        let far = 1.0 - side;
+        self.fan(room, tex, &[at(side, h[1]), at(side, h[0]), at(far, h[0]), at(far, h[2]), at(side, h[2])], [f[0], 0.0, f[1]]);
+    }
+
     fn wall_side(&mut self, x: i32, y: i32, d: [i32; 2], window: bool) -> Option<(u8, f32)> {
         let room = self.z.room(x + d[0], y + d[1])?;
         let (tex, top, base) = self.style(x, y, room);
@@ -197,20 +230,25 @@ impl<'a> Builder<'a> {
         let r = [f[1], -f[0]];
         let c = [x as f32 + 0.5 + f[0] * 0.5, y as f32 + 0.5 + f[1] * 0.5];
         let a = [c[0] - r[0] * 0.5, c[1] - r[1] * 0.5];
-        let rows = [0.0, BASE, SILL, HEAD, top];
         let out = self.map.rooms[room as usize].out.then_some((room, top));
+        let y0 = if base { BASE } else { 0.0 };
+        if base {
+            self.vface(room, "madeira_escura", a, f, 1.0, [0.0, BASE], top);
+        }
         if !window {
-            let (plain, bare) = ([0.0, BASE, top], [0.0, top]);
-            let rows: &[f32] = if base { &plain } else { &bare };
-            self.grid(room, tex, base, a, f, &[0.0, 1.0], rows, [2.0; 4], top);
+            let door = |k: i32| self.map.tile(x + d[1] * k, y - d[0] * k) == Tile::Door;
+            let jamb = self.map.tile(x + d[0], y + d[1]) == Tile::Door;
+            match (door(-1), door(1)) {
+                (left, right) if jamb || (left && right) => self.grid(room, tex, false, a, f, &[0.0, 1.0], &[y0, HEAD, top], [2.0; 4], top),
+                (false, false) => self.vface(room, tex, a, f, 1.0, [y0, top], top),
+                (left, _) => self.notched(room, tex, a, f, if left { 0.0 } else { 1.0 }, [y0, HEAD, top]),
+            }
             return out;
         }
         let along = |k: i32| self.map.tile(x + d[1] * k, y - d[0] * k) == Tile::Window;
         let (ml, mr) = (if along(-1) { 0.0 } else { MARGIN }, if along(1) { 0.0 } else { MARGIN });
         let at = |k: f32, depth: f32| [a[0] + r[0] * k - f[0] * depth, a[1] + r[1] * k - f[1] * depth];
-        let mut cols = vec![0.0, ml, 1.0 - mr, 1.0];
-        cols.dedup();
-        self.grid(room, tex, base, a, f, &cols, &rows, [ml, 1.0 - mr, SILL, HEAD], top);
+        self.frame(room, tex, a, f, y0, [ml, 1.0 - mr, SILL, HEAD], top);
         if ml > 0.0 {
             self.vface(room, tex, at(ml, 0.0), r, RECESS, [SILL, HEAD], top);
         }
@@ -287,28 +325,16 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn plain(&self, x: i32, y: i32) -> bool {
-        let room = self.z.room(x, y);
-        room.is_some() && [(0, 0), (1, 0), (0, 1), (1, 1)].iter().all(|&(dx, dy)| matches!(self.map.tile(x + dx, y + dy), Tile::Floor | Tile::Blocker) && self.z.room(x + dx, y + dy) == room)
-    }
-
     fn floor_tile(&mut self, x: i32, y: i32, floor: bool) {
-        let corner = (x & !1, y & !1);
-        let merged = floor && self.plain(corner.0, corner.1);
-        if merged && (x, y) != corner {
-            return;
-        }
         let Some(room) = self.z.room(x, y) else { return };
         let r = &self.map.rooms[room as usize];
-        let size = if merged { 2.0 } else { 1.0 };
-        let (lo, hi) = ([x as f32, y as f32], [x as f32 + size, y as f32 + size]);
+        let (lo, hi) = ([x as f32, y as f32], [x as f32 + 1.0, y as f32 + 1.0]);
         if floor {
             self.hface(room, r.floor, lo, hi, 0.0, true);
         }
         r.ceil.into_iter().for_each(|c| self.hface(room, c, lo, hi, r.h.to_f32(), false));
         if let Some(roof) = self.roof_of(room) {
-            let n = size as i32;
-            (0..n * n).for_each(|i| self.roof(roof, x + i % n, y + i / n, r.h.to_f32()));
+            self.roof(roof, x, y, r.h.to_f32());
         }
     }
 
@@ -385,6 +411,20 @@ impl<'a> Builder<'a> {
                 Pen { mesh: s2.parts.entry((room, texture::id("madeira_escura"))).or_default(), xf: mat::mul(&xf, &mat::translate([0.0, 0.0, 0.5])), density: 2.0 }.cuboid([-0.35, 1.72, -0.06], [0.35, 1.75, 0.0], Faces::NO_BOTTOM);
             }
         }
+    }
+
+    fn shell(&mut self, gates: &mut Vec<(usize, M4, u8)>) {
+        let map = self.map;
+        (0..map.h).flat_map(|y| (0..map.w).map(move |x| (x, y))).for_each(|(x, y)| match map.tile(x, y) {
+            Tile::Floor | Tile::Blocker => self.floor_tile(x, y, true),
+            Tile::Hide => self.hide_tile(x, y),
+            Tile::Portal => self.portal_tile(x, y, gates),
+            Tile::Door => self.door_tile(x, y),
+            Tile::Wall | Tile::Window => self.wall_tile(x, y),
+            Tile::Water => self.water_tile(x, y),
+            Tile::Fence => self.fence_tile(x, y),
+            Tile::Void => {}
+        });
     }
 
     fn hide_tile(&mut self, x: i32, y: i32) {
@@ -472,16 +512,7 @@ impl Level {
     pub fn new(map: &Map, z: &Zones, lamps: &Lamps, tiles: &[[u8; 4]]) -> Level {
         let mut b = Builder { map, z, parts: Parts::new(), roofs: Parts::new(), screens: Mesh::default(), marks: Vec::new() };
         let mut gates = Vec::new();
-        (0..map.h).flat_map(|y| (0..map.w).map(move |x| (x, y))).for_each(|(x, y)| match map.tile(x, y) {
-            Tile::Floor | Tile::Blocker => b.floor_tile(x, y, true),
-            Tile::Hide => b.hide_tile(x, y),
-            Tile::Portal => b.portal_tile(x, y, &mut gates),
-            Tile::Door => b.door_tile(x, y),
-            Tile::Wall | Tile::Window => b.wall_tile(x, y),
-            Tile::Water => b.water_tile(x, y),
-            Tile::Fence => b.fence_tile(x, y),
-            Tile::Void => {}
-        });
+        b.shell(&mut gates);
         let supports = supports(map);
         let mut movers = Vec::new();
         let mut screen_rooms = Vec::new();

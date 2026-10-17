@@ -163,7 +163,7 @@ impl World {
                 if matches!(self.map.locks[lock as usize].kind, LockKind::Key(_)) {
                     self.consume(p, i);
                 }
-                self.open_lock(lock);
+                self.open_lock(p, lock);
             }
             None => {
                 if let Some(d) = self.door_ahead(p) {
@@ -176,7 +176,7 @@ impl World {
     fn place_item(&mut self, p: usize, lock: u8, needs: ItemKind) {
         if let Some(i) = self.holds(p, needs) {
             self.consume(p, i);
-            self.open_lock(lock);
+            self.open_lock(p, lock);
         }
     }
 
@@ -252,7 +252,7 @@ impl World {
             match right {
                 true => {
                     self.ctl[p].dial = None;
-                    self.open_lock(d.lock);
+                    self.open_lock(p, d.lock);
                 }
                 false => {
                     self.ctl[p].dial = Some(Dial { wrong: d.wrong.saturating_add(1), ..d });

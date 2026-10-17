@@ -2,8 +2,12 @@ use crate::fx::{Ang, Fx, Rng, Vec2};
 use crate::map::{DoorState as MapDoor, Map};
 
 mod act;
+#[cfg(test)]
+mod bot;
 mod collide;
 mod field;
+#[cfg(test)]
+mod feel;
 mod focus;
 mod grid;
 mod hash;
@@ -117,6 +121,7 @@ pub enum LegendAnim {
     Grab,
     Stagger,
     Special,
+    Alert,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -205,6 +210,7 @@ pub enum Event {
     Container { player: u8, prop: u16 },
     Used { player: u8, item: u8 },
     PortalUse { player: u8, portal: u8 },
+    Lunge { player: u8 },
 }
 
 #[derive(Clone)]

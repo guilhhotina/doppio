@@ -107,7 +107,7 @@
 [room]
 n nártex area=0 floor=lajota wall=pedra ceil=madeira_escura ext=pedra h=5 light=6
 e escada do coro area=0 floor=madeira_escura wall=reboco_mofo ceil=madeira_escura ext=pedra h=4 light=3
-v nave area=0 floor=marmore_xadrez wall=cal ceil=madeira_escura ext=pedra h=8 light=10
+v nave area=0 floor=marmore_xadrez wall=cal ceil=madeira_escura ext=pedra h=8 light=13
 a capela das Dores area=0 floor=marmore_xadrez wall=azulejo_capela ceil=cal ext=pedra h=4 light=3
 b capela de São Benedito area=0 floor=marmore_xadrez wall=cal ceil=cal ext=pedra h=4 light=3
 c capela de Santo Antônio area=0 floor=marmore_xadrez wall=azulejo_capela ceil=cal ext=pedra h=4 light=3
@@ -132,7 +132,7 @@ o pátio area=0 floor=terra wall=muro_chapiscado ceil=- ext=muro_chapiscado h=6 
 L sala da casa paroquial area=0 floor=taco wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=16
 M escritório do padre area=0 floor=assoalho wall=papel_listrado ceil=forro_pintado ext=fachada_azul h=3 light=10
 N corredor da casa area=0 floor=assoalho wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=6
-Q quarto do padre area=0 floor=assoalho wall=reboco ceil=forro_pintado ext=fachada_azul h=3 light=8
+Q quarto do padre area=0 floor=assoalho wall=reboco ceil=forro_pintado ext=fachada_azul h=3 light=13
 K cozinha da casa area=0 floor=ceramica_barro wall=reboco_mofo ceil=forro ext=fachada_azul h=3 light=12
 V quarto de Rosa area=0 floor=assoalho wall=papel_floral ceil=forro_pintado ext=fachada_azul h=3 light=4
 Y banheiro da casa area=0 floor=ceramica wall=azulejo ceil=reboco ext=fachada_azul h=3 light=8
@@ -180,10 +180,10 @@ x lado de fora da torre area=3 floor=paralelepipedo wall=pedra ceil=- ext=pedra 
 53 14 -> 50 20 90 escada
 53 20 -> 33 44 270 janela_alta lock=maldicao
 [lock]
-hinos code 2714
-coro key chave_coro
-corrente tool alicate
-maldicao place freio 51 20
+hinos code 2714 hint="O segredo do cofre está no quadro de hinos"
+coro key chave_coro hint="Ache a chave da porta do coro"
+corrente tool alicate hint="Corte a corrente da torre com o alicate"
+maldicao place freio 51 20 hint="Leve o freio da Mula até o sino da torre"
 [item]
 freio freio 41.3 12
 alicate alicate 46.5 20.5
@@ -208,6 +208,8 @@ foto_coro foto 51.5 2.5
 39 46 criado_mudo "Rosa: se um dia eu virar bicho, tirem o meu freio e ponham no sino. Só assim eu descanso."
 44 40 oratorio "Guardei a chave do coro no baú do quarto. Que ninguém suba à torre enquanto ela corre."
 8 28 cartaz "Aviso da escola: ouviu galope? Entre numa sala e se esconda no armário até passar."
+0 37 parede "Expedito: o ônibus das 23h40 parou na matriz, a procissão fechou a rua. Veio um galope do adro. Fujam pela torre!"
+49 17 parede "Da torre se vê o rio. A ponte caiu na cheia de 77: pra sair de Pedra Seca, só na canoa do Zé do Remo."
 [hide]
 1 13 confessionario 90
 25 1 confessionario 0
@@ -400,6 +402,7 @@ escada 1.5 19.5 180
 escada 53.5 13.5 180
 vela_castical 26.5 1.5 0
 vela_castical 26.5 22.5 180
+quadro_negro 31.5 5.1 0
 [light]
 5.5 15.5 1.3 255,160,70 4 flicker
 7.5 1.5 1.3 255,160,70 4 flicker
@@ -434,6 +437,14 @@ vela_castical 26.5 22.5 180
 26.5 1.5 1.3 255,160,70 4 flicker
 26.5 22.5 1.3 255,160,70 4 flicker
 [cam]
+; quadro de hinos: de frente pro quadro, no corredor norte da nave
+30 5 32 6 31.5 3 12.5 31.5 1.5 4.6 52
+; altar de perto: o freio em cima do altar tem que aparecer na TV
+39 10 40 14 36.6 2.6 12 41.4 1 12 52
+; sino: canto sudoeste, o sino e quem poe o freio debaixo dele
+50 19 52 21 49.3 2.6 22.6 51.6 1.7 20.2 60
+; baú do quarto do padre (chave do coro)
+44 35 45 37 40.2 2.4 39.6 46.3 0.6 35.6 52
 ; corredor central: rente ao chao na entrada, o corredor ate o altar (a carga da Mula)
 11 8 22 14 7.4 1.3 11.9 40 1.6 12 52
 10 9 22 14 7.4 1.3 11.9 40 1.6 12 52

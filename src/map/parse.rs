@@ -102,6 +102,7 @@ const HIDES: &[(&str, HideKind)] = &[
 const LIGHTS: &[(&str, LightMode)] = &[("steady", LightMode::Steady), ("flicker", LightMode::Flicker), ("dead", LightMode::Dead)];
 
 const NOTE_MAX_CHARS: usize = 120;
+pub const HINT_MAX_CHARS: usize = 44;
 
 fn err<T>(line: usize, msg: impl Into<String>) -> Result<T, ParseError> {
     Err(ParseError { line, msg: msg.into() })
@@ -476,8 +477,20 @@ fn item<'a>(mut f: Fields<'a>) -> Result<Item<'a>, ParseError> {
     f.end(Item { id, kind, pos, inside: None })
 }
 
+fn hint<'a>(f: &mut Fields<'a>) -> Result<Option<&'a str>, ParseError> {
+    let Some(raw) = f.toks.last().and_then(|t| t.strip_prefix("hint=")) else { return Ok(None) };
+    f.toks.pop();
+    match unquote(raw).map(|t| (t, t.chars().count())) {
+        None => err(f.n, format!("hint must be a \"quoted string\", got '{raw}'")),
+        Some((_, 0)) => err(f.n, "empty hint"),
+        Some((_, c)) if c > HINT_MAX_CHARS => err(f.n, format!("hint is {c} chars, max {HINT_MAX_CHARS}")),
+        Some((t, _)) => Ok(Some(t)),
+    }
+}
+
 fn lock<'a>(mut f: Fields<'a>, ids: &Ids<'a>) -> Result<Lock<'a>, ParseError> {
     let n = f.n;
+    let hint = hint(&mut f)?;
     let id = f.word("lock id")?;
     let kind = match f.word("lock kind")? {
         "key" => LockKind::Key(ids.item(n, f.word("key item")?)?),
@@ -507,7 +520,7 @@ fn lock<'a>(mut f: Fields<'a>, ids: &Ids<'a>) -> Result<Lock<'a>, ParseError> {
         }
         other => return err(n, format!("unknown lock kind '{other}' (key|code|tool|place|all)")),
     };
-    f.end(Lock { id, kind })
+    f.end(Lock { id, kind, hint })
 }
 
 fn door(mut f: Fields<'_>, ids: &Ids<'_>) -> Result<Door, ParseError> {

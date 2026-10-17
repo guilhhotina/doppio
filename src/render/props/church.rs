@@ -46,9 +46,14 @@ fn altar(s: &mut Sink) {
 
 fn pulpito(s: &mut Sink) {
     let mut w = s.pen("madeira_banco");
-    w.cylinder([0.0, 0.0, 0.0], 0.15, 0.22, 0.9, 6, false);
-    w.cylinder([0.0, 0.9, 0.0], 0.5, 0.55, 0.85, 6, true);
-    w.cuboid([-0.3, 1.75, 0.1], [0.3, 1.8, 0.45], Faces::ALL);
+    w.cylinder([0.0, 0.0, 0.0], 0.42, 0.36, 0.12, 6, true);
+    w.cylinder([0.0, 0.12, 0.0], 0.13, 0.13, 0.78, 6, false);
+    w.cylinder([0.0, 0.9, 0.0], 0.24, 0.52, 0.22, 6, false);
+    w.cylinder([0.0, 1.12, 0.0], 0.52, 0.52, 0.66, 6, false);
+    let mut g = s.pen("dourado");
+    g.cylinder([0.0, 1.12, 0.0], 0.535, 0.535, 0.05, 6, false);
+    g.cylinder([0.0, 1.73, 0.0], 0.56, 0.56, 0.07, 6, true);
+    s.pen("madeira_banco").quad([[-0.28, 1.8, 0.18], [0.28, 1.8, 0.18], [0.28, 1.94, 0.46], [-0.28, 1.94, 0.46]], [[0.0, 0.5], [1.0, 0.5], [1.0, 0.0], [0.0, 0.0]]);
 }
 
 fn confessionario(s: &mut Sink) {

@@ -38,6 +38,10 @@ face() {
 
 compose() {
     magick "$1" \( "$work/face.png" "$work/fmask.png" -alpha off -compose copy-opacity -composite \) -geometry +66+20 -compose over -composite "$2" -geometry +0+0 -composite "$3"
+    magick "$3" -brightness-contrast -4x12 -fill '#211811' \
+        -draw "ellipse 109,58 6,2 0,360 ellipse 147,58 6,2 0,360 polygon 101,50 118,51 118,54 103,53 polygon 138,51 155,50 153,53 138,54" \
+        -fill '#644331' -draw "line 125,63 123,77 line 123,77 130,79" \
+        -fill '#38231b' -draw "line 118,92 138,92" "$3"
 }
 
 skin() {
@@ -58,7 +62,7 @@ t_benedita() {
     m=$(hairmask "ellipse 128,104 58,72 0,360 rectangle 0,92 256,128")
     magick "$work/b_hair.png" "$m" -alpha off -compose copy-opacity -composite "$work/b_hairA.png"
     compose "$work/b_skin.png" "$work/b_hairA.png" "$work/benedita.png"
-    "$tex" "$work/benedita.png" cast_benedita 64x32 noseam dither=35
+    "$tex" "$work/benedita.png" cast_benedita 64 noseam dither=15
 }
 
 t_tonho() {
@@ -69,7 +73,7 @@ t_tonho() {
     m=$(hairmask "ellipse 128,104 60,74 0,360 rectangle 0,96 256,128")
     magick "$work/t_hair.png" "$m" -alpha off -compose copy-opacity -composite "$work/t_hairA.png"
     compose "$work/t_skin.png" "$work/t_hairA.png" "$work/tonho.png"
-    "$tex" "$work/tonho.png" cast_tonho 64x32 noseam dither=35
+    "$tex" "$work/tonho.png" cast_tonho 64 noseam dither=15
 }
 
 t_jairo() {
@@ -80,7 +84,7 @@ t_jairo() {
     m=$(hairmask "ellipse 128,108 60,72 0,360 rectangle 0,98 256,128")
     magick "$work/j_hair.png" "$m" -alpha off -compose copy-opacity -composite "$work/j_hairA.png"
     compose "$work/j_skin.png" "$work/j_hairA.png" "$work/jairo.png"
-    "$tex" "$work/jairo.png" cast_jairo 64x32 noseam dither=35
+    "$tex" "$work/jairo.png" cast_jairo 64 noseam dither=15
 }
 
 t_bia() {
@@ -91,7 +95,7 @@ t_bia() {
     m=$(hairmask "ellipse 128,104 52,72 0,360")
     magick "$work/g_hair.png" "$m" -alpha off -compose copy-opacity -composite "$work/g_hairA.png"
     compose "$work/g_skin.png" "$work/g_hairA.png" "$work/bia.png"
-    "$tex" "$work/bia.png" cast_bia 64x32 noseam dither=35
+    "$tex" "$work/bia.png" cast_bia 64 noseam dither=15
 }
 
 t_corpo() {
@@ -101,7 +105,7 @@ t_corpo() {
     face "$p" 0.32 0.26 0.70 0.58 '#060403' '#b4a27a' "-sigmoidal-contrast 4x45%"
     magick -size 256x128 xc:none "$work/c_none.png"
     compose "$work/c_skin.png" "$work/c_none.png" "$work/corpo.png"
-    "$tex" "$work/corpo.png" cast_corpo 64x32 noseam dither=50 -- -modulate 92,80
+    "$tex" "$work/corpo.png" cast_corpo 64 noseam dither=25 -- -modulate 92,80
 }
 
 t_matinta() {
@@ -112,7 +116,7 @@ t_matinta() {
     m=$(hairmask "ellipse 128,108 46,76 0,360")
     magick "$work/m_hair.png" "$m" -alpha off -compose copy-opacity -composite "$work/m_hairA.png"
     compose "$work/m_skin.png" "$work/m_hairA.png" "$work/matinta.png"
-    "$tex" "$work/matinta.png" cast_matinta 64x32 noseam dither=40
+    "$tex" "$work/matinta.png" cast_matinta 64 noseam dither=20
 }
 
 t_cabra() {

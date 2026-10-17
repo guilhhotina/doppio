@@ -46,6 +46,7 @@ pub struct App {
     ports: [Option<u8>; MAX_PLAYERS],
     save_dir: Option<PathBuf>,
     unlocked: u8,
+    tips: u32,
     focus: usize,
     hashlog: u32,
     stage: Option<Stage>,
@@ -89,7 +90,7 @@ impl App {
         net::register(fe);
         let maps = map::campaign();
         let save_dir = fe.save_dir();
-        let unlocked = save::load(save_dir.as_deref(), maps.len() as u8);
+        let save::Save { unlocked, tips } = save::load(save_dir.as_deref(), maps.len() as u8);
         let start = direct(fe.variable(c"doppio_phase").as_deref(), fe.variable(c"doppio_chars").as_deref(), maps.len());
         fe.log(
             LOG_INFO,
@@ -108,6 +109,7 @@ impl App {
             ports: [Some(0), None, None, None],
             save_dir,
             unlocked,
+            tips,
             focus: 0,
             hashlog: fe.variable(c"doppio_hashlog").and_then(|v| v.trim().parse().ok()).unwrap_or(0),
             stage: fe.variable(c"doppio_stage").as_deref().and_then(game::stage_named),
@@ -158,13 +160,17 @@ impl App {
         self.net.start();
     }
 
+    fn persist(&self, fe: &Frontend) {
+        if let Err(e) = save::store(self.save_dir.as_deref(), save::Save { unlocked: self.unlocked, tips: self.tips }) {
+            fe.log(LOG_WARN, &format!("could not save progress: {e}"));
+        }
+    }
+
     fn unlock(&mut self, fe: &Frontend, won: u8) {
         let next = (won as usize + 2).min(self.maps.len()) as u8;
         if next > self.unlocked {
             self.unlocked = next;
-            if let Err(e) = save::store(self.save_dir.as_deref(), next) {
-                fe.log(LOG_WARN, &format!("could not save progress: {e}"));
-            }
+            self.persist(fe);
         }
     }
 
@@ -186,6 +192,7 @@ impl App {
                     let online = link != Link::Offline;
                     fe.log(LOG_INFO, &format!("game begins: {setup:?}, online {online}"));
                     let mut g = Box::new(Game::new(self.maps, setup, self.net.seats(), online, self.hashlog, Instant::now()));
+                    g.teach(self.tips);
                     self.stage.take().into_iter().for_each(|s| g.force(s));
                     self.game = Some(g);
                     self.audio = Audio::new(SAMPLE_RATE);
@@ -310,8 +317,13 @@ impl App {
             },
         }
         g.advance(fe, &mut self.net, &mut self.audio, input, now);
-        if let Some(won) = g.take_won() {
+        let (won, seen) = (g.take_won(), g.take_seen());
+        if let Some(won) = won {
             self.unlock(fe, won);
+        }
+        if let Some(tips) = seen.filter(|&t| t != self.tips) {
+            self.tips = tips;
+            self.persist(fe);
         }
     }
 

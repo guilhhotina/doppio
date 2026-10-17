@@ -1,7 +1,9 @@
 mod cabra;
+mod cloth;
 mod corpo;
 mod heroes;
 mod kit;
+mod locomotion;
 mod matinta;
 mod motion;
 mod mula;
@@ -12,6 +14,7 @@ use super::mesh::{Mesh, Vert};
 use crate::map::LegendKind;
 use crate::sim::{Anim, LegendAnim};
 
+pub use locomotion::Travel;
 pub const SEGS: usize = 16;
 pub const PELVIS: usize = 0;
 pub const TORSO: usize = 1;
@@ -52,12 +55,19 @@ pub struct Model {
     pub mesh: Mesh,
     rest: Vec<V3>,
     rank: Vec<u8>,
+    cloth: Option<cloth::Cloth>,
 }
 
 impl Model {
-    fn new(kit: kit::Kit) -> Model {
+    fn new(kit: kit::Kit, who: Who) -> Model {
         let rest = kit.mesh.verts.iter().map(|v| mat::norm(v.normal())).collect();
-        Model { mesh: kit.mesh, rest, rank: kit.rank }
+        let cloth = match who {
+            Who::Hero(0) => Some(cloth::DRESS),
+            Who::Hero(1) => Some(cloth::ROBE),
+            Who::Legend(LegendKind::Matinta) => Some(cloth::SKIRTS),
+            _ => None,
+        };
+        Model { mesh: kit.mesh, rest, rank: kit.rank, cloth }
     }
 
     pub fn skin(&self, mats: &[M4; SEGS], light: impl Fn(V3) -> f32, fade: f32, out: &mut [Vert]) {
@@ -72,6 +82,9 @@ impl Model {
             };
             *o = Vert { pos, nrm: [q(n[0]), q(n[1]), q(n[2]), q(light(n).clamp(0.0, 1.0))], ..*v };
         });
+        if let Some(cloth) = self.cloth {
+            cloth.drape(mats, &self.mesh.verts, out, &self.rank, cut);
+        }
     }
 }
 
@@ -82,7 +95,7 @@ pub struct Cast {
 impl Cast {
     pub fn new(tile: impl Fn(&str) -> [u8; 4]) -> Cast {
         let tiles: &dyn Fn(&str) -> [u8; 4] = &tile;
-        let build = |who: Who| [true, false].map(|hi| Model::new(model(who, hi, tiles)));
+        let build = |who: Who| [true, false].map(|hi| Model::new(model(who, hi, tiles), who));
         Cast { models: (0..HEROES).map(Who::Hero).chain(LEGENDS.iter().map(|&k| Who::Legend(k))).map(build).collect() }
     }
 
@@ -123,17 +136,29 @@ pub struct Rig {
     pub fire: Option<(V3, V3, f32)>,
 }
 
-pub fn hero(character: u8, x: f32, z: f32, heading: f32, anim: Anim, tic: u16, lantern: bool, look: f32) -> Rig {
-    motion::rig(character % HEROES, x, z, heading, anim, tic, lantern, look)
+pub fn hero(character: u8, x: f32, z: f32, heading: f32, anim: Anim, tic: u16, lantern: bool, look: f32, travel: [f32; 2]) -> Rig {
+    motion::rig(character % HEROES, x, z, heading, anim, tic, lantern, look, travel)
 }
 
-pub fn legend(kind: LegendKind, x: f32, z: f32, heading: f32, anim: LegendAnim, tic: u16) -> Rig {
+pub fn legend(kind: LegendKind, x: f32, z: f32, heading: f32, anim: LegendAnim, tic: u16, travel: [f32; 2]) -> Rig {
     match kind {
-        LegendKind::CorpoSeco => corpo::rig(x, z, heading, anim, tic),
-        LegendKind::Cabra => cabra::rig(x, z, heading, anim, tic),
-        LegendKind::Mula => mula::rig(x, z, heading, anim, tic),
-        LegendKind::Matinta => matinta::rig(x, z, heading, anim, tic),
+        LegendKind::CorpoSeco => corpo::rig(x, z, heading, anim, tic, travel),
+        LegendKind::Cabra => cabra::rig(x, z, heading, anim, tic, travel),
+        LegendKind::Mula => mula::rig(x, z, heading, anim, tic, travel),
+        LegendKind::Matinta => matinta::rig(x, z, heading, anim, tic, travel),
     }
+}
+
+pub fn held(kind: crate::map::ItemKind, grip: &M4) -> M4 {
+    use crate::map::ItemKind;
+    let (offset, pitch) = match kind {
+        ItemKind::Balde => ([0.0, -0.28, 0.0], 0.0),
+        ItemKind::Sal => ([0.0, -0.08, 0.055], 0.0),
+        ItemKind::Vela | ItemKind::Fusivel => ([0.0, -0.03, 0.0], 0.0),
+        ItemKind::Cruz | ItemKind::Martelo | ItemKind::PeDeCabra | ItemKind::Remo | ItemKind::ChaveDeFenda => ([0.0, 0.0, 0.0], -1.25),
+        _ => ([0.0, 0.0, 0.0], 0.0),
+    };
+    skeleton::at(grip, offset, &mat::rot_x(pitch))
 }
 
 pub fn extent(who: Who) -> V3 {
@@ -141,7 +166,7 @@ pub fn extent(who: Who) -> V3 {
         Who::Hero(0) => [0.5, 0.8, 0.5],
         Who::Hero(1) => [0.45, 0.72, 0.45],
         Who::Hero(2) => [0.55, 0.98, 0.55],
-        Who::Hero(_) => [0.55, 0.87, 0.55],
+        Who::Hero(_) => [0.65, 0.87, 0.65],
         Who::Legend(LegendKind::CorpoSeco) => [0.5, 1.0, 0.5],
         Who::Legend(LegendKind::Cabra) => [0.8, 1.2, 1.0],
         Who::Legend(LegendKind::Mula) => [0.9, 1.1, 1.4],
@@ -151,8 +176,8 @@ pub fn extent(who: Who) -> V3 {
 
 pub fn portrait_cam(who: Who) -> (V3, V3, f32) {
     let rest = match who {
-        Who::Hero(c) => hero(c, 0.0, 0.0, 0.0, Anim::Idle, 0, false, 0.0),
-        Who::Legend(k) => legend(k, 0.0, 0.0, 0.0, LegendAnim::Idle, 0),
+        Who::Hero(c) => hero(c, 0.0, 0.0, 0.0, Anim::Idle, 0, false, 0.0, [0.0; 2]),
+        Who::Legend(k) => legend(k, 0.0, 0.0, 0.0, LegendAnim::Idle, 0, [0.0; 2]),
     };
     let face = rest.head.0;
     match who {

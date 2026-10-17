@@ -8,7 +8,7 @@ use crate::map::Map;
 use crate::net::{Net, Seat};
 use crate::render::{CANVAS_H, CANVAS_W, Ui2d, View};
 use crate::sim::{DROP, MAX_PLAYERS, Outcome, PlayerState, Setup, TICS_PER_SEC, World};
-use crate::ui::{self, Card, Item};
+use crate::ui::{self, Card, Cues, Item};
 use std::time::{Duration, Instant};
 
 pub const INTRO_TICS: u32 = 5 * TICS_PER_SEC;
@@ -128,6 +128,7 @@ pub struct Game {
     hold: [Option<Instant>; MAX_PLAYERS],
     quiet: [u16; 4],
     drop: [bool; 4],
+    cues: Cues,
     pub pause: Option<Pause>,
 }
 
@@ -148,17 +149,13 @@ pub fn stage_named(name: &str) -> Option<Stage> {
 impl Game {
     pub fn new(maps: &'static [&'static Map<'static>], setup: Setup, seats: &[Seat], online: bool, hashlog: u32, now: Instant) -> Game {
         let setup = Setup { phase: setup.phase.min(maps.len().saturating_sub(1) as u8), ..setup };
+        let world = Box::new(World::new(maps[setup.phase as usize], setup));
+        let seats = local_seats(seats);
         Game {
-            run: Run {
-                maps,
-                world: Box::new(World::new(maps[setup.phase as usize], setup)),
-                setup,
-                stage: Stage::Intro { until: INTRO_TICS },
-                tic: 0,
-                won: None,
-            },
+            cues: Cues::new(&world, u32::MAX, seats.map(|s| s.is_some())),
+            run: Run { maps, world, setup, stage: Stage::Intro { until: INTRO_TICS }, tic: 0, won: None },
             clock: Clock::new(now),
-            seats: local_seats(seats),
+            seats,
             online,
             hashlog,
             hold: [None; MAX_PLAYERS],
@@ -166,6 +163,14 @@ impl Game {
             drop: [false; 4],
             pause: None,
         }
+    }
+
+    pub fn teach(&mut self, seen: u32) {
+        self.cues = Cues::new(&self.run.world, seen, self.seats.map(|s| s.is_some()));
+    }
+
+    pub fn take_seen(&mut self) -> Option<u32> {
+        self.cues.take_seen()
     }
 
     pub fn online(&self) -> bool {
@@ -245,13 +250,14 @@ impl Game {
         }
         let frozen = self.pause.is_some() || self.run.stage != Stage::Play;
         let listener = self.local().next().unwrap_or(0) as u8;
-        let (run, hashlog, drop, quiet) = (&mut self.run, self.hashlog, &mut self.drop, self.quiet);
+        let local = self.seats.map(|s| s.is_some());
+        let (run, hashlog, drop, quiet, cues) = (&mut self.run, self.hashlog, &mut self.drop, self.quiet, &mut self.cues);
         self.clock.run(now, || {
-            let local: [u16; 4] = std::array::from_fn(|p| match frozen {
+            let local_in: [u16; 4] = std::array::from_fn(|p| match frozen {
                 true => 0,
                 false => input[p] & PLAY & !quiet[p] | if drop[p] { DROP } else { 0 },
             });
-            net.push_local(&local);
+            net.push_local(&local_in);
             if !frozen {
                 *drop = [false; 4];
             }
@@ -259,8 +265,14 @@ impl Game {
                 .map(|row| {
                     let tic = run.tic;
                     match run.step(&row) {
-                        Stepped::Played => audio.events(&run.world, run.world.events(), listener),
-                        Stepped::Fresh => *audio = Audio::new(SAMPLE_RATE),
+                        Stepped::Played => {
+                            audio.events(&run.world, run.world.events(), listener);
+                            cues.tic(&run.world, local);
+                        }
+                        Stepped::Fresh => {
+                            *audio = Audio::new(SAMPLE_RATE);
+                            *cues = Cues::new(&run.world, cues.seen(), local);
+                        }
                         Stepped::Idle => {}
                     }
                     let h = run.world.hash();
@@ -304,7 +316,7 @@ impl Game {
         let rects = layout::rects(n);
         let world = &self.run.world;
         if self.pause.is_none() && self.run.stage == Stage::Play {
-            self.local().zip(rects.iter()).for_each(|(seat, &r)| ui::hud(ui, world, r, seat, frame));
+            self.local().zip(rects.iter()).for_each(|(seat, &r)| ui::hud(ui, world, &self.cues, r, seat, frame));
         }
         if n >= 2 {
             ui.rect(CANVAS_W as i16 / 2 - 1, 0, 2, CANVAS_H as i16, 0);
@@ -317,7 +329,7 @@ impl Game {
             (Some(p), _) => {
                 let (acts, k) = pause_items(self.holding(p.seat));
                 let items: [Item; 3] = std::array::from_fn(|i| Item::new(pause_label(acts[i])));
-                ui::pause(ui, &items[..k], p.sel, self.online, frame);
+                ui::pause(ui, &items[..k], p.sel, self.online, frame, world, self.cues.goal());
                 None
             }
             (None, Stage::Intro { .. }) => Some(Card::Intro),
@@ -326,7 +338,7 @@ impl Game {
             (None, Stage::Ending) => Some(Card::Ending),
             (None, Stage::Play) => None,
         };
-        card.iter().for_each(|&c| ui::card(ui, c, world.map(), self.run.setup.phase, phases));
+        card.iter().for_each(|&c| ui::card(ui, c, world, self.run.setup.phase, phases));
     }
 
     pub fn world(&self) -> &World {

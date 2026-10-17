@@ -51,6 +51,7 @@ const BODIES: usize = 5;
 const LOD_DISTANCE: f32 = 4.0;
 const LOOK_EASE: f32 = 0.2;
 const MATINTA_NEAR: f32 = 4.0;
+const CAMERA_CLEAR: f32 = 0.9;
 const MATINTA_BEAM: f32 = 7.0;
 const LANTERN: f32 = 2.4;
 const SPOT: f32 = 0.74;
@@ -83,6 +84,7 @@ struct Scene<'a> {
     items: &'a [ItemState],
     locks: &'a [LockState],
     power: bool,
+    tic: u32,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -107,6 +109,7 @@ struct Body {
     key: V3,
     fade: f32,
     stunned: bool,
+    down: bool,
 }
 
 struct DoorInfo {
@@ -204,6 +207,7 @@ pub struct Renderer {
     skinned: Vec<Vert>,
     body_idx: Vec<u16>,
     look: [f32; BODIES],
+    travel: [cast::Travel; BODIES],
     lanterns: [Option<Light>; BODIES],
     opaque: Stream,
     alpha: Stream,
@@ -267,6 +271,17 @@ fn hue(c: V3) -> V3 {
 fn smooth(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
+}
+
+fn crowds(eye: V3, centre: V3, half: V3) -> bool {
+    let gap = |k: usize| ((eye[k] - centre[k]).abs() - half[k]).max(0.0);
+    gap(0).hypot(gap(2)) < CAMERA_CLEAR
+}
+
+impl Body {
+    fn shows(&self, e: &Eye, close: bool) -> bool {
+        (close || !crowds(e.cam.eye, self.centre, self.half)) && e.sees(self.rooms, mat::sub(self.centre, self.half), mat::add(self.centre, self.half))
+    }
 }
 
 fn matinta_fade(legend: V3, players: impl Iterator<Item = (V3, Option<(V3, V3)>)>) -> f32 {
@@ -406,6 +421,7 @@ impl Renderer {
             skinned: vec![Vert::default(); max_verts * BODIES],
             body_idx: Vec::with_capacity(max_idx * BODIES),
             look: [0.0; BODIES],
+            travel: [cast::Travel::default(); BODIES],
             lanterns: [None; BODIES],
             opaque: Stream { verts: Vec::with_capacity(DYN_VERTS), idx: Vec::with_capacity(DYN_VERTS * 2) },
             alpha: Stream { verts: Vec::with_capacity(DYN_VERTS), idx: Vec::with_capacity(DYN_VERTS * 2) },
@@ -430,6 +446,7 @@ impl Renderer {
         self.stage.delete(gl);
         self.stage = Stage::new(gl, map, &self.textures);
         self.item_rest.clear();
+        self.travel.fill(cast::Travel::default());
     }
 
     pub fn stats(&self) -> Stats {
@@ -515,17 +532,20 @@ impl Renderer {
             }
             let (x, z) = v2(p.pos);
             self.look[i] = turn(self.look[i] * (1.0 - LOOK_EASE));
-            let rig = cast::hero(p.character, x, z, p.heading.to_rad(), p.anim, p.anim_tic, p.lantern, self.look[i]);
+            let travel = self.travel[i].sample(scene.tic, p.area, [x, z, p.heading.to_rad()]);
+            let rig = cast::hero(p.character, x, z, p.heading.to_rad(), p.anim, p.anim_tic, p.lantern, self.look[i], travel);
             let who = Who::Hero(p.character);
             let half = cast::extent(who);
             let centre = [x, half[1], z];
             let (color, key) = self.body_light(centre, lamp);
             self.lanterns[i] = p.lantern.then_some(Light { pos: rig.lantern, dir: rig.beam, power: LANTERN, cutoff: SPOT, color: [1.0, 0.88, 0.66], falloff: 0.16 });
-            self.bodies[i] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: p.area, color, key, fade: 0.0, stunned: false });
+            let down = scene.players.len() > 1 && matches!(p.state, PlayerState::Fainted { .. });
+            self.bodies[i] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: p.area, color, key, fade: 0.0, stunned: false, down });
         });
         let l = scene.legend;
         let (x, z) = v2(l.pos);
-        let rig = cast::legend(l.kind, x, z, l.heading.to_rad(), l.anim, l.anim_tic);
+        let travel = self.travel[BODIES - 1].sample(scene.tic, l.area, [x, z, l.heading.to_rad()]);
+        let rig = cast::legend(l.kind, x, z, l.heading.to_rad(), l.anim, l.anim_tic, travel);
         let who = Who::Legend(l.kind);
         let half = cast::extent(who);
         let centre = [x, half[1], z];
@@ -541,7 +561,7 @@ impl Renderer {
         };
         let (color, key) = self.body_light(centre, lamp);
         let stunned = l.mode == LegendMode::Stunned || matches!(l.anim, LegendAnim::Stagger);
-        self.bodies[BODIES - 1] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: l.area, color, key, fade, stunned });
+        self.bodies[BODIES - 1] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: l.area, color, key, fade, stunned, down: false });
     }
 
     fn skin_bodies(&mut self, gl: &Gl, eyes: &[Option<(Eye, u8, bool)>]) {
@@ -613,6 +633,7 @@ impl Renderer {
             items: world.items(),
             locks: world.locks(),
             power: world.power(),
+            tic: world.tic(),
         };
         self.render(gl, [fbo, width, height], &scene, views, ui);
     }
@@ -843,7 +864,7 @@ impl Renderer {
             let lit = lamps::Sample { electric: s.electric.map(|v| v.min(2.0)), flame: s.flame.min(2.0), moon: s.moon }.lit();
             let mesh = &self.items[kind as usize];
             let dst = if items::alpha(kind) { &mut self.alpha } else { &mut self.opaque };
-            dst.add(mesh, &b.rig.hands[slot.min(1)], s.moon, lit);
+            dst.add(mesh, &cast::held(kind, &b.rig.hands[slot.min(1)]), s.moon, lit);
         });
         let range = items::glint_range(viewer.character);
         let (vx, vz) = v2(viewer.pos);
@@ -901,12 +922,12 @@ impl Renderer {
         s.idx.len() as u32 / 3
     }
 
-    fn draw_bodies(&mut self, gl: &Gl, slot: usize, e: &Eye, area: u8) -> u32 {
+    fn draw_bodies(&mut self, gl: &Gl, slot: usize, e: &Eye, area: u8, close: bool) -> u32 {
         self.body_idx.clear();
         let mut runs = [(0usize, 0usize, [0.0f32; 3]); BODIES];
         (0..BODIES).for_each(|i| {
             let (Some(b), Some((base, far))) = (self.bodies[i], self.skin[i]) else { return };
-            if b.area != area || !e.sees(b.rooms, mat::sub(b.centre, b.half), mat::add(b.centre, b.half)) {
+            if b.area != area || !b.shows(e, close) {
                 return;
             }
             let start = self.body_idx.len();
@@ -960,7 +981,7 @@ impl Renderer {
         drawn * 2
     }
 
-    fn emit_fx(&mut self, e: &Eye, area: u8, lamp: f32) {
+    fn emit_fx(&mut self, e: &Eye, area: u8, lamp: f32, close: bool) {
         let st = &self.stage;
         let (t, eye) = (self.time, e.cam.eye);
         let frame = self.frame;
@@ -979,7 +1000,7 @@ impl Renderer {
                 sparks::halo(&mut self.fx, g.pos, eye, g.size, on, g.color);
             }
         });
-        self.bodies.iter().flatten().filter(|b| b.area == area && b.fade < 0.9 && e.sees(b.rooms, mat::sub(b.centre, b.half), mat::add(b.centre, b.half))).for_each(|b| {
+        self.bodies.iter().flatten().filter(|b| b.area == area && b.fade < 0.9 && b.shows(e, close)).for_each(|b| {
             if let Some((p, d, s)) = b.rig.fire {
                 sparks::fire(&mut self.fx, p, d, s, eye, t);
             }
@@ -989,6 +1010,12 @@ impl Renderer {
             }
             if b.stunned {
                 sparks::stars(&mut self.fx, b.rig.head.0, eye, t);
+            }
+            if b.down {
+                let beat = 0.6 + 0.4 * (t * 6.0).sin().abs();
+                let mark = mat::add(b.rig.head.0, [0.0, 0.7, 0.0]);
+                sparks::halo(&mut self.fx, mark, eye, 0.28 * beat, beat, sparks::GOLD);
+                sparks::spark(&mut self.fx, mark, eye, 0.07, 1.5, sparks::STAR);
             }
         });
         self.fx.truncate(MAX_FX * 4);
@@ -1065,7 +1092,7 @@ impl Renderer {
         tris += self.draw_groups(gl, e, 0);
         self.fill_dynamic(e, area, scene, &viewer);
         tris += self.draw_stream(gl, false, slot);
-        tris += self.draw_bodies(gl, slot, e, area);
+        tris += self.draw_bodies(gl, slot, e, area, close);
         gl.uniform3f(moon_loc, moon[0], moon[1], moon[2]);
 
         let a = &self.shaders.alpha;
@@ -1086,7 +1113,7 @@ impl Renderer {
         }
 
         tris += self.draw_screens(gl, e, &lights, lamp, scene.power);
-        self.emit_fx(e, area, lamp);
+        self.emit_fx(e, area, lamp, close);
         tris += self.draw_glow(gl, slot, e, area);
         if let PlayerState::Hidden { spot } = viewer.state {
             if let Some(hd) = scene.map.hides.get(spot as usize) {
@@ -1115,8 +1142,8 @@ impl Renderer {
         let tic = (self.time * 30.0) as u16;
         let spin = (self.time * 0.4).sin() * 0.5;
         let rig = match who {
-            Who::Hero(ch) => cast::hero(ch, 0.0, 0.0, spin, Anim::Idle, tic, false, 0.0),
-            Who::Legend(k) => cast::legend(k, 0.0, 0.0, spin, LegendAnim::Idle, tic),
+            Who::Hero(ch) => cast::hero(ch, 0.0, 0.0, spin, Anim::Idle, tic, false, 0.0, [0.0; 2]),
+            Who::Legend(k) => cast::legend(k, 0.0, 0.0, spin, LegendAnim::Idle, tic, [0.0; 2]),
         };
         let (eye, target, fov) = cast::portrait_cam(who);
         let cam = Camera::look(eye, target, fov, w as f32 / h as f32, 20.0);
@@ -1212,6 +1239,15 @@ mod tests {
             let due: Vec<bool> = (0..8).map(|t| paced(t, n)).collect();
             assert_eq!(due, [true, false, true, false, true, false, true, false]);
         });
+    }
+
+    #[test]
+    fn bodies_hugging_the_camera_are_dropped() {
+        let half = [0.3, 0.9, 0.3];
+        assert!(crowds([0.0, 1.5, 0.0], [0.6, 0.9, 0.5], half));
+        assert!(crowds([0.0, 3.0, 0.0], [0.0, 0.9, 1.0], half));
+        assert!(!crowds([0.0, 1.5, 0.0], [0.0, 0.9, 2.0], half));
+        assert!(!crowds([0.0, 1.5, 0.0], [1.5, 0.9, 1.5], half));
     }
 
     #[test]

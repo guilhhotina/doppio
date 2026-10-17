@@ -157,10 +157,84 @@ fn walking_player_is_caught_by_a_chase() {
 }
 
 #[test]
+fn legend_freezes_to_roar_before_chasing() {
+    let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(1, [BIA, 1, 2, 3]));
+    put(&mut w, 0, mid(8), mid(1), 270);
+    w.legend.pos = Vec2::new(mid(3), mid(1));
+    w.legend.heading = deg(90);
+    let at = w.legend.pos;
+    assert!(tic(&mut w, [0; 4]).contains(&Event::LegendSaw { player: 0 }));
+    (1..legend::ALERT_TICS).for_each(|_| {
+        w.step(&[0; 4]);
+        assert_eq!((w.legend.pos, w.legend.anim, w.legend.mode), (at, LegendAnim::Alert, LegendMode::Chase));
+    });
+    w.step(&[0; 4]);
+    assert!(w.legend.pos.x > at.x && w.legend.anim == LegendAnim::Run);
+}
+
+#[test]
+fn grab_winds_up_and_a_sprint_slips_away() {
+    let fresh = || {
+        let mut w = World::new(pick(&CORRIDOR, LegendKind::CorpoSeco), setup(1, [BIA, 1, 2, 3]));
+        put(&mut w, 0, mid(8), mid(1), 90);
+        w.legend.pos = Vec2::new(mid(8) - Fx::ratio(7, 10), mid(1));
+        w.legend.heading = deg(90);
+        w.legend.mode = LegendMode::Chase;
+        w.legend.target = Some(0);
+        w
+    };
+    let mut w = fresh();
+    assert!(tic(&mut w, [0; 4]).contains(&Event::Lunge { player: 0 }));
+    (1..legend::LUNGE_TICS).for_each(|_| {
+        w.step(&[0; 4]);
+        assert_eq!((w.players[0].state, w.legend.anim), (PlayerState::Free, LegendAnim::Grab));
+    });
+    w.step(&[0; 4]);
+    assert_eq!(w.players[0].state, PlayerState::Grabbed);
+    let mut w = fresh();
+    let lunged = (0..60).fold(false, |seen, _| {
+        let e = tic(&mut w, [UP | B, 0, 0, 0]);
+        assert_eq!(w.players[0].state, PlayerState::Free);
+        seen || e.contains(&Event::Lunge { player: 0 })
+    });
+    assert!(lunged);
+}
+
+#[test]
+fn heat_rises_after_the_calm_and_with_each_lock() {
+    let mut w = World::new(map::campaign()[0], setup(1, [0, 1, 2, 3]));
+    let n = w.locks.len();
+    assert_eq!((w.heat(), w.unlock_noise()), (0, 0));
+    w.tic = legend::CALM_TICS;
+    assert_eq!(w.heat(), 1);
+    w.tic = 0;
+    w.locks[0].open = true;
+    assert_eq!(w.heat(), 1);
+    w.locks.iter_mut().take(n.div_ceil(3)).for_each(|l| l.open = true);
+    assert_eq!(w.heat(), 2);
+    w.locks.iter_mut().for_each(|l| l.open = true);
+    assert_eq!(w.heat(), 3);
+    assert!(w.unlock_noise() > act::DOOR_NOISE);
+    let m = pick(&HEAR, LegendKind::CorpoSeco);
+    let heard = |at: u32| {
+        let mut w = World::new(m, setup(1, [0, 1, 2, 3]));
+        w.tic = at;
+        w.door_dir[0] = true;
+        w.doors[0].open = u16::MAX;
+        w.events.clear();
+        w.noise(Vec2::new(mid(8), mid(1)), 0, player::RUN_NOISE);
+        w.listen();
+        w.legend.mode == LegendMode::Investigate
+    };
+    assert!(heard(legend::CALM_TICS) && !heard(0));
+}
+
+#[test]
 fn hearing_is_muffled_by_closed_doors() {
     let m = pick(&HEAR, LegendKind::CorpoSeco);
     let heard = |open: bool, loud: u8, at: i32| {
         let mut w = World::new(m, setup(1, [0, 1, 2, 3]));
+        w.tic = legend::CALM_TICS;
         w.door_dir[0] = open;
         w.doors[0].open = if open { u16::MAX } else { 0 };
         w.events.clear();
@@ -176,6 +250,7 @@ fn hearing_is_muffled_by_closed_doors() {
     assert!(!heard(true, player::WALK_NOISE, 9));
     assert!(heard(true, player::WALK_NOISE, 4));
     let mut w = World::new(m, setup(1, [0, 1, 2, 3]));
+    w.tic = legend::CALM_TICS;
     put(&mut w, 0, mid(9), mid(1), 90);
     let investigated = (0..60).any(|_| {
         w.step(&[UP | B, 0, 0, 0]);
@@ -482,8 +557,11 @@ fn balde_stuns_cabra() {
 #[test]
 fn mula_charges_straight_and_stuns_on_the_wall() {
     let mut w = World::new(pick(&ARENA, LegendKind::Mula), setup(1, [BIA, 1, 2, 3]));
-    let first = tic(&mut w, [UP | B, 0, 0, 0]);
-    assert!(first.contains(&Event::LegendSpecial) && first.contains(&Event::LegendSaw { player: 0 }));
+    let run = [UP | B, 0, 0, 0];
+    let first = tic(&mut w, run);
+    assert!(first.contains(&Event::LegendSaw { player: 0 }) && !first.contains(&Event::LegendSpecial) && w.legend.anim == LegendAnim::Alert);
+    let charge = (0..legend::ALERT_TICS).position(|_| tic(&mut w, run).contains(&Event::LegendSpecial));
+    assert_eq!(charge, Some(legend::ALERT_TICS as usize - 1));
     let heading = w.legend.heading;
     let mut stunned = false;
     (0..60).for_each(|_| {
@@ -541,8 +619,10 @@ fn cabra_bleats_and_breathes_fire_when_chasing() {
     put(&mut w, 0, mid(7), mid(1), 90);
     w.legend.pos = Vec2::new(mid(3), mid(1));
     w.legend.heading = deg(90);
-    let e = tic(&mut w, [UP | B, 0, 0, 0]);
-    assert!(e.contains(&Event::LegendSpecial) && w.legend.anim == LegendAnim::Special);
+    let first = tic(&mut w, [0; 4]);
+    assert!(first.contains(&Event::LegendSaw { player: 0 }) && w.legend.anim == LegendAnim::Alert);
+    let breath = (0..legend::ALERT_TICS).position(|_| tic(&mut w, [0; 4]).contains(&Event::LegendSpecial));
+    assert_eq!((breath, w.legend.anim), (Some(legend::ALERT_TICS as usize - 1), LegendAnim::Special));
     let mut w = World::new(pick(&CORRIDOR, LegendKind::Cabra), setup(1, [BIA, 1, 2, 3]));
     calm(&mut w);
     let cries = (0..60 * TICS_PER_SEC).filter(|_| tic(&mut w, [0; 4]).contains(&Event::LegendCry)).count();
@@ -610,7 +690,7 @@ fn scripted(w: &mut World, rng: &mut Rng, held: &mut [u16; 4]) {
     }
 }
 
-const GOLDEN: u32 = 0x04a1_8b9d;
+const GOLDEN: u32 = 0x5c56_be0c;
 
 fn replay(map: &'static Map<'static>) -> u32 {
     let mut w = World::new(map, Setup { seed: 0xC0FFEE, phase: 1, players: 4, characters: [3, 1, 0, 2] });

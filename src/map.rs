@@ -178,6 +178,7 @@ pub struct Portal {
 pub struct Lock<'a> {
     pub id: &'a str,
     pub kind: LockKind,
+    pub hint: Option<&'a str>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

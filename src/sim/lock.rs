@@ -2,9 +2,11 @@ use super::{Event, ItemKind, World};
 use crate::map::{DoorState, LockKind};
 
 impl World {
-    pub(super) fn open_lock(&mut self, l: u8) {
+    pub(super) fn open_lock(&mut self, p: usize, l: u8) {
         self.unlock(l);
         self.cascade();
+        let pl = self.players[p];
+        self.noise(pl.pos, pl.area, self.unlock_noise());
     }
 
     pub(super) fn cascade(&mut self) {

@@ -286,6 +286,7 @@ impl Audio {
                 if let Some(l) = map.locks.get(lock as usize) {
                     let place = lock_spot(map, lock).map_or(Place::CENTER, |(x, y)| Self::at(world, ear, x, y, area_near(map, x, y).unwrap_or(0)));
                     self.play(&cue::unlock(&l.kind), place);
+                    self.play(&cue::reward(), Place::CENTER);
                 }
             }
             Event::DialTick { player } => {
@@ -357,9 +358,18 @@ impl Audio {
                 }
             }
             Event::PhaseWon => self.play(&cue::chime(), Place::CENTER),
-            Event::LegendSaw { .. }
-            | Event::LegendLost
-            | Event::Noise { .. }
+            Event::LegendSaw { player } => {
+                if let Some(place) = Self::of_player(world, ear, player, listener) {
+                    self.play(&cue::sting(), if own(player) { Place::CENTER } else { place });
+                }
+            }
+            Event::LegendLost => self.play(&cue::relief(), Place::CENTER),
+            Event::Lunge { .. } => {
+                let l = world.legend();
+                let (x, y) = point(l.pos);
+                self.play(&cue::snarl(), Self::at(world, ear, x, y, l.area));
+            }
+            Event::Noise { .. }
             | Event::Portal { .. }
             | Event::Escaped { .. }
             | Event::PhaseRestart => {}

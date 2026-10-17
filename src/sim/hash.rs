@@ -55,6 +55,7 @@ pub fn world(w: &World) -> u32 {
             c.tank.prev as u32 | (c.tank.quick as u32) << 16 | (c.press as u32) << 24,
             c.tank.quick_from.0 as u32 | (c.press_busy as u32) << 16 | (c.step as u32) << 24,
             c.reach as u32 | (c.hide_t as u32) << 8 | (c.spot as u32) << 16 | (c.grab as u32) << 24,
+            c.tank.dash as u32 | (c.tank.sprint as u32) << 8,
             dial[0],
             dial[1],
             dial[2] | c.reading.map_or(0xffff, |n| n as u32) << 8,
@@ -75,7 +76,7 @@ pub fn world(w: &World) -> u32 {
         b.cry as u32 | (b.breath as u32) << 16,
         b.charge as u32 | (b.charge_cool as u32) << 16,
         b.stall as u32 | (b.best as u32) << 16,
-        b.portal_wait as u32,
+        b.portal_wait as u32 | (b.alert as u32) << 8 | (b.lunge as u32) << 16,
     ]);
     let h = w.doors.iter().zip(&w.door_dir).zip(&w.salt).fold(h, |h, ((d, &dir), &s)| {
         h.words(&[d.open as u32 | (d.locked as u32) << 16 | (d.stuck as u32) << 17 | (dir as u32) << 18, s as u32])

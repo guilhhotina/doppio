@@ -1,3 +1,4 @@
+use super::cues::{self, Cues, Tip};
 use super::icons::{candles, icon};
 use super::lore::{character, item};
 use super::overlay::{dial, note};
@@ -9,7 +10,6 @@ use crate::sim::{BATTERY_FULL, DESMAIOS, Focus, ItemKind, ItemState, Player, Pla
 const LOW: u16 = rgb565(176, 48, 40);
 const FRAME: u16 = rgb565(40, 38, 36);
 const SENSE_M: f32 = 12.0;
-const HINT_TICS: u32 = 15 * TICS_PER_SEC;
 const JAIRO: u8 = 2;
 const BENEDITA: u8 = 0;
 
@@ -81,22 +81,47 @@ fn prompt(world: &World, player: usize) -> Option<Line> {
     world.focus(player).map(|f| say(f, world.map(), world.items(), world.players(), p))
 }
 
-pub fn compass(dx: f32, dy: f32, heading: f32) -> Option<(i16, i16)> {
+fn bearing(dx: f32, dy: f32, heading: f32, r: f32) -> (i16, i16) {
     let rel = dx.atan2(dy) - heading;
-    ((dx * dx + dy * dy).sqrt() <= SENSE_M).then(|| ((-rel.sin() * 8.0).round() as i16, (-rel.cos() * 8.0).round() as i16))
+    ((-rel.sin() * r).round() as i16, (-rel.cos() * r).round() as i16)
 }
 
-fn sense(ui: &mut Ui2d, world: &World, p: &Player, x: i16, y: i16) {
+fn dial_ring(ui: &mut Ui2d, x: i16, y: i16, r: f32, to: (i16, i16), color: u16, size: i16) {
+    (0..12).for_each(|k| {
+        let a = k as f32 * std::f32::consts::TAU / 12.0;
+        ui.rect(x + (a.sin() * r).round() as i16, y + (a.cos() * r).round() as i16, 1, 1, FAINT);
+    });
+    arrow(ui, x - 3, y - r as i16 - 7, Dir::Up, FAINT);
+    (1..3).for_each(|s| ui.rect(x + to.0 * s / 3, y + to.1 * s / 3, 1, 1, color));
+    ui.rect(x + to.0 - size / 2, y + to.1 - size / 2, size, size, color);
+}
+
+fn sense(ui: &mut Ui2d, world: &World, p: &Player, x: i16, y: i16, tick: u32) {
     let l = world.legend();
     let (dx, dy) = ((l.pos.x - p.pos.x).to_f32(), (l.pos.y - p.pos.y).to_f32());
-    let Some((mx, my)) = compass(dx, dy, p.heading.to_rad()).filter(|_| l.area == p.area) else { return };
-    (0..8).for_each(|k| {
-        let a = k as f32 * std::f32::consts::FRAC_PI_4;
-        ui.rect(x + (a.sin() * 8.0).round() as i16, y + (a.cos() * 8.0).round() as i16, 1, 1, FAINT);
-    });
-    ui.rect(x - 1, y - 1, 2, 2, DIM);
-    ui.rect(x + mx - 1, y + my - 1, 3, 3, super::BLOOD);
-    arrow(ui, x - 3, y - 15, Dir::Up, FAINT);
+    let d = (dx * dx + dy * dy).sqrt();
+    if l.area != p.area || d > SENSE_M {
+        return;
+    }
+    let period = (6.0 + d * 2.0) as u32;
+    let size = if tick % period < period / 2 { 4 } else { 3 };
+    dial_ring(ui, x, y, 11.0, bearing(dx, dy, p.heading.to_rad(), 11.0), super::BLOOD, size);
+}
+
+fn rescue(ui: &mut Ui2d, world: &World, me: usize, r: [u16; 4], tick: u32) {
+    let p = world.players()[me];
+    let down = world.players().iter().enumerate().filter(|&(q, f)| q != me && matches!(f.state, PlayerState::Fainted { .. } | PlayerState::Grabbed));
+    let Some((_, f)) = down.min_by_key(|(_, f)| (f.pos - p.pos).len_sq()) else { return };
+    let (dx, dy) = ((f.pos.x - p.pos.x).to_f32(), (f.pos.y - p.pos.y).to_f32());
+    let (x, y) = (r[0] as i16 + r[2] as i16 - 16, r[1] as i16 + 52);
+    let same = f.area == p.area;
+    let to = if same { bearing(dx, dy, p.heading.to_rad(), 11.0) } else { (0, 0) };
+    dial_ring(ui, x, y, 11.0, to, GOLD, if tick % 30 < 15 { 4 } else { 3 });
+    let msg = match same {
+        true => line(format_args!("acorde {} {} m", character(f.character).short, (dx * dx + dy * dy).sqrt().round() as i32)),
+        false => line(format_args!("acorde {}: outro andar", character(f.character).short)),
+    };
+    shadowed(ui, r[0] as i16 + r[2] as i16 - 4 - width(msg.as_str(), 1), y + 16, msg.as_str(), GOLD, 1);
 }
 
 fn held(ui: &mut Ui2d, world: &World, p: &Player, x: i16, bottom: i16) {
@@ -117,7 +142,7 @@ fn hint(ui: &mut Ui2d, rect: [u16; 4]) {
     let text = 2 * GLYPH + 6;
     let w = text + width("pegar/usar/lanterna", 1);
     let x = rect[0] as i16 + (rect[2] as i16 - w) / 2;
-    let y = rect[1] as i16 + rect[3] as i16 / 2 - 8;
+    let y = rect[1] as i16 + rect[3] as i16 / 6;
     arrow(ui, x, y, Dir::Up, INK);
     arrow(ui, x + GLYPH + 1, y, Dir::Down, INK);
     shadowed(ui, x + text, y, "andar", INK, 1);
@@ -126,7 +151,10 @@ fn hint(ui: &mut Ui2d, rect: [u16; 4]) {
     shadowed(ui, x + text, y + 11, "virar", INK, 1);
     shadowed(ui, x + 4, y + 22, "A", GOLD, 1);
     shadowed(ui, x + text, y + 22, "pegar/usar/lanterna", INK, 1);
-    shadowed(ui, x, y + 33, "(B correr, START pausa)", DIM, 1);
+    arrow(ui, x, y + 33, Dir::Up, INK);
+    arrow(ui, x + GLYPH + 1, y + 33, Dir::Up, INK);
+    shadowed(ui, x + text, y + 33, "2x: correr (ou B)", INK, 1);
+    shadowed(ui, x + text, y + 44, "segure A: pausa", DIM, 1);
 }
 
 fn state(ui: &mut Ui2d, rect: [u16; 4], p: &Player) -> bool {
@@ -147,24 +175,30 @@ fn state(ui: &mut Ui2d, rect: [u16; 4], p: &Player) -> bool {
     }
 }
 
-pub fn hud(ui: &mut Ui2d, world: &World, rect: [u16; 4], player: usize, tick: u32) {
+pub fn hud(ui: &mut Ui2d, world: &World, cues: &Cues, rect: [u16; 4], player: usize, tick: u32) {
     let Some(p) = world.players().get(player) else { return };
     let (x, y) = (rect[0] as i16 + 6, rect[1] as i16 + 5);
     let bottom = rect[1] as i16 + rect[3] as i16;
     candles(ui, x, y, world.desmaios_left(), DESMAIOS, tick);
     battery(ui, p, x, y + 13);
     if p.character == BENEDITA {
-        sense(ui, world, p, rect[0] as i16 + rect[2] as i16 - 16, y + 14);
+        sense(ui, world, p, rect[0] as i16 + rect[2] as i16 - 16, y + 16, tick);
     }
     if state(ui, rect, p) {
         return;
     }
+    rescue(ui, world, player, rect, tick);
     held(ui, world, p, x, bottom - 2);
-    if world.setup().phase == 0 && world.tic() < HINT_TICS {
+    let reading = world.reading(player).and_then(|n| world.map().notes.get(n as usize));
+    let dialing = world.dial(player);
+    let overlay = dialing.is_some() || reading.is_some();
+    if !overlay {
+        cues::draw(ui, world, cues, rect, player, tick);
+    }
+    if cues.tip(player) == Some(Tip::Move) && !overlay && cues.toast(player).is_none() {
         hint(ui, rect);
     }
-    let reading = world.reading(player).and_then(|n| world.map().notes.get(n as usize));
-    match (world.dial(player), reading) {
+    match (dialing, reading) {
         (Some(d), _) => dial(ui, rect, d),
         (None, Some(n)) => note(ui, rect, n.text),
         (None, None) => {
@@ -203,12 +237,11 @@ mod tests {
     }
 
     #[test]
-    fn compass_points_relative_to_facing() {
-        assert_eq!(compass(0.0, 5.0, 0.0), Some((0, -8)));
-        assert_eq!(compass(5.0, 0.0, 0.0), Some((-8, 0)));
-        assert_eq!(compass(0.0, -5.0, 0.0), Some((0, 8)));
-        assert_eq!(compass(5.0, 0.0, std::f32::consts::FRAC_PI_2), Some((0, -8)));
-        assert_eq!(compass(20.0, 0.0, 0.0), None);
+    fn bearing_points_relative_to_facing() {
+        assert_eq!(bearing(0.0, 5.0, 0.0, 8.0), (0, -8));
+        assert_eq!(bearing(5.0, 0.0, 0.0, 8.0), (-8, 0));
+        assert_eq!(bearing(0.0, -5.0, 0.0, 8.0), (0, 8));
+        assert_eq!(bearing(5.0, 0.0, std::f32::consts::FRAC_PI_2, 11.0), (0, -11));
     }
 
     #[test]

@@ -25,7 +25,7 @@
 #....##D##.............#.BBB...BBB.W.....B.................#
 #H.B.......B.B........H#...........#.........H.B.B.B.H.B.B.#
 #..........B......H....#H.........H#H............B.......B.#
-#B.B.B.H.B.B.B.........####W#D#W####.......B...............#
+#B.B.B.H.B.B...B.......####W#D#W####.......B...............#
 ##W#####W###..............B................................#
 #B.BB....B.#...............................................#
 #H.........#...............................................#
@@ -131,7 +131,7 @@ v câmara das ossadas area=1 floor=terra_cova wall=marmore_sujo ceil=pedra h=2.4
 [item]
 sal1 sal 2.5 24.5
 fosforo fosforo 5.5 25.5
-foto1 foto 7.5 24.5
+foto1 foto 9.5 26.5
 chave_arruda chave 1.5 29.5
 sal2 sal 9.5 30.5
 pilha1 lanterna_pilha 7.5 30.5
@@ -145,18 +145,18 @@ vela vela 54.5 47.5
 pilha2 lanterna_pilha 4.5 47.5
 foto2 foto 14.5 45.5
 [lock]
-k_arruda key chave_arruda
-k_lacre tool pe_de_cabra
+k_arruda key chave_arruda hint="Ache a chave do jazigo dos Arruda"
+k_lacre tool pe_de_cabra hint="Abra o túmulo lacrado com um pé de cabra"
 ; reburial: three bones into the open pit (two covas side by side), a candle lit on the capela altar
-cova1 place osso_a 29 5
-cova2 place osso_b 30 5
-cova3 place osso_c 29 4
-altar_vela place vela 29 11
-altar_fogo place fosforo 30 11
-enterro all cova1 cova2 cova3 altar_vela altar_fogo
+cova1 place osso_a 29 5 hint="Leve os 3 ossos à vala aberta do adro"
+cova2 place osso_b 30 5 hint="Leve os 3 ossos à vala aberta do adro"
+cova3 place osso_c 29 4 hint="Leve os 3 ossos à vala aberta do adro"
+altar_vela place vela 29 11 hint="Ponha a vela no altar da capela"
+altar_fogo place fosforo 30 11 hint="Acenda a vela do altar com o fósforo"
+enterro all cova1 cova2 cova3 altar_vela altar_fogo hint="Enterre os ossos e acenda a vela"
 ; gate padlock: year of the Coronel's death, on his stone in the adro
-cadeado code 1897
-saida all enterro cadeado
+cadeado code 1897 hint="O ano na lápide do Coronel abre o portão"
+saida all enterro cadeado hint="Saia pelo portão grande!"
 [door]
 ; capela: front doors stand open, back door to the adro closed
 29 21 h open
@@ -367,7 +367,7 @@ poste 31.5 27.5 0
 poste 26.5 22.5 0
 poste 23.5 37.5 0
 poste 35.5 37.5 0
-poste 13.5 21.5 0
+poste 15.5 21.5 0
 poste 43.5 21.5 0
 vela_chao 27.5 43.5 0
 vela_chao 32.5 43.5 0
@@ -384,11 +384,12 @@ vela_chao 2.5 48.5 90
 9 23 oratorio "Sal grosso na porta e ele não passa. Dona Benedita diz que com a cruz na mão ele nem encosta."
 29 3 lapide "Cel. Tibúrcio Arruda. Nasceu 1841, morreu 1897. Bateu na mãe. Nem a terra o quis."
 28 11 capela_altar "Vela no meio do altar, fósforo ao lado pra acender. Só a luz benta segura quem a terra não quis."
-39 15 oratorio "A chave do jazigo dos Arruda fica no baú do quarto do coveiro."
+39 15 oratorio "Toda Sexta da Paixão o Coronel sai da cova e volta pro sobrado que foi dele. Só descansa enterrado de novo."
 47 26 parede "Túmulo lacrado com pregos. Só um pé de cabra abre. Deixei um na estante da sacristia."
-28 33 grade "Cadeado de 4 números na grade. O portão grande lá fora só abre quando o Corpo-seco for enterrado."
+28 33 grade "Cadeado de 4 números: o ano em que o Coronel morreu. O portão grande só abre quando ele for enterrado."
 9 40 ossario "Aqui jazem os que ninguém reclamou. Rezem por eles."
-8 18 parede "Jazigo perpétuo da família Arruda."
+8 18 parede "Jazigo perpétuo da família Arruda. A chave fica com o coveiro, no baú do quarto dele."
+0 25 parede "Diário do coveiro: chegou gente de canoa pelo rio, encharcada, com a Dona Benedita. Ela diz que hoje ele volta pra cova."
 [hide]
 21 2 tumulo 0
 4 3 tumulo 0
@@ -465,7 +466,7 @@ vela_chao 2.5 48.5 90
 27.5 31.5 3.2 200,210,255 6 flicker
 31.5 27.5 3.2 200,210,255 6 dead
 26.5 22.5 3.2 200,210,255 6 dead
-13.5 21.5 3.2 200,210,255 6 dead
+15.5 21.5 3.2 200,210,255 6 dead
 43.5 21.5 3.2 200,210,255 6 dead
 23.5 37.5 3.2 255,210,140 7 steady
 35.5 37.5 3.2 255,210,140 7 dead
@@ -520,9 +521,11 @@ vela_chao 2.5 48.5 90
 32 22 58 24 30.4 2.8 23.2 58 0.6 23.5 52
 ; quadras sul: high crane shots from the cross path, the rows receding into the fog toward the south wall
 12 25 19 32 15.5 4 20.4 15.5 0 30 60
+; porta do túmulo lacrado de frente, com a parede de pregos
+44 26 46 28 40.3 2.6 27.5 47.5 1.2 27.5 56
 20 25 26 32 21.3 4 19.8 23 0 30 60
 32 25 39 32 37.2 4 20.8 35.5 0 30 60
-40 25 46 32 43.5 4 20.4 43 0 30 60
+40 25 46 32 45 4 21 43 0 30 60
 47 31 51 32 45.5 3 31.5 52 0.5 32 54
 52 25 58 32 55 4 20.6 55 0 30 60
 ; portaria: under the arch, between the two gates

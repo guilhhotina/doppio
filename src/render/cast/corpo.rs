@@ -1,9 +1,9 @@
 use super::heroes::{card, cube, hand, limb, loft, sw, tiled};
 use super::kit::{self, Kit, Ring, Uv, egg, ring};
 use super::skeleton::{self, Frame, Pose, ease, hide, noise, snap};
-use super::{ARM_L, ARM_R, FORE_L, FORE_R, HEAD, LAMP, PELVIS, Rig, SHIN_L, SHIN_R, SKIRT, THIGH_L, THIGH_R, TORSO, X, rig_from};
+use super::{ARM_L, ARM_R, FOOT_L, FOOT_R, FORE_L, FORE_R, HEAD, LAMP, PELVIS, Rig, SHIN_L, SHIN_R, SKIRT, THIGH_L, THIGH_R, TORSO, X, locomotion, rig_from};
 use crate::sim::LegendAnim;
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::TAU;
 
 const JAW: [f32; 2] = [0.128, -0.01];
 
@@ -82,7 +82,10 @@ pub fn build(k: &mut Kit) {
     [SHIN_L, SHIN_R].iter().for_each(|&seg| {
         k.seg(seg);
         limb(k, f.shin, 0.034, 0.025, s, hide_tex);
-        cube(k, [-0.035, -f.shin - f.sole, -0.05], [0.035, -f.shin + 0.02, 0.16], sw(kit::LEATHER));
+    });
+    [FOOT_L, FOOT_R].iter().for_each(|&seg| {
+        k.seg(seg);
+        cube(k, [-0.035, -f.sole, -0.05], [0.035, 0.02, 0.16], sw(kit::LEATHER));
     });
 }
 
@@ -107,20 +110,20 @@ fn hunch(t: f32) -> Pose {
 fn walk(t: f32, period: f32, amp: f32) -> Pose {
     let hitch = noise(snap(t, 5.0) as i32 + 31).max(0.0) * 3.0;
     let ph = snap(t - hitch, 2.0) * TAU / period;
-    let w = ph.sin();
+    let w = ph.cos();
+    let lurch = (1.0 - (t / period + 0.5).fract() / 0.18).max(0.0);
     let base = hunch(t);
     Pose {
-        roll: 0.09 * w.max(0.0) * amp,
-        pelvis: [0.0, 0.08 * w, 0.0],
-        torso: [0.3 + 0.05 * (2.0 * ph).cos(), -0.1 * w, 0.06 * w],
-        arm_l: [-0.35 + 0.15 * w, 0.12, 0.2],
-        arm_r: [-0.3 - 0.1 * w, -0.12, -0.2],
-        hip_l: [-0.42 * w * amp, 0.04],
-        hip_r: [0.25 * w * amp, 0.04],
-        knee_l: 0.1 + 0.5 * amp * (ph + 0.6).cos().max(0.0),
-        knee_r: 0.05,
-        ankle_l: 0.0,
-        skirt: [0.0, -0.1 * w, 0.05 * w],
+        roll: -0.12 * lurch * amp + 0.04 * w,
+        pelvis: [0.0, -0.1 * w, 0.0],
+        torso: [0.3 + 0.18 * lurch, 0.12 * w, -0.1 * lurch],
+        head: [base.head[0] - 0.25 * lurch, base.head[1], base.head[2] + 0.2 * lurch],
+        arm_l: [-0.35 + 0.25 * w, 0.12, 0.2],
+        arm_r: [-0.2 + 0.35 * lurch, -0.12, -0.35],
+        elbow_l: -0.25 - 0.2 * (-w).max(0.0),
+        elbow_r: -0.05,
+        skirt: [0.06 * lurch, -0.1 * w, 0.08 * lurch],
+        x: [base.x[0] + 0.2 * lurch, 0.0, 0.0],
         ..base
     }
 }
@@ -129,10 +132,10 @@ fn pose(anim: LegendAnim, tic: u16) -> Pose {
     let t = tic as f32;
     match anim {
         LegendAnim::Idle => hunch(t),
-        LegendAnim::Walk => walk(t, 44.0, 1.0),
+        LegendAnim::Walk => walk(t, PERIOD[0], 1.0),
         LegendAnim::Run => {
-            let ph = snap(t, 2.0) * TAU / 22.0;
-            let w = ph.sin();
+            let ph = snap(t, 2.0) * TAU / PERIOD[1];
+            let w = ph.cos();
             Pose {
                 pitch: 0.32,
                 torso: [0.25, -0.15 * w, 0.0],
@@ -143,8 +146,8 @@ fn pose(anim: LegendAnim, tic: u16) -> Pose {
                 elbow_r: -0.2,
                 hip_l: [-0.7 * w, 0.03],
                 hip_r: [0.7 * w, 0.03],
-                knee_l: 0.15 + 1.0 * (ph + 0.6).cos().max(0.0),
-                knee_r: 0.15 + 1.0 * (ph + 0.6 + PI).cos().max(0.0),
+                knee_l: 0.15,
+                knee_r: 0.15,
                 x: [0.35, 0.0, 0.0],
                 ..Pose::default()
             }
@@ -194,6 +197,24 @@ fn pose(anim: LegendAnim, tic: u16) -> Pose {
                 ..Pose::default()
             }
         }
+        LegendAnim::Alert => {
+            let snapped = 1.0 - (t / 2.0).min(1.0);
+            let tremor = noise(snap(t, 2.0) as i32 + 17);
+            Pose {
+                torso: [0.12 - 0.15 * snapped, 0.04 * tremor, 0.0],
+                head: [-0.15 + 0.3 * snapped, 0.08 * tremor, 0.35 + 0.05 * tremor],
+                arm_l: [-0.85 - 0.1 * tremor, 0.25, 0.3],
+                arm_r: [-0.8 + 0.1 * tremor, -0.25, -0.3],
+                elbow_l: -0.7,
+                elbow_r: -0.75,
+                hip_l: [-0.15, 0.08],
+                hip_r: [0.05, 0.08],
+                knee_l: 0.3,
+                knee_r: 0.1,
+                x: [0.5 + 0.15 * tremor.abs(), 0.0, 0.0],
+                ..hunch(t)
+            }
+        }
         LegendAnim::Special => {
             let k = ease(t / 8.0);
             let shake = 0.06 * (t * 2.3).sin();
@@ -215,9 +236,20 @@ fn pose(anim: LegendAnim, tic: u16) -> Pose {
     }
 }
 
-pub fn rig(x: f32, z: f32, heading: f32, anim: LegendAnim, tic: u16) -> Rig {
-    let p = pose(anim, tic);
+pub const PERIOD: [f32; 2] = [40.0, 22.0];
+
+pub fn rig(x: f32, z: f32, heading: f32, anim: LegendAnim, tic: u16, travel: [f32; 2]) -> Rig {
+    let mut p = pose(anim, tic);
+    p.ankle_l = -p.hip_l[0] - p.knee_l - p.pitch;
+    p.ankle_r = -p.hip_r[0] - p.knee_r - p.pitch;
     let mut mats = skeleton::biped(&FRAME, &p, x, z, heading);
+    if matches!(anim, LegendAnim::Walk | LegendAnim::Run) {
+        let gait = match anim {
+            LegendAnim::Run => locomotion::Gait { period: PERIOD[1], duty: 0.46, clearance: 0.1, sink: 0.95, limp: 0.5 },
+            _ => locomotion::Gait { period: PERIOD[0], duty: 0.64, clearance: 0.07, sink: 0.995, limp: 0.85 },
+        };
+        locomotion::biped(&mut mats, &FRAME, [x, z, heading], tic as f32, gait, travel);
+    }
     hide(&mut mats[LAMP]);
     let hands = [mats[FORE_R], mats[FORE_L]];
     let pelvis = mats[PELVIS];

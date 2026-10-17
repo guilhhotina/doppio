@@ -474,6 +474,34 @@ pub fn chime() -> [Patch; 2] {
     [Patch { freq: 587.0, ..note }, Patch { freq: 784.0, delay: 0.14, ..note }]
 }
 
+pub fn sting() -> [Patch; 3] {
+    let stab = Patch { buzz: 1.0, cutoff: 2600.0, sweep: -0.6, damp: 0.08, bp: 1.0, lp: 0.6, attack: 0.004, hold: 0.12, decay: 0.7, gain: 0.32, prio: PRIO_SELF, ..BASE };
+    [
+        Patch { freq: 233.0, glide: -0.15, ..stab },
+        Patch { freq: 247.0, glide: -0.2, ..stab },
+        Patch { noise: 1.0, cutoff: 1800.0, sweep: -1.2, damp: 0.6, bp: 1.0, hp: 0.3, attack: 0.01, decay: 0.45, gain: 0.5, prio: PRIO_SELF, ..BASE },
+    ]
+}
+
+pub fn relief() -> [Patch; 2] {
+    [
+        Patch { tone: 0.5, freq: 330.0, glide: -0.35, cutoff: 900.0, damp: 1.0, bp: 0.0, lp: 1.0, attack: 0.08, hold: 0.2, decay: 1.2, gain: 0.12, prio: PRIO_EVENT, ..BASE },
+        Patch { noise: 1.0, cutoff: 900.0, sweep: -0.6, damp: 0.9, bp: 1.0, hp: 0.3, attack: 0.25, hold: 0.1, decay: 0.6, gain: 0.16, prio: PRIO_EVENT, ..BASE },
+    ]
+}
+
+pub fn snarl() -> [Patch; 2] {
+    [
+        Patch { buzz: 1.0, freq: 70.0, glide: 0.6, jitter: 12.0, cutoff: 700.0, sweep: 0.8, damp: 0.1, bp: 1.2, attack: 0.03, hold: 0.18, decay: 0.12, gain: 0.6, prio: PRIO_LEGEND, ..BASE },
+        Patch { noise: 1.0, cutoff: 500.0, sweep: 0.9, damp: 0.4, bp: 1.4, attack: 0.02, hold: 0.15, decay: 0.1, gain: 0.45, prio: PRIO_LEGEND, ..BASE },
+    ]
+}
+
+pub fn reward() -> [Patch; 2] {
+    let note = Patch { tone: 0.5, fm_ratio: 2.0, fm_index: 0.3, cutoff: 2200.0, damp: 1.0, bp: 0.0, lp: 1.0, attack: 0.004, decay: 0.7, gain: 0.13, prio: PRIO_EVENT, ..BASE };
+    [Patch { freq: 523.0, delay: 0.45, ..note }, Patch { freq: 659.0, delay: 0.57, ..note }]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

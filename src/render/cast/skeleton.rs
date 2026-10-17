@@ -108,11 +108,8 @@ pub fn biped(f: &Frame, p: &Pose, x: f32, z: f32, heading: f32) -> [M4; SEGS] {
     m
 }
 
-fn contacts(f: &Frame) -> [(usize, V3); 17] {
-    let (foot_seg_l, foot_seg_r, len) = match f.meta > 0.0 {
-        true => (FOOT_L, FOOT_R, f.meta),
-        false => (SHIN_L, SHIN_R, f.shin),
-    };
+fn contacts(f: &Frame) -> [(usize, V3); 13] {
+    let (foot_seg_l, foot_seg_r, len) = (FOOT_L, FOOT_R, f.meta);
     let sole = |s: usize, z: f32| (s, [0.0, -len - f.sole, z]);
     [
         sole(foot_seg_l, 0.15),
@@ -128,10 +125,6 @@ fn contacts(f: &Frame) -> [(usize, V3); 17] {
         (HEAD, [0.0, 0.14, 0.13]),
         (FORE_L, [0.0, -f.hand(), 0.0]),
         (FORE_R, [0.0, -f.hand(), 0.0]),
-        (SKIRT, [0.0, -f.hem, 0.2]),
-        (SKIRT, [0.0, -f.hem, -0.2]),
-        (SKIRT, [0.2, -f.hem, 0.0]),
-        (SKIRT, [-0.2, -f.hem, 0.0]),
     ]
 }
 
