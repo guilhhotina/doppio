@@ -122,7 +122,7 @@ cast_tonho https://commons.wikimedia.org/wiki/File:Unidentified_boy_photograph_-
 cast_trapo https://commons.wikimedia.org/wiki/File:Ahmose-mummy-head.png G-Elliot-Smith-1912 public-domain
 cast_xadrez procedural:tools/cast_textures.sh(xadrez) own-work CC0
 cast_xale procedural:tools/cast_textures.sh(xale) own-work CC0
-ui_font_a procedural:tools/uiart.py(fonts)+https://not-jam.itch.io/not-jam-font-pack(Not-Jam-Old-Style-14,CC0)+linux-kbd-consolefonts(lat1-08) CC0
+ui_font_a procedural:tools/uiart.py(fonts)+https://not-jam.itch.io/not-jam-font-pack(Not-Jam-Old-Style-14,CC0)+linux-kbd-consolefonts(lat1-08,GPL-2.0-or-later) CC0+GPL-2.0-or-later
 ui_latao_a procedural:tools/uiart.py(latao)+https://polyhaven.com/a/rusty_metal_02+https://polyhaven.com/a/blue_metal_plate CC0
 ui_logo_a procedural:tools/uiart.py(logo)+https://fonts.google.com/specimen/IM+Fell+English+SC(OFL-1.1) OFL
 ui_moldura_a procedural:tools/uiart.py(moldura)+https://polyhaven.com/a/rusty_metal CC0
