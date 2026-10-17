@@ -193,6 +193,17 @@ impl Game {
         self.run.stage == Stage::Ending
     }
 
+    pub fn playing(&self) -> bool {
+        self.run.stage == Stage::Play
+    }
+
+    pub fn upcoming(&self) -> Option<&'static Map<'static>> {
+        match self.run.stage {
+            Stage::Outro { .. } => self.run.maps.get(self.run.setup.phase as usize + 1).copied(),
+            _ => None,
+        }
+    }
+
     pub fn holding(&self, seat: usize) -> bool {
         self.run.world.players().get(seat).is_some_and(|p| p.hands.iter().any(Option::is_some))
     }
@@ -418,6 +429,20 @@ mod tests {
         run.stage = Stage::Restart { until: 5 };
         assert_eq!(run.step(&row), Stepped::Fresh);
         assert_eq!((run.world.tic(), run.stage), (0, Stage::Intro { until: 5 + INTRO_TICS }));
+    }
+
+    #[test]
+    fn outro_names_the_next_map_until_the_last_phase() {
+        let seats = [seat(Some(0))];
+        let maps = sample_maps();
+        let mut g = Game::new(maps, setup(1), &seats, false, 0, Instant::now());
+        assert!(g.upcoming().is_none() && !g.playing());
+        g.force(Stage::Play);
+        assert!(g.upcoming().is_none() && g.playing());
+        g.force(Stage::Outro { until: OUTRO_TICS });
+        assert!(std::ptr::eq(g.upcoming().unwrap(), maps[1]));
+        g.run.setup.phase = maps.len() as u8 - 1;
+        assert!(g.upcoming().is_none());
     }
 
     #[test]

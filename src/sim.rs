@@ -2,7 +2,6 @@ use crate::fx::{Ang, Fx, Rng, Vec2};
 use crate::map::{DoorState as MapDoor, Map};
 
 mod act;
-#[cfg(test)]
 mod bot;
 mod collide;
 mod field;
@@ -22,6 +21,7 @@ mod tests;
 
 pub use crate::map::{ItemKind, LegendKind};
 pub use player::HIDE_TICS;
+pub use bot::Bot;
 pub use tank::DROP;
 
 use field::Heap;

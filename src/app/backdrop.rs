@@ -5,6 +5,7 @@ use crate::sim::{MAX_PLAYERS, Outcome, Setup, TICS_PER_SEC, World};
 use std::time::Instant;
 
 pub const SHOT_TICS: u32 = 40 * TICS_PER_SEC;
+const LEAD_TICS: u32 = 5 * TICS_PER_SEC;
 
 pub struct Backdrop {
     maps: &'static [&'static Map<'static>],
@@ -47,6 +48,11 @@ impl Backdrop {
         View { rect: [0, 0, CANVAS_W, CANVAS_H], follow: 0, fade: fade.max(dim), portrait: None }
     }
 
+    pub fn upcoming(&self, unlocked: usize) -> Option<&'static Map<'static>> {
+        let next = shot_setup(self.shot.wrapping_add(1), unlocked, self.maps.len());
+        (self.world.tic() + LEAD_TICS >= SHOT_TICS).then(|| self.maps[next.phase as usize])
+    }
+
     pub fn world(&self) -> &World {
         &self.world
     }
@@ -71,5 +77,10 @@ mod tests {
         assert_eq!(b.shot, 1);
         assert!(b.world().tic() < SHOT_TICS);
         assert_eq!(b.world().players()[0].character, 1);
+        assert!(b.upcoming(1).is_none());
+        let t1 = t0 + TIC * (5 * (SHOT_TICS / 5 + 2));
+        (1..=(SHOT_TICS - LEAD_TICS) / 5).for_each(|k| b.tick(t1 + TIC * (5 * k), 1));
+        assert_eq!(b.shot, 1);
+        assert!(std::ptr::eq(b.upcoming(1).unwrap(), sample_maps()[0]));
     }
 }

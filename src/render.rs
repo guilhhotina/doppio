@@ -11,6 +11,7 @@ mod lamps;
 mod level;
 mod mat;
 mod mesh;
+mod prefetch;
 mod props;
 mod shader;
 mod sky;
@@ -29,6 +30,7 @@ use lamps::{Lamps, Source};
 use level::{Drive, Level};
 use mat::{M4, V3};
 use mesh::{Mesh, Vert};
+use prefetch::Prefetch;
 use shader::{MAX_LIGHTS, Shaders, blit, glow as gu, sky as su, world as wu};
 use std::f32::consts::{PI, TAU};
 use std::time::Instant;
@@ -154,6 +156,22 @@ struct Stage {
     moon: V3,
 }
 
+struct Built {
+    map: &'static Map<'static>,
+    zones: Zones,
+    lamps: Lamps,
+    level: Level,
+}
+
+impl Built {
+    fn new(map: &'static Map<'static>, tiles: &[[u8; 4]]) -> Built {
+        let zones = Zones::new(map);
+        let lamps = Lamps::new(map, &zones);
+        let level = Level::new(map, &zones, &lamps, tiles);
+        Built { map, zones, lamps, level }
+    }
+}
+
 struct Buffers {
     body_vbo: u32,
     body_ibo: [u32; MAX_VIEWS],
@@ -232,6 +250,7 @@ pub struct Renderer {
     power_seen: bool,
     flicker: u8,
     stats: Stats,
+    prefetch: Prefetch<Built>,
 }
 
 fn static_buffer<T: Copy>(gl: &Gl, target: gl::GLenum, data: &[T]) -> u32 {
@@ -322,10 +341,8 @@ fn v2(p: crate::fx::Vec2) -> (f32, f32) {
 }
 
 impl Stage {
-    fn new(gl: &Gl, map: &'static Map<'static>, textures: &Textures) -> Stage {
-        let zones = Zones::new(map);
-        let lamps = Lamps::new(map, &zones);
-        let mut level = Level::new(map, &zones, &lamps, &textures.tiles);
+    fn new(gl: &Gl, built: Built, textures: &Textures) -> Stage {
+        let Built { map, zones, lamps, mut level } = built;
         let pages = level.pages.iter().map(|p| (static_buffer(gl, gl::ARRAY_BUFFER, &p.verts), static_buffer(gl, gl::ELEMENT_ARRAY_BUFFER, &p.idx))).collect();
         level.pages.iter_mut().for_each(|p| *p = level::Page::default());
         let sky = sky::mesh(map.sky, &textures.tiles).map(|m| (static_buffer(gl, gl::ARRAY_BUFFER, &m.verts), static_buffer(gl, gl::ELEMENT_ARRAY_BUFFER, &m.idx), m.idx.len() as i32));
@@ -380,7 +397,7 @@ impl Renderer {
     pub fn new(gl: &Gl, map: &'static Map<'static>) -> Renderer {
         let shaders = Shaders::new(gl).unwrap_or_else(|e| panic!("doppio shaders: {e}"));
         let textures = Textures::new(gl);
-        let stage = Stage::new(gl, map, &textures);
+        let stage = Stage::new(gl, Built::new(map, &textures.tiles), &textures);
         let cast = Cast::new(|n| textures.tile(n));
         let items = items::meshes(&textures.tiles);
         let door = doors::mesh(textures.tile("madeira_porta"));
@@ -452,15 +469,25 @@ impl Renderer {
             power_seen: true,
             flicker: 0,
             stats: Stats::default(),
+            prefetch: Prefetch::new(),
         }
+    }
+
+    pub fn prepare(&mut self, map: &'static Map<'static>) {
+        if std::ptr::eq(self.stage.map, map) || !self.prefetch.idle_for(map) {
+            return;
+        }
+        let tiles = self.textures.tiles.clone();
+        self.prefetch.want(map, move || Built::new(map, &tiles));
     }
 
     pub fn load(&mut self, gl: &Gl, map: &'static Map<'static>) {
         if std::ptr::eq(self.stage.map, map) {
             return;
         }
+        let built = self.prefetch.take(map).unwrap_or_else(|| Built::new(map, &self.textures.tiles));
         self.stage.delete(gl);
-        self.stage = Stage::new(gl, map, &self.textures);
+        self.stage = Stage::new(gl, built, &self.textures);
         self.item_rest.clear();
         self.travel.fill(cast::Travel::default());
     }

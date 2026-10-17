@@ -1,3 +1,4 @@
+mod autopilot;
 mod backdrop;
 mod clock;
 mod flow;
@@ -15,6 +16,7 @@ use crate::net::{self, Link, Net};
 use crate::render::{Renderer, Ui2d, View};
 use crate::sim::MAX_PLAYERS;
 use crate::ui;
+use autopilot::Autopilot;
 use backdrop::Backdrop;
 use flow::{Look, Notice, Screen};
 use game::{Game, PauseAction, Stage, VIEWS};
@@ -52,6 +54,7 @@ pub struct App {
     stage: Option<Stage>,
     frame: u32,
     perf: Perf,
+    autopilot: Option<Autopilot>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -85,6 +88,10 @@ fn side(bits: u16) -> Option<i8> {
     }
 }
 
+fn source(input: [u16; 4], bot: Option<u16>) -> [u16; 4] {
+    bot.map_or(input, |b| [b, input[1], input[2], input[3]])
+}
+
 impl App {
     pub fn new(fe: &Frontend) -> App {
         net::register(fe);
@@ -92,9 +99,15 @@ impl App {
         let save_dir = fe.save_dir();
         let save::Save { unlocked, tips } = save::load(save_dir.as_deref(), maps.len() as u8);
         let start = direct(fe.variable(c"doppio_phase").as_deref(), fe.variable(c"doppio_chars").as_deref(), maps.len());
+        let bot = fe.variable(c"doppio_bot").is_some_and(|v| v.trim() == "1");
         fe.log(
             LOG_INFO,
-            &format!("{} loaded ({} phases, {unlocked} unlocked, save dir {:?}, direct {start:?})", env!("CARGO_PKG_VERSION"), maps.len(), save_dir),
+            &format!(
+                "{} loaded ({} phases, {unlocked} unlocked, save dir {:?}, direct {start:?}, bot {bot})",
+                env!("CARGO_PKG_VERSION"),
+                maps.len(),
+                save_dir
+            ),
         );
         let mut app = App {
             maps,
@@ -115,6 +128,7 @@ impl App {
             stage: fe.variable(c"doppio_stage").as_deref().and_then(game::stage_named),
             frame: 0,
             perf: Perf::default(),
+            autopilot: bot.then(Autopilot::new),
         };
         start.iter().for_each(|d| {
             app.ports = std::array::from_fn(|i| (i < d.players).then_some(i as u8));
@@ -375,10 +389,26 @@ impl App {
         (views, n + 1)
     }
 
+    fn steer(&mut self, fe: &Frontend, input: [u16; 4]) -> [u16; 4] {
+        let (screen, game, frame) = (self.screen, self.game.as_deref(), self.frame);
+        let bot = self.autopilot.as_mut().map(|a| a.drive(screen, game, frame, &mut |l| fe.log(LOG_INFO, &l)));
+        source(input, bot)
+    }
+
+    fn upcoming(&self) -> Option<&'static Map<'static>> {
+        match (self.screen, self.game.as_deref()) {
+            (Screen::Game, Some(g)) if g.over() => Some(self.backdrop.world().map()),
+            (Screen::Game, Some(g)) => g.upcoming(),
+            (s, _) if s.picking() => self.maps.get(self.net.phase() as usize).copied(),
+            _ => self.backdrop.upcoming(self.unlocked as usize),
+        }
+    }
+
     pub fn frame(&mut self, fe: &Frontend, input: [u16; 4]) -> bool {
         let start = Instant::now();
         self.frame = self.frame.wrapping_add(1);
         self.net.poll(fe);
+        let input = self.steer(fe, input);
         let edges = self.pad.edges(&input);
         self.watch_net(fe);
         match self.screen {
@@ -394,6 +424,8 @@ impl App {
             Some(g) => g.views(),
             None => self.menu_views(),
         };
+        let upcoming = self.upcoming();
+        upcoming.zip(self.gfx.as_mut()).into_iter().for_each(|(m, (_, r))| r.prepare(m));
         if !self.gfx.as_mut().is_some_and(|(_, r)| r.due(n)) {
             self.report(fe, start.elapsed());
             return false;
@@ -446,5 +478,11 @@ mod tests {
         assert_eq!(side(pad::RIGHT | pad::A), Some(1));
         assert_eq!(side(pad::LEFT | pad::RIGHT), None);
         assert_eq!(ports_list(&[None, Some(2), None, Some(1)]), ([2, 1, 0, 0], 2));
+    }
+
+    #[test]
+    fn bot_replaces_only_the_first_port() {
+        assert_eq!(source([1, 2, 3, 4], None), [1, 2, 3, 4]);
+        assert_eq!(source([1, 2, 3, 4], Some(pad::A)), [pad::A, 2, 3, 4]);
     }
 }
