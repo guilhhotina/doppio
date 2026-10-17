@@ -204,7 +204,7 @@ fn main_menu(ui: &mut Ui2d, sel: usize, lobby: bool, t: u32) {
     let items = [
         Item { note: Some("uma pessoa, fase a fase"), ..Item::new("Campanha") },
         Item { note: Some("dois a quatro controles nesta TV"), ..Item::new("Jogar no sofá") },
-        Item { enabled: lobby, note: Some(if lobby { "cada um na sua TV" } else { "não disponível nesta caixinha" }), ..Item::new("Jogar online") },
+        Item { enabled: lobby, note: Some(if lobby { "cada um na sua TV" } else if cfg!(target_os = "emscripten") { "indisponível no navegador" } else { "não disponível nesta caixinha" }), ..Item::new("Jogar online") },
         Item::new("Como jogar"),
         Item::new("Créditos"),
     ];
