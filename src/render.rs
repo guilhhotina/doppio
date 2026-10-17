@@ -59,7 +59,7 @@ const BODIES: usize = 5;
 const LOD_DISTANCE: f32 = 4.0;
 const LOOK_EASE: f32 = 0.2;
 const MATINTA_NEAR: f32 = 4.0;
-const CAMERA_CLEAR: f32 = 0.9;
+const CAMERA_CLEAR: f32 = 0.35;
 const MATINTA_BEAM: f32 = 7.0;
 const LANTERN: f32 = 2.4;
 const SPOT: f32 = 0.74;
@@ -304,7 +304,13 @@ fn smooth(a: f32, b: f32, x: f32) -> f32 {
 
 fn crowds(eye: V3, centre: V3, half: V3) -> bool {
     let gap = |k: usize| ((eye[k] - centre[k]).abs() - half[k]).max(0.0);
-    gap(0).hypot(gap(2)) < CAMERA_CLEAR
+    gap(0).hypot(gap(1)).hypot(gap(2)) < CAMERA_CLEAR
+}
+
+fn body_rooms(z: &Zones, p: V3) -> Mask {
+    let (x, y) = (p[0].floor() as i32, p[2].floor() as i32);
+    let own = z.near(x, y).map_or(0, |r| 1 << r);
+    z.portals.iter().filter(|q| q.door.is_some() && q.lo[0] as i32 == x && q.lo[2] as i32 == y).fold(own, |m, q| m | q.rooms)
 }
 
 impl Body {
@@ -542,13 +548,6 @@ impl Renderer {
         }
     }
 
-    fn rooms_at(&self, p: V3) -> Mask {
-        let z = &self.stage.zones;
-        let (x, y) = (p[0].floor() as i32, p[2].floor() as i32);
-        let own = z.near(x, y).map_or(0, |r| 1 << r);
-        z.portals.iter().filter(|q| q.door.is_some() && q.lo[0] as i32 == x && q.lo[2] as i32 == y).fold(own, |m, q| m | q.rooms)
-    }
-
     fn body_light(&self, c: V3, lamp: f32) -> (V3, V3) {
         let st = &self.stage;
         let room = st.zones.at(c).unwrap_or(0);
@@ -589,7 +588,7 @@ impl Renderer {
             let (color, key) = self.body_light(centre, lamp);
             self.lanterns[i] = p.lantern.then_some(Light { pos: rig.lantern, dir: rig.beam, power: LANTERN, cutoff: SPOT, color: [1.0, 0.88, 0.66], falloff: 0.16 });
             let down = scene.players.len() > 1 && matches!(p.state, PlayerState::Fainted { .. });
-            self.bodies[i] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: p.area, color, key, fade: 0.0, stunned: false, down });
+            self.bodies[i] = Some(Body { who, rig, centre, half, rooms: body_rooms(&self.stage.zones, centre), area: p.area, color, key, fade: 0.0, stunned: false, down });
         });
         let l = scene.legend;
         let (x, z) = v2(l.pos);
@@ -610,7 +609,7 @@ impl Renderer {
         };
         let (color, key) = self.body_light(centre, lamp);
         let stunned = l.mode == LegendMode::Stunned || matches!(l.anim, LegendAnim::Stagger);
-        self.bodies[BODIES - 1] = Some(Body { who, rig, centre, half, rooms: self.rooms_at(centre), area: l.area, color, key, fade, stunned, down: false });
+        self.bodies[BODIES - 1] = Some(Body { who, rig, centre, half, rooms: body_rooms(&self.stage.zones, centre), area: l.area, color, key, fade, stunned, down: false });
     }
 
     fn skin_bodies(&mut self, gl: &Gl, eyes: &[Option<(Eye, u8, bool)>]) {
@@ -1093,12 +1092,12 @@ impl Renderer {
         self.fx.truncate(MAX_FX * 4);
     }
 
-    fn draw_glow(&mut self, gl: &Gl, slot: usize, e: &Eye, area: u8) -> u32 {
+    fn draw_glow(&mut self, gl: &Gl, slot: usize, e: &Eye, area: u8, close: bool) -> u32 {
         self.cones.clear();
         (0..BODIES).for_each(|i| {
             let (Some(l), Some(b)) = (self.lanterns[i], self.bodies[i]) else { return };
             let tip = mat::add(l.pos, mat::scale(l.dir, 0.9));
-            if b.area == area && e.sees(b.rooms, mat::sub(tip, [1.0; 3]), mat::add(tip, [1.0; 3])) {
+            if b.area == area && (close || !crowds(e.cam.eye, b.centre, b.half)) && e.sees(b.rooms, mat::sub(tip, [1.0; 3]), mat::add(tip, [1.0; 3])) {
                 glow::emit(&self.cone, &glow::model(l.pos, l.dir), &mut self.cones);
             }
         });
@@ -1186,7 +1185,7 @@ impl Renderer {
 
         tris += self.draw_screens(gl, e, &lights, lamp, scene.power);
         self.emit_fx(e, area, lamp, close);
-        tris += self.draw_glow(gl, slot, e, area);
+        tris += self.draw_glow(gl, slot, e, area, close);
         if let PlayerState::Hidden { spot } = viewer.state {
             if let Some(hd) = scene.map.hides.get(spot as usize) {
                 let phase = self.hides.get(view.follow as usize).map_or(hide::Phase::Out, |h| h.1);
@@ -1315,12 +1314,125 @@ mod tests {
     }
 
     #[test]
-    fn bodies_hugging_the_camera_are_dropped() {
-        let half = [0.3, 0.9, 0.3];
-        assert!(crowds([0.0, 1.5, 0.0], [0.6, 0.9, 0.5], half));
-        assert!(crowds([0.0, 3.0, 0.0], [0.0, 0.9, 1.0], half));
-        assert!(!crowds([0.0, 1.5, 0.0], [0.0, 0.9, 2.0], half));
-        assert!(!crowds([0.0, 1.5, 0.0], [1.5, 0.9, 1.5], half));
+    fn only_bodies_the_eye_intrudes_on_are_dropped() {
+        let half = [0.65, 0.87, 0.65];
+        let centre = [0.0, 0.87, 0.0];
+        assert!(crowds([0.3, 1.2, 0.0], centre, half), "eye inside the body box");
+        assert!(crowds([0.0, 1.9, 0.0], centre, half), "eye just above the head");
+        assert!(crowds([0.9, 1.2, 0.0], centre, half), "eye at chest height a hand away");
+        assert!(!crowds([0.0, 2.4, 0.0], centre, half), "ceiling camera over the head");
+        assert!(!crowds([1.0, 2.0, 1.0], centre, half), "corner camera a metre away");
+        assert!(!crowds([1.5, 1.2, 0.0], centre, half), "low camera across the room");
+    }
+
+    const BODY_ROWS: [f32; 3] = [0.8, 1.1, 1.35];
+    const BODY_SIDE: [f32; 3] = [-0.12, 0.0, 0.12];
+    const FRAME_INSET: f32 = 0.85;
+    const MIN_SEEN: usize = 6;
+    const BODY_R: f32 = 0.3;
+
+    type Tri = (usize, [V3; 3], V3);
+
+    fn occluders(m: &Map, level: &level::Level) -> Vec<Vec<Tri>> {
+        let mut cells: Vec<Vec<Tri>> = vec![Vec::new(); (m.w * m.h) as usize];
+        level.groups[level.passes[0].clone()].iter().enumerate().for_each(|(g, gr)| {
+            let c = gr.chunk;
+            let page = &level.pages[c.page as usize];
+            page.idx[c.first..c.first + c.count].chunks(3).for_each(|t| {
+                let v = [0, 1, 2].map(|k| page.verts[t[k] as usize]);
+                let p = v.map(|q| q.pos);
+                let (lo, hi) = p.iter().fold(([f32::MAX; 2], [f32::MIN; 2]), |(lo, hi), q| ([lo[0].min(q[0]), lo[1].min(q[2])], [hi[0].max(q[0]), hi[1].max(q[2])]));
+                let span = |a: f32, b: f32, n: i32| (a.floor().max(0.0) as i32)..=(b.floor() as i32).min(n - 1);
+                span(lo[1], hi[1], m.h).for_each(|y| span(lo[0], hi[0], m.w).for_each(|x| cells[(y * m.w + x) as usize].push((g, p, v[0].normal()))));
+            });
+        });
+        cells
+    }
+
+    fn hits(tri: &[V3; 3], from: V3, to: V3) -> Option<f32> {
+        let (e1, e2, d) = (mat::sub(tri[1], tri[0]), mat::sub(tri[2], tri[0]), mat::sub(to, from));
+        let p = mat::cross(d, e2);
+        let det = mat::dot(e1, p);
+        if det.abs() < 1e-9 {
+            return None;
+        }
+        let s = mat::sub(from, tri[0]);
+        let u = mat::dot(s, p) / det;
+        let q = mat::cross(s, e1);
+        let v = mat::dot(d, q) / det;
+        let t = mat::dot(e2, q) / det;
+        ((0.0..=1.0).contains(&u) && v >= 0.0 && u + v <= 1.0 && t > 1e-4 && t < 1.0).then_some(t)
+    }
+
+    fn blocked(cells: &[Vec<Tri>], w: i32, live: &[bool], from: V3, to: V3) -> bool {
+        let d = mat::sub(to, from);
+        let outside = |t: f32| (from[0] + d[0] * t - to[0]).hypot(from[2] + d[2] * t - to[2]) >= BODY_R;
+        let steps = (mat::len(d) / 0.05) as usize + 1;
+        let mut seen = Vec::new();
+        (0..=steps).map(|s| mat::add(from, mat::scale(d, s as f32 / steps as f32))).any(|q| {
+            let at = (q[2].floor() as i32 * w + q[0].floor() as i32) as usize;
+            if seen.last() == Some(&at) || at >= cells.len() {
+                return false;
+            }
+            seen.push(at);
+            cells[at].iter().any(|(g, t, n)| live[*g] && mat::dot(*n, mat::sub(from, t[0])) > 0.0 && hits(t, from, to).is_some_and(outside))
+        })
+    }
+
+    fn framed(vp: &M4, p: V3) -> bool {
+        let c = |r: usize| vp[r] * p[0] + vp[4 + r] * p[1] + vp[8 + r] * p[2] + vp[12 + r];
+        let w = c(3);
+        w > camera::NEAR && (c(0) / w).abs() <= FRAME_INSET && (c(1) / w).abs() <= FRAME_INSET
+    }
+
+    fn hidden_tiles(m: &'static Map<'static>) -> Vec<String> {
+        let z = Zones::new(m);
+        let lamps = Lamps::new(m, &z);
+        let level = Level::new(m, &z, &lamps, &texture::atlas().tiles);
+        let cells = occluders(m, &level);
+        let far = m.fog_far.to_f32() + 0.5;
+        let tiles = (0..m.h).flat_map(|y| (0..m.w).map(move |x| (x, y))).filter(|&(x, y)| m.tile(x, y).walkable());
+        tiles
+            .filter_map(|(x, y)| {
+                let (cx, cz) = (x as f32 + 0.5, y as f32 + 0.5);
+                let cam = Camera::follow(m, cx, cz, 16.0 / 9.0, far + 3.0)?;
+                let line = m.cams.iter().position(|c| c.area.contains(x, y)).unwrap_or(usize::MAX);
+                let area = z.near(x, y).map_or(0, |r| z.rooms[r as usize].area);
+                let focus = [cx, 1.0, cz];
+                let seeds = [focus, cam.eye].iter().filter_map(|q| z.at(*q)).fold(0 as Mask, |s, r| s | 1 << r);
+                let mut e = Eye::new(cam, focus, seeds, &z, |_| true, z.area_mask(area), 99.0, [0, 0, CANVAS_W as i32, CANVAS_H as i32]);
+                e.far = far;
+                let dropped = (0..cast::HEROES).map(Who::Hero).find_map(|who| {
+                    let half = cast::extent(who);
+                    let centre = [cx, half[1], cz];
+                    match (crowds(cam.eye, centre, half), e.sees(body_rooms(&z, centre), mat::sub(centre, half), mat::add(centre, half))) {
+                        (true, _) => Some((who, "the eye intrudes on it")),
+                        (_, false) => Some((who, "culled by the eye")),
+                        _ => None,
+                    }
+                });
+                let live: Vec<bool> = level.groups[level.passes[0].clone()].iter().map(|g| e.sees(g.rooms, g.chunk.lo, g.chunk.hi)).collect();
+                let flat = [cx - cam.eye[0], 0.0, cz - cam.eye[2]];
+                let side = mat::norm([-flat[2], 0.0, flat[0]]);
+                let points: Vec<V3> = BODY_ROWS.iter().flat_map(|&h| BODY_SIDE.map(|s| [cx + side[0] * s, h, cz + side[2] * s])).collect();
+                let inside: Vec<bool> = points.iter().map(|&p| framed(&cam.view_proj, p)).collect();
+                let seen: Vec<bool> = points.iter().zip(&inside).map(|(&p, &f)| f && !blocked(&cells, m.w, &live, cam.eye, p)).collect();
+                let head = seen[seen.len() - BODY_SIDE.len()..].iter().any(|&s| s);
+                let count = seen.iter().filter(|&&s| s).count();
+                let framed_n = inside.iter().filter(|&&s| s).count();
+                match (dropped, head && count >= MIN_SEEN) {
+                    (None, true) => None,
+                    (Some((who, why)), _) => Some(format!("{} {x},{y} cam #{line}: {who:?} not drawn, {why}", m.name)),
+                    (None, false) => Some(format!("{} {x},{y} cam #{line}: body {count}/{} visible ({framed_n} in frame), head {head}", m.name, seen.len())),
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_player_is_drawn_and_visible_on_every_walkable_tile() {
+        let bad: Vec<String> = crate::map::campaign().iter().flat_map(|m| hidden_tiles(m)).collect();
+        assert!(bad.is_empty(), "{} tiles hide the player:\n{}", bad.len(), bad.join("\n"));
     }
 
     #[test]

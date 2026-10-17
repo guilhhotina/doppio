@@ -627,7 +627,8 @@ cadeira 58.6 51.4 0
 ; quadro de força no adro: de perto, o quadro e quem põe o fusível
 44 10 47 11 42.6 2.2 11.6 47.6 1 10.2 56
 ; banca de jornal (recado da passagem) vista da rua Direita, de frente
-44 34 49 37 45.5 3.2 40.8 46.5 0.6 34.5 60
+44 34 46 37 41.3 3 35.7 46.5 0.6 34.5 60
+47 34 49 37 49.7 3.6 33.7 48.4 0.7 36.1 61
 ; catraca da plataforma: validador e portinhola de perto
 29 45 33 47 34.5 2 43.8 31.8 0.6 46.4 48
 ; doorway casa rosa quarto: seen from the side you walk into
@@ -659,7 +660,7 @@ cadeira 58.6 51.4 0
 ; doorway oficina front: seen from the side you walk into
 55 42 55 42 55.5 2.3 45.1 55.5 0.9 41 62
 ; casa rosa: quarto da Cida from the door, cama and criado-mudo in the corner
-3 4 3 7 6.2 2.5 6.8 3.4 -0.3 6.8 48
+3 4 3 7 6.2 2.4 6.8 3.1 -0.2 6.8 48
 4 4 6 7 6.8 2.5 6.8 4.6 -0.4 5.2 67
 ; casa rosa: cozinha, fogao a lenha under the bulb, back door to the terreno
 8 4 8 7 9.2 2 4.5 9.4 -0.9 7.7 63
@@ -671,9 +672,12 @@ cadeira 58.6 51.4 0
 7 8 11 12 3.7 2.4 9.3 7.4 1.1 9.7 65
 ; terreno baldio: high over the fence by the street, carroca and caixa dagua in the weeds
 13 2 18 2 17.8 3.6 6.8 16.3 1 3.7 67
-13 3 18 12 18.9 2.6 12.8 10.6 0.6 3.7 64
+13 3 18 3 18.8 2.4 8.8 16.8 1.5 5.5 46
+13 4 18 4 18.3 2.4 2.7 16.7 1.4 6.3 67
+13 5 18 9 18.3 2.4 2.7 16.7 1.4 6.3 67
+13 10 18 12 17.7 2.4 7.7 16.5 1.1 11.3 46
 ; beco da igreja west leg: low from the street mouth up the dark alley
-20 4 21 12 21.4 0.5 12.8 16.7 1.8 3.3 66
+20 4 21 12 21.7 2.4 3.3 21 1.1 7 66
 ; beco behind the church, west third: low, long, church wall on the right
 20 2 30 3 33.2 0.6 3.2 20.5 1.4 2.2 44
 ; beco behind the church, middle: from the east end, the lair in the fog
@@ -681,7 +685,7 @@ cadeira 58.6 51.4 0
 ; beco behind the church, east third: low from the middle toward the corner
 41 2 49 3 36.8 0.6 2.8 49.2 1.2 3.4 46
 ; beco da igreja east leg: high in the corner looking back to the street
-48 4 49 12 48.6 2.7 2.3 50.3 0.4 12.3 50
+48 4 49 12 48.7 2.4 2.3 50.3 0.4 12.3 50
 ; adro west: low from the gate along the facade, candles at its foot
 22 10 34 12 39.5 0.5 12.5 22.2 2 9.2 52
 ; adro east: low from the gate toward the quadro de forca and the beco
@@ -693,24 +697,25 @@ cadeira 58.6 51.4 0
 ; padaria loja west: from the cesto corner, balcao with the code note
 51 8 56 12 58.7 2 10.3 54.9 0.6 10.3 60
 ; padaria loja east: from the door side toward the prateleiras
-57 8 62 12 54.3 2.6 10.3 58 1.1 10.2 58
+57 8 62 12 55.3 2.4 11.3 58 1.1 10.2 58
 ; quintal da padaria: high from the back corner toward the gate and the bicicleta
 64 2 70 2 70.5 3.6 5.2 68.3 1 3.2 67
-64 3 70 12 64.2 2.8 2.1 73.2 0.6 11.3 64
+64 3 70 6 64.3 3 2.3 66.3 1.6 5.5 68
+64 7 70 12 64.3 3 4.7 66.3 1.7 7.9 47
 ; rua do Rosario west: low toward the dead-end corner, Casa Rosa on the right
 1 13 5 16 9.7 0.6 15.7 5.7 0.6 15 49
-6 13 11 16 13.8 0.6 15.2 9.8 0.5 15.1 48
+6 13 11 16 13.7 2.4 15.3 9.9 1.2 15 47
 ; rua do Rosario: low from the beco mouth west, dead poste overhead
-12 13 23 16 26.5 0.5 13.5 12 1.2 19.5 50
+12 13 23 16 27.3 2.4 13.7 12 1.2 19.5 50
 ; rua do Rosario: low by the orelhao, fusca in the foreground, church fence beyond
-24 13 35 16 22.6 0.5 16.6 34.6 1 9.8 50
+24 13 35 16 22.3 3 16.7 26 1.8 15.7 57
 ; rua do Rosario: high from the praca corner back over the fusca roof
-36 13 47 16 49.5 2.8 16.5 36.4 0.4 9.5 50
+36 13 47 16 50.3 2.4 16.7 36.4 0.4 9.5 50
 ; rua do Rosario: low under the steady poste toward the padaria sign
-48 13 53 16 57.7 0.5 15.3 57.2 0.5 15 66
-54 13 59 16 61.2 0.5 14.8 57.2 0.5 15 58
+48 13 53 16 58.7 2.4 14.7 54.8 1.7 14.7 65
+54 13 59 16 61.7 2.4 13.7 57.2 0.5 15 58
 ; rua do Rosario east end: high from the corner back toward the beco do Ze
-60 13 70 16 70.5 2.6 16.6 61.4 0.6 7.4 66
+60 13 70 16 58.7 3 16.7 62.4 1.7 15.7 66
 ; travessa north: from the rua do Rosario corner down the street, orelhao and farmacia sign on the flanks
 19 17 21 21 21.8 2.2 24.8 20.8 1 21.1 48
 19 22 21 27 21.8 2.2 29.2 21 1 25.5 58
@@ -728,25 +733,29 @@ cadeira 58.6 51.4 0
 ; praca: coreto silhouette from the avenida side
 37 26 40 28 48.5 1.2 27.5 35.5 1.6 27.5 50
 ; praca NW: high from the bench by the coreto over the chafariz toward the farmacia
-22 17 30 27 33.3 3 27.3 21 0.6 17.9 64
+22 17 30 27 33.7 3 27.3 30.4 2 25.2 60
 ; praca N: low at the coreto corner, looking up across the street at the church
-31 17 40 25 31.1 0.5 25.9 40.5 3.4 16.5 64
+31 17 40 25 30.3 2.4 26.7 33.1 1.6 24 62
 ; praca NE: high from the coreto corner over the canteiro and the bar
-41 17 49 27 41.1 3 27.9 51 0.6 17.9 64
+41 17 49 18 37.3 3 23.3 51 0.6 17.9 64
+41 19 49 27 40.7 3 32.3 51 0.6 17.9 64
 ; praca SW: high from the coreto corner over the trees toward the travessa
-22 28 30 37 30.9 3 28.1 21.5 0.6 37.5 64
+22 28 30 30 29.7 3.6 23.3 21.5 0.6 37.5 64
+22 31 30 37 33.3 3.6 37.3 29.7 2.2 36.2 67
 ; praca S: low at the coreto corner toward the banca and the rodoviaria sign
-31 29 40 37 30.3 0.5 28.7 33.8 0.5 31.5 64
+31 29 40 37 28.3 2.4 30.3 32 1.7 31.8 66
 ; praca SE: high from the coreto over the banca de jornal
-41 28 49 37 38.5 3 29.5 50.1 0.5 35 64
+41 28 49 37 37.7 3 29.3 50.1 0.5 35 64
 ; farmacia manipulacao (wake): high from the NW corner facing the stuck estoque door (south) and the loja door (east); the corner tiles get their own angle on the estante note
 5 18 5 22 7.2 2.4 18.8 5.6 0.2 21.7 61
 7 18 7 18 9.8 2.4 20.5 6.5 0.8 18.5 60
 6 18 11 22 5.3 2 19.3 8.6 0.5 21.1 66
 ; farmacia estoque north: from the shelves, the stuck door and the fusivel
-4 23 10 26 6.4 2.4 29.6 8.5 0.6 23.2 62
+4 23 5 26 6.3 2.4 28.3 8.5 0.6 23.2 68
+6 23 10 26 5.7 2 27.7 8.5 0.6 23.2 68
 ; farmacia estoque south: from the stuck door toward the beco door
-4 27 10 29 9.6 2.4 24.3 6.8 0.6 30.6 60
+4 27 6 29 7.7 2.4 25.3 7.2 0.8 29 70
+7 27 10 29 8.7 2.4 26.3 9.1 0.4 29.7 46
 ; farmacia loja north: from the back toward the open front door and the vitrine
 12 18 12 21 13.8 2.4 23.2 12.2 0.6 20 48
 13 18 18 21 13.2 2.4 24.8 16.5 0.8 18 60
@@ -754,7 +763,7 @@ cadeira 58.6 51.4 0
 12 22 18 26 16.7 2.6 18.3 13.6 0.6 26.3 60
 ; farmacia escritorio: corner over the mesa and the cofre
 12 27 12 29 14.8 2.4 27.5 12.2 -0.6 27.9 67
-13 27 17 29 12.4 2.5 27.2 16.5 0.6 31.2 64
+13 27 17 29 12.3 2.4 28.3 15.8 0.6 28.4 61
 ; casa do Lazaro sala: high from the sofa corner to the street door
 11 31 11 36 14.2 2.4 36.2 11.4 0.4 34.2 56
 12 31 18 36 11.2 2.5 36.9 18.1 0.6 30 64
@@ -762,7 +771,7 @@ cadeira 58.6 51.4 0
 4 31 5 36 9.5 2.5 31.5 6.3 1 33.4 48
 6 31 10 36 5.8 2.4 31.5 8.2 0.4 34 64
 ; beco da farmacia north: low from the middle toward the rua
-1 17 3 27 1.7 0.5 29.7 2.3 0.5 25.8 60
+1 17 3 27 1.7 2.4 29.7 2.3 1.5 25.9 62
 ; beco da farmacia south: high, flickering bulb behind, toward the rua Direita
 1 28 3 32 1.2 3.6 36.8 2.2 1.7 33.1 64
 1 33 3 37 1.2 2.6 26.5 2.5 0.4 38.5 58
@@ -774,21 +783,25 @@ cadeira 58.6 51.4 0
 55 25 58 26 60.8 2 26.8 57.6 0.1 25.4 48
 59 25 62 26 58.8 2.4 25.2 61.6 -0.9 26.5 67
 ; beco do Ze north: low from the middle toward the rua do Rosario
-63 17 64 26 63.5 0.5 28.2 66.6 1.8 15.4 46
+63 17 64 26 64.3 2.4 28.7 64 1.4 24.8 46
 ; beco do Ze south: high under the flickering bulb down to the rua Direita
 63 27 64 31 64.5 2.4 23.2 64 1.2 27 48
 63 32 64 34 64.8 3 35.5 63.3 0 33.3 56
 63 35 64 37 64.8 2.4 29.2 63.4 0.4 38.5 46
 ; quintal do Ze: high from the opening over the caixa dagua
-65 18 70 26 70.6 2.6 26.6 64.1 0.5 20 64
+65 18 70 21 70.7 3 26.3 64.1 0.5 20 64
+65 22 70 26 66.7 3.6 18.7 67.8 2 22.2 46
 ; quintal da casa azul: high from the opening, bananeira and caixa dagua
-65 28 70 36 70.6 2.6 28.4 64.4 0.5 34.7 64
+65 28 70 30 70.7 3 32.3 68.7 1 29.5 49
+65 31 70 36 69.3 2.4 29.3 68.5 1.2 33 70
 ; casa azul sala: high above the oratorio, back toward the street door
-54 28 57 32 60.3 2.4 28.3 55.2 0.6 34.5 68
-58 28 61 32 57.2 2.5 29.2 60.3 0.2 30.3 65
+54 28 57 32 60.7 2.4 28.3 55.2 0.6 34.5 68
+58 28 61 28 57.2 2.5 29.2 60.3 0.2 30.3 65
+58 29 61 32 57.7 2.4 29.3 60.3 0.2 30.3 70
 ; casa azul quarto: from the door over the cama
 55 33 55 36 58.8 2.4 35.8 55.6 0.2 34.7 65
-56 33 58 36 58.5 2.4 33.2 55.3 0.4 36.7 64
+56 33 58 33 58.8 2.4 33.2 56.1 -0.6 33.3 68
+56 34 58 36 58.5 2 33.2 55.3 0.4 36.7 64
 ; casa azul cozinha: narrow, down toward the armario and the back door
 60 33 62 33 60.5 2.4 34.8 60.5 -1 31.6 48
 60 34 62 36 60.2 2.4 33.5 61.4 -0.5 35.7 68
@@ -802,50 +815,57 @@ cadeira 58.6 51.4 0
 ; rua Direita: high from the rodoviaria sign toward the oficina
 36 38 47 41 33.5 2.8 38.4 46.6 0.4 44 52
 ; rua Direita: low from the beco do Ze mouth back west
-48 38 53 41 57.7 0.5 39.3 48 1.2 44.3 50
+48 38 53 41 58.3 2.4 38.7 48 1.2 44.3 50
 54 38 59 41 61.5 0.5 38.4 48 1.2 44.3 50
 ; rua Direita east end: high toward the oficina quintal
-60 38 70 41 57.5 2.6 41.6 69.8 0.6 36.3 50
+60 38 70 41 57.7 2.4 41.3 61.6 1.6 40.6 49
 ; Zefa lane: high from the quintal back to the rua
-1 42 3 51 2 2.6 52.6 4.9 0.4 41.4 56
+1 42 3 51 1.7 2.4 53.3 2.3 1.4 49.5 53
 ; Zefa quintal south: low under the rede toward the bananeira
-1 52 16 54 20.7 1 52.7 16.5 0.8 53 64
+1 52 16 54 21.3 2.4 53.3 16.5 0.8 53 64
 ; Zefa quintal east strip: high from the back corner up the strip to the rua
-17 42 21 54 17.1 2.8 54.9 26.6 0.6 44.9 64
+17 42 21 44 17.3 3 49.7 18.6 1.9 46.1 46
+17 45 21 54 21.3 3.6 43.3 20.2 2.1 46.8 68
 ; casa da Zefa sala west: from the oratorio corner
 5 42 5 46 9.8 2 45.5 6.1 0.7 46.2 48
 6 42 9 46 13.8 2.4 45.2 4.7 0.6 44 60
 ; casa da Zefa sala east: from the quarto door corner toward the oratorio
-10 42 10 46 8.8 2.5 45.8 12.2 0.6 45 67
-11 42 15 46 10.7 2 44.3 12.2 0.6 45 67
+10 42 10 46 8.5 2.4 45.8 12.2 0.6 45 67
+11 42 15 46 10.3 2 44.3 12.2 0.6 45 67
 ; casa da Zefa quarto: from the door corner over the cama
-5 47 9 50 9.6 2.5 50.6 5.8 0.4 47 64
+5 47 5 50 9.6 2.5 50.6 5.8 0.4 47 64
+6 47 9 50 5.3 2.4 49.7 8.7 0.3 49.2 67
 ; casa da Zefa cozinha: from the armario corner toward the back door
 11 47 11 50 15.6 2.5 50.6 11.8 0.5 47 64
 12 47 16 50 12.2 2.5 50.8 14.3 -0.4 49 68
 ; rodoviaria saguao west: high above the catraca, back toward the rolling gate
-23 42 30 48 30.9 3.4 47.9 23.9 0.6 41 64
+23 42 30 48 32.7 2.4 46.7 23.9 0.6 41 64
 ; rodoviaria saguao east: high from the gate corner toward the guiche
 31 43 38 47 27.3 3.4 43.7 31 2 44.3 48
 ; rodoviaria guiche: from the door over the balcao toward the armario
-39 43 39 47 40.8 2 47.8 39.2 -0.4 45.1 65
-40 43 47 47 39.4 2.6 47.5 45.9 0.6 41.2 65
+39 43 39 47 40.8 2.4 47.8 39.2 -0.4 45.1 65
+40 43 47 47 39.3 2 43.3 42.7 1.2 45.2 67
 ; rodoviaria banheiro: corner by the vaso, the door and the pia
-23 49 27 53 23.1 2.5 53.9 27.9 0.6 48.9 64
+23 49 24 53 26.3 2.4 52.7 23.1 0.5 51.2 67
+25 49 27 53 23.1 2.5 53.9 27.9 0.6 48.9 64
 ; plataforma west: from the far end beside the bus, back toward the catraca
 28 49 28 53 32.8 1.5 53.2 29.1 0.8 51.3 54
-29 49 35 53 39.5 1.5 51.8 27.9 1 51.4 50
+29 49 29 53 37.7 2 49.7 34 1.3 50.9 62
+30 49 35 53 29.3 2 49.3 32.6 1 51.3 63
 ; plataforma east: high from the catraca over the last bus, the exit
-36 49 47 53 35.2 2 50.2 44.1 0.6 51.7 54
+36 49 41 53 35.3 2 49.3 39.1 1.4 50.4 67
+42 49 47 53 41.3 2 49.3 44.5 1 51.4 60
 ; oficina west: high from the back door corner, the kombi against the far wall
-48 42 55 53 59.7 3.2 51.7 56.2 1.8 50.1 66
+48 42 55 43 60.3 2.4 46.7 56.7 1.8 45 46
+48 44 55 53 59.7 3.2 51.7 56.2 1.8 50.1 66
 ; oficina east: high over the kombi roof toward the bancada and the manivela by the candle
-56 42 62 43 51.6 3.2 43.4 62.7 0.5 50.4 60
+56 42 62 43 51.8 2.4 44.2 62.7 0.5 50.4 60
 56 44 62 53 52.3 3.2 44.7 55.5 1.9 46.7 48
 ; quintal da oficina north: high from the corner over the carroca to the rua
 63 42 70 47 70.7 2.6 50.3 63.9 0.6 41 64
 ; quintal da oficina south: high from the back door toward the caixa dagua
-63 48 70 54 63.1 2.8 48.1 70.5 0.6 55.5 64
+63 48 65 54 65.7 3.6 45.7 66.5 1.9 49.2 70
+66 48 70 54 70.3 3.6 46.3 69.1 1.8 49.7 59
 
 [wake]
 0 6.5 21.5 90
