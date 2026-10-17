@@ -6,4 +6,4 @@ for arg do
         *) set -- "$@" "$arg" ;;
     esac
 done
-exec zig cc -target arm-linux-gnueabihf.2.17 -mcpu=cortex_a7 "$@"
+exec zig cc -target "$ZIG_TARGET" ${ZIG_CPU:+-mcpu=$ZIG_CPU} "$@"
